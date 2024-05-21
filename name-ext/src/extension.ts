@@ -38,28 +38,6 @@ export function activate(context: vscode.ExtensionContext) {
 			const nameEXTPath = path.join(namePath, 'name-ext');
 			console.log(nameEXTPath);
 
-			// Start the extension with 'npm run build'
-			// I've done a bunch of looking around but I seriously cannot, for the life of me, understand why in the world this needs to be here.
-			// I'll be removing it here very soon. It does not need to exist here.
-			/*
-			const child = spawn(
-				'npm', ['run', 'build'], {
-					cwd: nameEXTPath
-				}
-			);
-
-			child.on('error', (err) => {
-				vscode.window.showErrorMessage(`Failed to start name-ext, please ensure you have npm installed. True cause: ` + err + `.`
-				);
-			});
-
-			child.on('exit', (code, _) => {
-				if (code !== 0) {
-					vscode.window.showErrorMessage(`name-ext exited with code ${code}`);
-				}
-			});
-			*/
-
 			var editor = vscode.window.activeTextEditor;			
 			if (editor) {
 				// Get currently-open file path
@@ -90,13 +68,6 @@ export function activate(context: vscode.ExtensionContext) {
 				terminal.sendText(`cargo run 63321 ${currentlyOpenTabFilePath} ${currentlyOpenDirectory}/${currentlyOpenTabFileName}.o ${currentlyOpenDirectory}/${currentlyOpenTabFileName}.o.li`);
 
 			}
-
-			// Kill child process if it's still alive
-			/*
-			if (child) {
-				child.kill();
-			}
-			*/
 		})
 	);
 	context.subscriptions.push(
