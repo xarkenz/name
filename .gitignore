@@ -32,4 +32,4 @@ tmp/*
 *.o
 name-as/.artifacts/*
 name-fmt/node_modules/
-*.li
+name-as/*.li
