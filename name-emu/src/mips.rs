@@ -64,8 +64,8 @@ fn sign_extend(x: i32, nbits: u32) -> i32 {
 #[derive(Debug)]
 pub(crate) struct Mips {
     pub regs: [u32; 32],
+    // Note that these register sets have yet to be implemented.
     /*
-    Dead as of now
     pub floats: [f32; 32],
     pub mult_hi: u32,
     pub mult_lo: u32,
@@ -98,13 +98,13 @@ impl Default for Mips {
     fn default() -> Self {
         Self {
             regs: [0; 32],
+            // This is also dead code for right now
             /*
-            // Like I said, dead
             floats: [0f32; 32],
             mult_hi: 0,
             mult_lo: 0,
             */
-            pc: 0,
+            pc: DOT_TEXT_START_ADDRESS as usize,
             branch_delay_target: 0,
             branch_delay_status: BranchDelays::NotActive,
             memories: vec![],

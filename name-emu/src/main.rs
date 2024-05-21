@@ -33,7 +33,7 @@ use elf::abi::PT_LOAD;
 #[derive(Error, Debug)]
 enum MyAdapterError {
   /*
-  // This is not used anywhere yet.
+  // Commenting out dead code
   #[error("Unhandled command")]
   UnhandledCommandError,
   */

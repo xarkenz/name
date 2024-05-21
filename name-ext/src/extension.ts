@@ -5,14 +5,16 @@ import * as vscode from 'vscode';
 import * as Net from 'net';
 import { activateNameDebug } from './activateNameDebug';
 import * as path from 'path';
-const { spawn } = require('child_process');
+// const { spawn } = require('child_process');
 
 const termName = "NAME Emulator";
 
 const runMode: 'external' | 'server' | 'namedPipeServer' | 'inline' = 'server';
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
+// TODO: Allow this code to run on Windows, Linux, and macOS.
+// The current issue is that the paths are made with linux in mind.
+// There exist libraries which would resolve this. There are also known techniques specific to vscode. 
+// Should not take much looking.
 export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.commands.registerCommand("extension.vsname.startEmu", () => {
@@ -23,6 +25,7 @@ export function activate(context: vscode.ExtensionContext) {
 				return;
 			}
 
+			// For the record, this one line is resulting in ENOENT in 'run npm' (as far as I can tell).
 			const namePath = configuration.get('namePath', '');
 			if (namePath.length < 1) {
 				vscode.window.showErrorMessage(`Failed to find a path for NAME, please set the path in VSCode's User Settings under name-ext`);
@@ -33,55 +36,47 @@ export function activate(context: vscode.ExtensionContext) {
 			const nameDefaultCfgPath = path.join(nameASPath, 'configs/default.toml');
 			const nameEMUPath = path.join(namePath, 'name-emu');
 			const nameEXTPath = path.join(namePath, 'name-ext');
-
-			// Start the extension with 'npm run watch'
-			// We def don't need the watch feature in the prod distribution but we can remove that later
-			const child = spawn(
-				'npm', ['run', 'watch'], {
-					cwd: nameEXTPath
-				}
-			);
-
-			child.on('error', (_) => {
-				vscode.window.showErrorMessage(`Failed to start name-ext, please ensure you have npm installed`);
-			});
-
-			child.on('exit', (code, _) => {
-				if (code !== 0) {
-					vscode.window.showErrorMessage(`name-ext exited with code ${code}`);
-				}
-			});
+			console.log(nameEXTPath);
 
 			var editor = vscode.window.activeTextEditor;			
 			if (editor) {
 				// Get currently-open file path
 				var currentlyOpenTabFilePath = editor.document.fileName;
 				var currentlyOpenTabFileName = path.basename(currentlyOpenTabFilePath);
+				if (!vscode.workspace.workspaceFolders) {
+					vscode.window.showInformationMessage("Open a folder/workspace first");
+					return;
+				}
+				else {
+					var currentlyOpenDirectory = vscode.workspace.workspaceFolders[0].uri.fsPath;
+				}
 
 				const terminalOptions = { name: termName, closeOnExit: true };
 				var terminal = vscode.window.terminals.find(terminal => terminal.name === termName);
 				terminal = terminal ? terminal : vscode.window.createTerminal(terminalOptions);
 				terminal.show();
-				terminal.sendText('clear');
 
+				// TODO: Create a bin/ dir which contains the compiled binaries for each OS
 				// Build and run assembler
 				terminal.sendText(`cd ${nameASPath}`);
-				terminal.sendText('cargo build --release');
-				terminal.sendText(`cargo run ${nameDefaultCfgPath} ${currentlyOpenTabFilePath} /tmp/${currentlyOpenTabFileName}.o`);
+				terminal.sendText(`cargo build --release`);
+				terminal.sendText(`cargo run ${nameDefaultCfgPath} ${currentlyOpenTabFilePath} ${currentlyOpenDirectory}/${currentlyOpenTabFileName}.o`);
 				
 				// Build and run emulator
 				terminal.sendText(`cd ${nameEMUPath}`);
 				terminal.sendText('cargo build --release');
-				terminal.sendText(`cargo run 63321 ${currentlyOpenTabFilePath} /tmp/${currentlyOpenTabFileName}.o`);
+				terminal.sendText(`cargo run 63321 ${currentlyOpenTabFilePath} ${currentlyOpenDirectory}/${currentlyOpenTabFileName}.o ${currentlyOpenDirectory}/${currentlyOpenTabFileName}.o.li`);
 
-				// Exit when emulator quits
-				terminal.sendText('exit');
 			}
+		})
+	);
+	context.subscriptions.push(
+		vscode.commands.registerCommand("extension.vsname.startAndDebug", () => {
+			vscode.commands.executeCommand('extension.vsname.startEmu');
 
-			// Kill child process if it's still alive
-			if (child) {
-				child.kill();
-			}
+			setTimeout(() => {
+				vscode.commands.executeCommand('workbench.action.debug.start');
+			}, 6000);
 		})
 	);
 
