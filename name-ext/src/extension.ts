@@ -72,14 +72,17 @@ export function activate(context: vscode.ExtensionContext) {
 				terminal = terminal ? terminal : vscode.window.createTerminal(terminalOptions);
 				terminal.show();
 
+				// TODO: Create a bin/ dir which contains the compiled binaries for each OS
 				// Build and run assembler
 				terminal.sendText(`cd ${nameASPath}`);
 				terminal.sendText(`cargo build --release`);
-				terminal.sendText(`cargo run ${nameDefaultCfgPath} ${currentlyOpenTabFilePath} ${currentlyOpenDirectory}\\${currentlyOpenTabFileName}.o`);
+				terminal.sendText(`cargo run ${nameDefaultCfgPath} ${currentlyOpenTabFilePath} ${currentlyOpenDirectory}/${currentlyOpenTabFileName}.o`);
 				
 				// Build and run emulator
 				terminal.sendText(`cd ${nameEMUPath}`);
 				terminal.sendText('cargo build --release');
+				terminal.sendText(`cargo run 63321 ${currentlyOpenTabFilePath} ${currentlyOpenDirectory}/${currentlyOpenTabFileName}.o ${currentlyOpenDirectory}/${currentlyOpenTabFileName}.o.li`);
+
 			}
 
 			// Kill child process if it's still alive
