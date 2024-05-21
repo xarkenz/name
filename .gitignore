@@ -6,6 +6,8 @@ name-emu/target
 name-emu/Cargo.lock
 name-as/target
 name-as/Cargo.lock
+name-const/target
+name-const/Cargo.lock
 .obsidian
 *.vsix
 target/*
@@ -24,6 +26,6 @@ name-ext/node_modules/*
 *.asm
 *.out
 *.o
-!name-as/.artifacts/*
+name-as/.artifacts/*
 name-fmt/node_modules/
 name-as/*.li
