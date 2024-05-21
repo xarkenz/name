@@ -1,6 +1,7 @@
 /// NAME Mips Assembler
 use crate::args::Args;
-use crate::lineinfo::*;
+//use crate::lineinfo::*;
+use name_const::lineinfo::*;
 use crate::parser::print_cst;
 use std::collections::HashMap;
 use std::fs;
@@ -492,6 +493,7 @@ pub fn assemble(program_arguments: &Args) -> Result<(), String> {
     // Set up line info
     let lineinfo_fn = format!("{}.li", &program_arguments.output_as);
     let mut lineinfo: Vec<LineInfo> = vec![];
+    let mut line_number: u32 = 1;
 
     let vernac_sequence: Vec<MipsCST> = if let MipsCST::Sequence(v) = cst {
         v
@@ -525,7 +527,7 @@ pub fn assemble(program_arguments: &Args) -> Result<(), String> {
                 // Update line info
                 lineinfo.push(LineInfo {
                     instr_addr: current_addr,
-                    line_number: 0,
+                    line_number: line_number,
                     line_contents: instr_to_str(mnemonic, &args),
                     psuedo_op: "".to_string(),
                 });
@@ -579,6 +581,7 @@ pub fn assemble(program_arguments: &Args) -> Result<(), String> {
         };
 
         current_addr += MIPS_INSTR_BYTE_WIDTH;
+        line_number += 1;
     }
 
     if program_arguments.line_info {

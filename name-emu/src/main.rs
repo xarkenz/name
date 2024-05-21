@@ -14,8 +14,7 @@ use mips::Mips;
 mod exception;
 use exception::{ExecutionErrors, exception_pretty_print, ExecutionEvents};
 
-mod lineinfo;
-use lineinfo::{LineInfo, lineinfo_import};
+use name_const::lineinfo::{/*LineInfo, */lineinfo_import}; // Resolved unused import warning for now
 
 use base64::{Engine as _, engine::general_purpose};
 use std::env;
@@ -23,8 +22,11 @@ use std::net::TcpListener;
 
 #[derive(Error, Debug)]
 enum MyAdapterError {
+  /*
+  // Commenting out dead code
   #[error("Unhandled command")]
   UnhandledCommandError,
+  */
 
   #[error("Missing command")]
   MissingCommandError,

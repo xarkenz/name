@@ -30,6 +30,7 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 
 			const nameASPath = path.join(namePath, 'name-as');
+			const nameTMPPath = path.join(namePath, 'tmp');
 			const nameDefaultCfgPath = path.join(nameASPath, 'configs/default.toml');
 			const nameEMUPath = path.join(namePath, 'name-emu');
 			const nameEXTPath = path.join(namePath, 'name-ext');
@@ -72,6 +73,10 @@ export function activate(context: vscode.ExtensionContext) {
 				terminal.show();
 				//terminal.sendText('clear');
 
+				// Make the temp directory
+				terminal.sendText(`cd ${namePath}`);
+				terminal.sendText(`mkdir tmp`);
+
 				// Build and run assembler
 				terminal.sendText(`cd ${nameASPath}`);
 				terminal.sendText(`cargo build --release`);
@@ -88,6 +93,15 @@ export function activate(context: vscode.ExtensionContext) {
 			if (child) {
 				child.kill();
 			}
+		})
+	);
+	context.subscriptions.push(
+		vscode.commands.registerCommand("extension.vsname.startAndDebug", () => {
+			vscode.commands.executeCommand('extension.vsname.startEmu');
+
+			setTimeout(() => {
+				vscode.commands.executeCommand('workbench.action.debug.start');
+			}, 6000);
 		})
 	);
 
