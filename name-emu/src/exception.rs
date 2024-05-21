@@ -19,6 +19,13 @@ pub enum ExecutionErrors {
     // Can also refer to underflow
     IntegerOverflow { rt: usize, rs: usize, value1: u32, value2: u32 },
 
+    /*
+    // Lol unused
+    SyscallInvalidArugment,
+    */
+
+    SyscallInvalidSyscallNumber,
+
     Event { event: ExecutionEvents }
 }
 
@@ -97,6 +104,7 @@ pub fn exception_pretty_print(reason: Result<(), ExecutionErrors>) -> ExceptionI
             type_name: None, full_type_name: None, evaluate_name: None, stack_trace: None, inner_exception: None })
         },
             
+        _ => unimplemented!("adf"),
     }
     }
 
