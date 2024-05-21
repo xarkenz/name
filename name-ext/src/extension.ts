@@ -34,6 +34,7 @@ export function activate(context: vscode.ExtensionContext) {
 			const nameDefaultCfgPath = path.join(nameASPath, 'configs/default.toml');
 			const nameEMUPath = path.join(namePath, 'name-emu');
 			const nameEXTPath = path.join(namePath, 'name-ext');
+			console.log(nameEXTPath);
 
 			// Start the extension with 'npm run watch'
 			// We def don't need the watch feature in the prod distribution but we can remove that later
@@ -58,12 +59,19 @@ export function activate(context: vscode.ExtensionContext) {
 				// Get currently-open file path
 				var currentlyOpenTabFilePath = editor.document.fileName;
 				var currentlyOpenTabFileName = path.basename(currentlyOpenTabFilePath);
+				if (!vscode.workspace.workspaceFolders) {
+					vscode.window.showInformationMessage("Open a folder/workspace first");
+					return;
+				}
+				else {
+					var currentlyOpenDirectory = vscode.workspace.workspaceFolders[0].uri.fsPath;
+				}
 
 				const terminalOptions = { name: termName, closeOnExit: true };
 				var terminal = vscode.window.terminals.find(terminal => terminal.name === termName);
 				terminal = terminal ? terminal : vscode.window.createTerminal(terminalOptions);
 				terminal.show();
-				terminal.sendText('clear');
+				//terminal.sendText('clear');
 
 				// Make the temp directory
 				terminal.sendText(`cd ${namePath}`);
@@ -71,18 +79,14 @@ export function activate(context: vscode.ExtensionContext) {
 
 				// Build and run assembler
 				terminal.sendText(`cd ${nameASPath}`);
-				terminal.sendText('cargo build --release');
-				terminal.sendText(`cargo run ${nameDefaultCfgPath} ${currentlyOpenTabFilePath} ${nameTMPPath}/${currentlyOpenTabFileName}.o -l`);
+				terminal.sendText(`cargo build --release`);
+				terminal.sendText(`cargo run ${nameDefaultCfgPath} ${currentlyOpenTabFilePath} ${currentlyOpenDirectory}\\${currentlyOpenTabFileName}.o`);
 				
 				// Build and run emulator
 				terminal.sendText(`cd ${nameEMUPath}`);
 				terminal.sendText('cargo build --release');
-				terminal.sendText(`cargo run 63321 ${currentlyOpenTabFilePath} ${nameTMPPath}/${currentlyOpenTabFileName}.o ${nameTMPPath}/${currentlyOpenTabFileName}.o.li`);
-
 				// Exit when emulator quits
-				terminal.sendText('exit');
-				terminal.sendText('cd ${namePath}');
-				terminal.sendText('rm -r tmp');
+				// terminal.sendText('exit');
 			}
 
 			// Kill child process if it's still alive
