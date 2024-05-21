@@ -11,8 +11,9 @@ const termName = "NAME Emulator";
 
 const runMode: 'external' | 'server' | 'namedPipeServer' | 'inline' = 'server';
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
+// TODO: Allow this code to run on Windows, Linux, and macOS.
+// The current issue is that the paths are made with linux in mind.
+// There exist libraries which would resolve this.
 export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.commands.registerCommand("extension.vsname.startEmu", () => {
@@ -30,10 +31,10 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 
 			const nameASPath = path.join(namePath, 'name-as');
-			const nameTMPPath = path.join(namePath, 'tmp');
 			const nameDefaultCfgPath = path.join(nameASPath, 'configs/default.toml');
 			const nameEMUPath = path.join(namePath, 'name-emu');
 			const nameEXTPath = path.join(namePath, 'name-ext');
+			console.log(nameEXTPath);
 
 			// Start the extension with 'npm run watch'
 			// We def don't need the watch feature in the prod distribution but we can remove that later
@@ -58,31 +59,30 @@ export function activate(context: vscode.ExtensionContext) {
 				// Get currently-open file path
 				var currentlyOpenTabFilePath = editor.document.fileName;
 				var currentlyOpenTabFileName = path.basename(currentlyOpenTabFilePath);
+				if (!vscode.workspace.workspaceFolders) {
+					vscode.window.showInformationMessage("Open a folder/workspace first");
+					return;
+				}
+				else {
+					var currentlyOpenDirectory = vscode.workspace.workspaceFolders[0].uri.fsPath;
+				}
 
 				const terminalOptions = { name: termName, closeOnExit: true };
 				var terminal = vscode.window.terminals.find(terminal => terminal.name === termName);
 				terminal = terminal ? terminal : vscode.window.createTerminal(terminalOptions);
 				terminal.show();
-				terminal.sendText('clear');
 
-				// Make the temp directory
-				terminal.sendText(`cd ${namePath}`);
-				terminal.sendText(`mkdir tmp`);
-
+				// TODO: Create a bin/ dir which contains the compiled binaries for each OS
 				// Build and run assembler
 				terminal.sendText(`cd ${nameASPath}`);
-				terminal.sendText('cargo build --release');
-				terminal.sendText(`cargo run ${nameDefaultCfgPath} ${currentlyOpenTabFilePath} ${nameTMPPath}/${currentlyOpenTabFileName}.o -l`);
+				terminal.sendText(`cargo build --release`);
+				terminal.sendText(`cargo run ${nameDefaultCfgPath} ${currentlyOpenTabFilePath} ${currentlyOpenDirectory}/${currentlyOpenTabFileName}.o`);
 				
 				// Build and run emulator
 				terminal.sendText(`cd ${nameEMUPath}`);
 				terminal.sendText('cargo build --release');
-				terminal.sendText(`cargo run 63321 ${currentlyOpenTabFilePath} ${nameTMPPath}/${currentlyOpenTabFileName}.o ${nameTMPPath}/${currentlyOpenTabFileName}.o.li`);
+				terminal.sendText(`cargo run 63321 ${currentlyOpenTabFilePath} ${currentlyOpenDirectory}/${currentlyOpenTabFileName}.o ${currentlyOpenDirectory}/${currentlyOpenTabFileName}.o.li`);
 
-				// Exit when emulator quits
-				terminal.sendText('exit');
-				terminal.sendText('cd ${namePath}');
-				terminal.sendText('rm -r tmp');
 			}
 
 			// Kill child process if it's still alive

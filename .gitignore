@@ -16,6 +16,8 @@ package-lock.json
 .eslistrc.json
 name-ext/node_modules
 name-ext/node_modules/*
+
+# These should now be obsolete
 tmp/
 tmp/*
 
@@ -28,6 +30,6 @@ tmp/*
 *.asm
 *.out
 *.o
-!name-as/.artifacts/*
+name-as/.artifacts/*
 name-fmt/node_modules/
 *.li

@@ -574,8 +574,9 @@ pub fn assemble(program_arguments: &Args) -> Result<(), String> {
                     return Err("Failed to match instruction".to_string());
                 }
             }
-            MipsCST::Label(_) => {
-                line_number += 1;
+            // For the record, label is not yet used. I've prefixed it with an underscore to denote this for now,
+            // but that can and should change.
+            MipsCST::Label(_label) => {
                 continue;
             }
             _ => continue,
