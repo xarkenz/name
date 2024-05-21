@@ -19,7 +19,10 @@ pub enum ExecutionErrors {
     // Can also refer to underflow
     IntegerOverflow { rt: usize, rs: usize, value1: u32, value2: u32 },
 
+    /*
+    // Lol unused
     SyscallInvalidArugment,
+    */
 
     SyscallInvalidSyscallNumber,
 

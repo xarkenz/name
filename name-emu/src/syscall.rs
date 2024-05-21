@@ -3,9 +3,10 @@
 
 use crate::mips::Mips;
 use crate::exception::{ExecutionErrors, ExecutionEvents};
-use std::io::Stdin;
+// use std::io::Stdin; // Lmao unused
 
-pub(crate) fn syscall(mips: &mut Mips, code: u32) -> Result<(), ExecutionErrors> {
+// TODO: Refactor to use "code" instead of register 2 ($v0). For now, code is prefaced with '_'.
+pub(crate) fn syscall(mips: &mut Mips, _code: u32) -> Result<(), ExecutionErrors> {
     match mips.regs[2] {
 
         // Print integer. Writes the value in $a0 to the screen

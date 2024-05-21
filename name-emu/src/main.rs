@@ -1,12 +1,12 @@
-use std::collections::HashMap;
+// use std::collections::HashMap; // Unused
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Write};
 
 use dap::events::{StoppedEventBody, ExitedEventBody, TerminatedEventBody};
 use dap::responses::{ReadMemoryResponse, SetExceptionBreakpointsResponse, ThreadsResponse, StackTraceResponse, ScopesResponse, VariablesResponse, ContinueResponse};
 use dap::types::{StoppedEventReason, Thread, StackFrame, Scope, Source, Variable};
-use elf::endian::{AnyEndian, LittleEndian};
-use elf::section::SectionHeader;
+use elf::endian::{/*AnyEndian, */ LittleEndian }; // AnyEndian is unused
+// use elf::section::SectionHeader; // Unused
 use thiserror::Error;
 
 use dap::prelude::*;
@@ -18,7 +18,7 @@ mod exception;
 use exception::{ExecutionErrors, exception_pretty_print, ExecutionEvents};
 
 mod lineinfo;
-use lineinfo::{LineInfo, lineinfo_import};
+use lineinfo::{/*LineInfo, */lineinfo_import}; // LineInfo  unused
 
 mod syscall;
 
@@ -32,8 +32,11 @@ use elf::abi::PT_LOAD;
 
 #[derive(Error, Debug)]
 enum MyAdapterError {
+  /*
+  // This is not used anywhere yet.
   #[error("Unhandled command")]
   UnhandledCommandError,
+  */
 
   #[error("Missing command")]
   MissingCommandError,
@@ -106,8 +109,9 @@ fn main() -> DynResult<()> {
 
   let program_name = args_strings.get(2).unwrap();
 
-  let program_data = match std::fs::read(args_strings.get(3).unwrap()) {
-    Ok(program_data) => program_data,
+  // Prefixed this with an underscore, since it doesn't seem to be meant to be used except for testing.
+  let _program_data = match std::fs::read(args_strings.get(3).unwrap()) {
+    Ok(_program_data) => _program_data,
     Err(why) => {
       println!("Failed to open provided object file. Reason: {}", why);
       return Err(Box::new(MyAdapterError::ArgumentParsingError));      

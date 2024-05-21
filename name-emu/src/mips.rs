@@ -64,9 +64,12 @@ fn sign_extend(x: i32, nbits: u32) -> i32 {
 #[derive(Debug)]
 pub(crate) struct Mips {
     pub regs: [u32; 32],
+    /*
+    Dead as of now
     pub floats: [f32; 32],
     pub mult_hi: u32,
     pub mult_lo: u32,
+    */
     pub pc: usize,
 
     // Branch delay slots are implemented by filling this buffer with the
@@ -95,9 +98,12 @@ impl Default for Mips {
     fn default() -> Self {
         Self {
             regs: [0; 32],
+            /*
+            // Like I said, dead
             floats: [0f32; 32],
             mult_hi: 0,
             mult_lo: 0,
+            */
             pc: 0,
             branch_delay_target: 0,
             branch_delay_status: BranchDelays::NotActive,
@@ -448,6 +454,8 @@ impl Mips {
                         self.read_b(address + 2)?, self.read_b(address + 3)?];
         Ok(Cursor::new(bytes).read_u32::<LittleEndian>().unwrap())
     }
+    /*
+    // This method is not yet used.
     // Returns a reference to a block of memory, if it exists.
     pub fn read_block(&mut self, address: u32, len: u32) -> Result<&[u8], ExecutionErrors> {
         if let Some((memory, offset)) = self.map_memory(address) {
@@ -457,6 +465,7 @@ impl Mips {
         }
         Err(ExecutionErrors::MemoryIllegalAccess { load_address: address })
     }
+    */
 
     
     // Writes one byte
@@ -491,6 +500,8 @@ impl Mips {
         self.write_b(address + 3, bytes[3])?;
         Ok(())
     }
+    /*
+    // This method is not yet used.
     // Writes a block of memory, if it exists
     pub fn write_block(&mut self, address: u32, len: u32, data: &[u8]) -> Result<(), ExecutionErrors> {
         if let Some((memory, offset)) = self.map_memory(address) {
@@ -501,8 +512,9 @@ impl Mips {
         }
         Err(ExecutionErrors::MemoryIllegalAccess { load_address: address })
     }
+    */
 
-    pub fn step_one(&mut self, mut f :&mut File) -> Result<(), ExecutionErrors> {
+    pub fn step_one(&mut self, f :&mut File) -> Result<(), ExecutionErrors> {
         let opcode = self.read_w(self.pc as u32)?;
         self.pc += MIPS_INSTRUCTION_LENGTH;
 
@@ -511,7 +523,7 @@ impl Mips {
         }
 
         let instruction = self.decode(opcode);
-        writeln!(f,"{:?}", instruction);
+        writeln!(f,"{:?}", instruction).unwrap(); // Panic if write to file failed
 
         let ins_result = match instruction {
             Instructions::R(rtype) => self.dispatch_r(rtype, opcode),
