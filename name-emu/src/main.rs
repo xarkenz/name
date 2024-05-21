@@ -1,9 +1,12 @@
+// use std::collections::HashMap; // Unused
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Write};
 
 use dap::events::{StoppedEventBody, ExitedEventBody, TerminatedEventBody};
 use dap::responses::{ReadMemoryResponse, SetExceptionBreakpointsResponse, ThreadsResponse, StackTraceResponse, ScopesResponse, VariablesResponse, ContinueResponse};
 use dap::types::{StoppedEventReason, Thread, StackFrame, Scope, Source, Variable};
+use elf::endian::{/*AnyEndian, */ LittleEndian }; // AnyEndian is unused
+// use elf::section::SectionHeader; // Unused
 use thiserror::Error;
 
 use dap::prelude::*;
@@ -14,14 +17,26 @@ use mips::Mips;
 mod exception;
 use exception::{ExecutionErrors, exception_pretty_print, ExecutionEvents};
 
+mod lineinfo;
+use lineinfo::{/*LineInfo, */lineinfo_import}; // LineInfo  unused
+
+mod syscall;
+
 use base64::{Engine as _, engine::general_purpose};
 use std::env;
 use std::net::TcpListener;
 
+use elf::ElfBytes;
+use elf::segment::ProgramHeader;
+use elf::abi::PT_LOAD;
+
 #[derive(Error, Debug)]
 enum MyAdapterError {
+  /*
+  // Commenting out dead code
   #[error("Unhandled command")]
   UnhandledCommandError,
+  */
 
   #[error("Missing command")]
   MissingCommandError,
@@ -35,58 +50,38 @@ enum MyAdapterError {
 
 type DynResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
-// fn test_mips() {
-//     let mut mips = Mips {
-//         regs: [0; 32],
-//         floats: [0f32; 32],
-//         mult_hi: 0,
-//         mult_lo: 0,
-//         pc: 0,
-//         text_memory: [0x3c080032,
-//         0x3c090032,
-//         0x3c0a0032,
-//         0x3c0b0032,
-//         0x3c0c0032,
-//         0x3c0d0032,
-//         0x3c0e0032,
-//         0x014b4820, 0x01ae6022, 0x00108140,
-//         0x0017aa82, 0x03197826, 0x3c080032 ,0;47]
-//     };
-//     // The first instructions load a bunch of registers with 0x500000.
-//     for _ in 0..8 {
-//         mips.step_one();
-//     }
-//     /*
-//     add $t1, $t2, $t3
-//     sub $t4, $t5, $t6
-//     sll $s0, $s0, 5
-//     srl $s5, $s7, 10
-//     xor $t7, $t8, $t9
-//     lui $t0, 50
-//     */
-//     for _ in 0..6 {
-//         mips.step_one();
-//     }
-// }
-
-fn reset_mips(program_data: &[u8]) -> Mips {
+fn reset_mips(elf_file: &Vec<u8>, elf_parsed: &ElfBytes<'_, LittleEndian>, segments: &Vec<ProgramHeader>) -> Mips {
   // Reset execution and begin again.
-  let mut mips: Mips = Default::default();  
+  let mut mips: Mips = Default::default();
+  mips.pc = elf_parsed.ehdr.e_entry as usize;
 
-  for (i, byte) in program_data.iter().enumerate() {
-    mips.write_b(mips::DOT_TEXT_START_ADDRESS + i as u32, *byte).unwrap();
+  for phdr in segments {
+    mips.memories.push((elf_file[phdr.p_offset as usize .. (phdr.p_offset + phdr.p_filesz) as usize].to_vec(), phdr.p_vaddr as u32, phdr.p_filesz as u32));
+
+    // WARNING: BROKEN
+    if elf_parsed.ehdr.e_entry == phdr.p_vaddr {
+      mips.stop_address = (phdr.p_vaddr + phdr.p_filesz) as usize;
+    }
   }
-  mips.stop_address = mips::DOT_TEXT_START_ADDRESS as usize + program_data.len();
 
   mips
 }
 
 fn main() -> DynResult<()> {
 
+
+  let elf_file_data = std::fs::read("/home/qwe/Documents/CS4485/Fibonacci_linked").unwrap();
+  let elf_file = ElfBytes::<elf::endian::LittleEndian>::minimal_parse(elf_file_data.as_slice()).unwrap();
+  let elf_all_load_phdrs: Vec<ProgramHeader> = elf_file.segments().unwrap()
+    .iter()
+    .filter(|phdr|{phdr.p_type == PT_LOAD})
+    .collect();
+
+
   let args_strings: Vec<String> = env::args().collect();
 
-  if args_strings.len() != 4 {
-      return Err("USAGE: name-emu [port number] [source file] [object file]".into());
+  if args_strings.len() != 5 {
+      return Err("USAGE: name-emu [port number] [source file] [object file] [line info file]".into());
   }
   let log_path = std::path::Path::join(env::temp_dir().as_path(), "name_log.txt");
   let mut file = File::create(log_path)?;
@@ -114,13 +109,24 @@ fn main() -> DynResult<()> {
 
   let program_name = args_strings.get(2).unwrap();
 
-  let program_data = match std::fs::read(args_strings.get(3).unwrap()) {
-    Ok(program_data) => program_data,
+  // Prefixed this with an underscore, since it doesn't seem to be meant to be used except for testing.
+  let _program_data = match std::fs::read(args_strings.get(3).unwrap()) {
+    Ok(_program_data) => _program_data,
     Err(why) => {
       println!("Failed to open provided object file. Reason: {}", why);
       return Err(Box::new(MyAdapterError::ArgumentParsingError));      
     }
   };
+
+  let program_lineinfo = match std::fs::read_to_string(args_strings.get(4).unwrap()) {
+    Ok(program_lineinfo) => program_lineinfo,
+    Err(why) => {
+      println!("Failed to open provided line info file. Reason: {}", why);
+      return Err(Box::new(MyAdapterError::CommandArgumentError));      
+    }
+  };
+  let lineinfo = lineinfo_import(program_lineinfo)?;
+  writeln!(file, "Lineinfo read: {:?}", lineinfo)?;
 
 
   let mut server = Server::new(BufReader::new(in_port), BufWriter::new(out_port));
@@ -186,7 +192,7 @@ loop {
   
       server.send_event(Event::Initialized)?;
 
-      mips = reset_mips(&program_data);
+      mips = reset_mips(&elf_file_data, &elf_file, &elf_all_load_phdrs);
 
     }
 
@@ -307,12 +313,10 @@ loop {
       );
       server.respond(rsp)?;
 
-      if let Err(event) = result {
-        if let ExecutionErrors::Event{event} = event {
-          if event == ExecutionEvents::ProgramComplete {
-            server.send_event(Event::Terminated(None))?;
-            server.send_event(Event::Exited(ExitedEventBody{ exit_code: 0 }))?;
-          }
+      if let Err(ExecutionErrors::Event{event}) = result {
+        if event == ExecutionEvents::ProgramComplete {
+          server.send_event(Event::Terminated(None))?;
+          server.send_event(Event::Exited(ExitedEventBody{ exit_code: 0 }))?;
         }
       }
       else {
@@ -367,7 +371,7 @@ loop {
             id: 0,
             name: "mips".to_string(),
             source: Some(Source { name: Some(program_name.to_string()), path: None, source_reference: Some(0), presentation_hint: None, origin: None, sources: None, adapter_data: None, checksums: None }),
-            line: 1,
+            line: lineinfo[&(mips.pc as u32)].line_number as i64,
             column: 0,
             end_line: None,
             end_column: None,
@@ -450,7 +454,7 @@ loop {
     }
 
     Command::Restart(_) => {
-      mips = reset_mips(&program_data);
+      mips = reset_mips(&elf_file_data, &elf_file, &elf_all_load_phdrs);
 
       let rsp = req.success(
         ResponseBody::Restart
@@ -493,7 +497,9 @@ loop {
       }
       // OK, what happened?
       let stopped_event_body = match mips.prev_ins_result {
-        Ok(()) => unreachable!(), // It's unreachable.
+        Ok(()) => {
+          unreachable!()// It's unreachable.
+        }
         Err(what_happened) => match what_happened {
           ExecutionErrors::Event{event} => match event {
             ExecutionEvents::ProgramComplete => {
