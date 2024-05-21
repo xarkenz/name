@@ -5,7 +5,7 @@ import * as vscode from 'vscode';
 import * as Net from 'net';
 import { activateNameDebug } from './activateNameDebug';
 import * as path from 'path';
-const { spawn } = require('child_process');
+// const { spawn } = require('child_process');
 
 const termName = "NAME Emulator";
 
@@ -13,7 +13,8 @@ const runMode: 'external' | 'server' | 'namedPipeServer' | 'inline' = 'server';
 
 // TODO: Allow this code to run on Windows, Linux, and macOS.
 // The current issue is that the paths are made with linux in mind.
-// There exist libraries which would resolve this.
+// There exist libraries which would resolve this. There are also known techniques specific to vscode. 
+// Should not take much looking.
 export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.commands.registerCommand("extension.vsname.startEmu", () => {
@@ -24,6 +25,7 @@ export function activate(context: vscode.ExtensionContext) {
 				return;
 			}
 
+			// For the record, this one line is resulting in ENOENT in 'run npm' (as far as I can tell).
 			const namePath = configuration.get('namePath', '');
 			if (namePath.length < 1) {
 				vscode.window.showErrorMessage(`Failed to find a path for NAME, please set the path in VSCode's User Settings under name-ext`);
@@ -36,16 +38,19 @@ export function activate(context: vscode.ExtensionContext) {
 			const nameEXTPath = path.join(namePath, 'name-ext');
 			console.log(nameEXTPath);
 
-			// Start the extension with 'npm run watch'
-			// We def don't need the watch feature in the prod distribution but we can remove that later
+			// Start the extension with 'npm run build'
+			// I've done a bunch of looking around but I seriously cannot, for the life of me, understand why in the world this needs to be here.
+			// I'll be removing it here very soon. It does not need to exist here.
+			/*
 			const child = spawn(
-				'npm', ['run', 'watch'], {
+				'npm', ['run', 'build'], {
 					cwd: nameEXTPath
 				}
 			);
 
-			child.on('error', (_) => {
-				vscode.window.showErrorMessage(`Failed to start name-ext, please ensure you have npm installed`);
+			child.on('error', (err) => {
+				vscode.window.showErrorMessage(`Failed to start name-ext, please ensure you have npm installed. True cause: ` + err + `.`
+				);
 			});
 
 			child.on('exit', (code, _) => {
@@ -53,6 +58,7 @@ export function activate(context: vscode.ExtensionContext) {
 					vscode.window.showErrorMessage(`name-ext exited with code ${code}`);
 				}
 			});
+			*/
 
 			var editor = vscode.window.activeTextEditor;			
 			if (editor) {
@@ -86,9 +92,11 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 
 			// Kill child process if it's still alive
+			/*
 			if (child) {
 				child.kill();
 			}
+			*/
 		})
 	);
 	context.subscriptions.push(
