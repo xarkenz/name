@@ -8,8 +8,8 @@ CARGO := cargo
 
 CONFIG := configs/default.toml
 GNUCFG := configs/mips-linux-gnu-as.toml
-INPUT := .artifacts/mips_test.asm
-OUTPUT := output.o
+INPUT := ../test_files/mips_test.asm
+OUTPUT := ../test_files/mips_test.asm.o
 
 fmt:
 	$(CARGO) fmt
