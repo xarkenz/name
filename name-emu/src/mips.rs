@@ -8,6 +8,7 @@ use std::io::Write;
 use crate::{exception::{ExecutionErrors, ExecutionEvents}, syscall::syscall};
 
 const MIPS_INSTRUCTION_LENGTH: usize = 4;
+const DOT_TEXT_START_ADDRESS: usize = 0;
 
 pub const REGISTER_NAMES: [&str; 33] = [
     "$zero",

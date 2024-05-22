@@ -2,6 +2,10 @@
 // But it raises architectural questions about what this means for portability.
 // Are we losing the ability to use other assemblers by doing this?
 
+// Ok, it's actually really easy to share this across name-as and name-emu. I've done it with Cargo.
+// There's no real portability issue here. We are not losing the ability to use other assemblers.
+// The other assemblers just need to integrate properly - a problem they were already expecting to run into.
+
 extern crate serde;
 extern crate toml;
 use std::collections::HashMap;

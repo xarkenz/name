@@ -17,8 +17,7 @@ use mips::Mips;
 mod exception;
 use exception::{ExecutionErrors, exception_pretty_print, ExecutionEvents};
 
-mod lineinfo;
-use lineinfo::{/*LineInfo, */lineinfo_import}; // LineInfo  unused
+use name_const::lineinfo::{/*LineInfo, */lineinfo_import}; // LineInfo unused
 
 mod syscall;
 
