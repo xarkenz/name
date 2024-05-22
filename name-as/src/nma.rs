@@ -1,6 +1,5 @@
 /// NAME Mips Assembler
 use crate::args::Args;
-//use crate::lineinfo::*;
 use name_const::lineinfo::*;
 use crate::parser::print_cst;
 use std::collections::HashMap;
@@ -8,6 +7,9 @@ use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::str;
+
+const TEXT_ADDRESS_BASE: u32 = 0x400000;
+const MIPS_INSTR_BYTE_WIDTH: u32 = 4;
 
 fn mask_u8(n: u8, x: u8) -> Result<u8, &'static str> {
     let out = n & ((1 << x) - 1);
@@ -27,6 +29,7 @@ fn mask_u32(n: u32, x: u8) -> Result<u32, &'static str> {
     }
 }
 
+// Parses literals in hex, bin, oct, and decimal.
 fn base_parse(input: &str) -> Result<u32, &'static str> {
     if input.starts_with("0x") {
         // Hexadecimal
@@ -44,9 +47,6 @@ fn base_parse(input: &str) -> Result<u32, &'static str> {
             .map_err(|_| "Failed to parse as decimal")
     }
 }
-
-const TEXT_ADDRESS_BASE: u32 = 0x400000;
-const MIPS_INSTR_BYTE_WIDTH: u32 = 4;
 
 /// The form of an R-type instruction, specificially
 /// which arguments it expects in which order
@@ -607,8 +607,9 @@ pub fn assemble(program_arguments: &Args) -> Result<(), String> {
                     return Err("Failed to match instruction".to_string());
                 }
             }
-            // For the record, label is not yet used. I've prefixed it with an underscore to denote this for now,
-            // but that can and should change.
+            // The passed label doesn't need to actually do anything yet. Just need to increment line number.
+            // Prefixed with underscore for now as it's not used, however
+            // name_const/lineinfo.rs could be updated to include labels in .li. MARS doesn't do this, but this isn't MARS.
             MipsCST::Label(_label) => {
                 continue;
             }

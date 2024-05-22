@@ -30,6 +30,6 @@ tmp/*
 *.asm
 *.out
 *.o
+*.li
 name-as/.artifacts/*
 name-fmt/node_modules/
-name-as/*.li

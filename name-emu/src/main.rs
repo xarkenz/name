@@ -5,7 +5,7 @@ use std::io::{BufReader, BufWriter, Write};
 use dap::events::{StoppedEventBody, ExitedEventBody, TerminatedEventBody};
 use dap::responses::{ReadMemoryResponse, SetExceptionBreakpointsResponse, ThreadsResponse, StackTraceResponse, ScopesResponse, VariablesResponse, ContinueResponse};
 use dap::types::{StoppedEventReason, Thread, StackFrame, Scope, Source, Variable};
-use elf::endian::{/*AnyEndian, */ LittleEndian }; // AnyEndian is unused
+// use elf::endian::{/*AnyEndian, */ LittleEndian }; // Both unused for right now
 // use elf::section::SectionHeader; // Unused
 use thiserror::Error;
 
@@ -25,9 +25,9 @@ use base64::{Engine as _, engine::general_purpose};
 use std::env;
 use std::net::TcpListener;
 
-use elf::ElfBytes;
-use elf::segment::ProgramHeader;
-use elf::abi::PT_LOAD;
+// use elf::ElfBytes;
+// use elf::segment::ProgramHeader;
+// use elf::abi::PT_LOAD; // Broken
 
 #[derive(Error, Debug)]
 enum MyAdapterError {
@@ -49,6 +49,7 @@ enum MyAdapterError {
 
 type DynResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
+/*
 fn reset_mips(elf_file: &Vec<u8>, elf_parsed: &ElfBytes<'_, LittleEndian>, segments: &Vec<ProgramHeader>) -> Mips {
   // Reset execution and begin again.
   let mut mips: Mips = Default::default();
@@ -65,17 +66,9 @@ fn reset_mips(elf_file: &Vec<u8>, elf_parsed: &ElfBytes<'_, LittleEndian>, segme
 
   mips
 }
+*/
 
 fn main() -> DynResult<()> {
-
-
-  let elf_file_data = std::fs::read("/home/qwe/Documents/CS4485/Fibonacci_linked").unwrap();
-  let elf_file = ElfBytes::<elf::endian::LittleEndian>::minimal_parse(elf_file_data.as_slice()).unwrap();
-  let elf_all_load_phdrs: Vec<ProgramHeader> = elf_file.segments().unwrap()
-    .iter()
-    .filter(|phdr|{phdr.p_type == PT_LOAD})
-    .collect();
-
 
   let args_strings: Vec<String> = env::args().collect();
 
@@ -85,7 +78,6 @@ fn main() -> DynResult<()> {
   let log_path = std::path::Path::join(env::temp_dir().as_path(), "name_log.txt");
   let mut file = File::create(log_path)?;
   file.write_all(b"NAME Development Log\n")?;
-
 
   let port_string = args_strings.get(1).unwrap();
   
@@ -174,6 +166,17 @@ fn main() -> DynResult<()> {
 
   let mut mips: Mips = Default::default();
 
+  /*
+  // It is beyond me what the function of this is...
+
+  let elf_file_data = std::fs::read("/home/qwe/Documents/CS4485/Fibonacci_linked").unwrap();
+  let elf_file = ElfBytes::<elf::endian::LittleEndian>::minimal_parse(elf_file_data.as_slice()).unwrap();
+  let elf_all_load_phdrs: Vec<ProgramHeader> = elf_file.segments().unwrap()
+    .iter()
+    .filter(|phdr|{phdr.p_type == PT_LOAD})
+    .collect();
+  */
+
 loop {
   let req = match server.poll_request()? {
     Some(req) => req,
@@ -191,7 +194,7 @@ loop {
   
       server.send_event(Event::Initialized)?;
 
-      mips = reset_mips(&elf_file_data, &elf_file, &elf_all_load_phdrs);
+      // mips = reset_mips(&elf_file_data, &elf_file, &elf_all_load_phdrs);
 
     }
 
@@ -453,7 +456,7 @@ loop {
     }
 
     Command::Restart(_) => {
-      mips = reset_mips(&elf_file_data, &elf_file, &elf_all_load_phdrs);
+      // mips = reset_mips(&elf_file_data, &elf_file, &elf_all_load_phdrs); // This code DOES NOT work.
 
       let rsp = req.success(
         ResponseBody::Restart

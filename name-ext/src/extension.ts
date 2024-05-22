@@ -24,8 +24,7 @@ export function activate(context: vscode.ExtensionContext) {
 				vscode.window.showErrorMessage("Failed to find NAME configurations");
 				return;
 			}
-
-			// For the record, this one line is resulting in ENOENT in 'run npm' (as far as I can tell).
+			
 			const namePath = configuration.get('namePath', '');
 			if (namePath.length < 1) {
 				vscode.window.showErrorMessage(`Failed to find a path for NAME, please set the path in VSCode's User Settings under name-ext`);
@@ -60,7 +59,7 @@ export function activate(context: vscode.ExtensionContext) {
 				// Build and run assembler
 				terminal.sendText(`cd ${nameASPath}`);
 				terminal.sendText(`cargo build --release`);
-				terminal.sendText(`cargo run ${nameDefaultCfgPath} ${currentlyOpenTabFilePath} ${currentlyOpenDirectory}/${currentlyOpenTabFileName}.o`);
+				terminal.sendText(`cargo run ${nameDefaultCfgPath} ${currentlyOpenTabFilePath} ${currentlyOpenDirectory}/${currentlyOpenTabFileName}.o --lineinfo`);
 				
 				// Build and run emulator
 				terminal.sendText(`cd ${nameEMUPath}`);
