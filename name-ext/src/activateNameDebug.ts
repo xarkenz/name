@@ -8,7 +8,7 @@
 'use strict';
 
 import * as vscode from 'vscode';
-import { WorkspaceFolder, DebugConfiguration, ProviderResult, CancellationToken } from 'vscode';
+import { WorkspaceFolder, DebugConfiguration, ProviderResult, CancellationToken, DebugAdapterDescriptorFactory } from 'vscode';
 
 export function activateNameDebug(context: vscode.ExtensionContext, factory?: vscode.DebugAdapterDescriptorFactory) {
 
@@ -94,7 +94,8 @@ export function activateNameDebug(context: vscode.ExtensionContext, factory?: vs
 	}
 	context.subscriptions.push(vscode.debug.registerDebugAdapterDescriptorFactory('vsname', factory));
 	if ('dispose' in factory) {
-		context.subscriptions.push(factory);
+		const factoryWithDispose = factory as DebugAdapterDescriptorFactory & { dispose(): void; };
+		context.subscriptions.push(factoryWithDispose);
 	}
 
 	// override VS Code's default implementation of the debug hover

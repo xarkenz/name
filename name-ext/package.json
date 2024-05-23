@@ -141,7 +141,7 @@
       },
       {
         "command": "extension.vsname.startAndDebug",
-        "title": "Start Emulator and Begin Debugging Current File",
+        "title": "Run and Debug Current File",
         "category" : "NAME"
       }
     ],
