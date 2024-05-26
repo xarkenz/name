@@ -19,10 +19,7 @@ pub enum ExecutionErrors {
     // Can also refer to underflow
     IntegerOverflow { rt: usize, rs: usize, value1: u32, value2: u32 },
 
-    /*
-    // Lol unused
-    SyscallInvalidArugment,
-    */
+    ExecutionTerminatedUnexpected,
 
     SyscallInvalidSyscallNumber,
 
@@ -102,6 +99,14 @@ pub fn exception_pretty_print(reason: Result<(), ExecutionErrors>) -> ExceptionI
                 message: Some( format!("rs: {}, value: {:x}\nrt: {}, value: {:x}", REGISTER_NAMES[rs], value1, REGISTER_NAMES[rt], value2)
             ), 
             type_name: None, full_type_name: None, evaluate_name: None, stack_trace: None, inner_exception: None })
+        },
+
+        ExecutionErrors::ExecutionTerminatedUnexpected { .. } =>
+        ExceptionInfoResponse {
+            exception_id: "Execution Terminated Unexpectedly".into(),
+            description: Some("Execution fell off bottom. It is likely syscall 10 (SysExit) was never issued.".into()),
+            break_mode: ExceptionBreakMode::Never,
+            details: None
         },
             
         _ => unimplemented!("adf"),

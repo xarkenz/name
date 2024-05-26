@@ -5,7 +5,7 @@ use crate::mips::Mips;
 use crate::exception::{ExecutionErrors, ExecutionEvents};
 // use std::io::Stdin; // Lmao unused
 
-// TODO: Refactor to use "code" instead of register 2 ($v0). For now, code is prefaced with '_'.
+// For now, code is prefaced with '_' as it is unused
 pub(crate) fn syscall(mips: &mut Mips, _code: u32) -> Result<(), ExecutionErrors> {
     match mips.regs[2] {
 
@@ -29,7 +29,7 @@ pub(crate) fn syscall(mips: &mut Mips, _code: u32) -> Result<(), ExecutionErrors
             print!("{}", str_vec.iter().collect::<String>());
             Ok(())
         }
-        // Exit. Immediately raise a ProgramComplete error
+        // Exit. Immediately raise a ProgramComplete event
         10 => {
             Err(ExecutionErrors::Event { event: ExecutionEvents::ProgramComplete })
         }

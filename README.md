@@ -33,4 +33,4 @@ In its current state, when building from source, NAME will not function unless `
 
 ## Test Files
 
-Some test files have been included. You can find them in [test files](test_files.md).
+Some test files have been included. You can find them in [test files](test_files/test_files.md).

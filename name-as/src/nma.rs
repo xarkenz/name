@@ -85,16 +85,6 @@ pub struct J {
 /// Parses an R-type instruction mnemonic into an [R]
 pub fn r_operation(mnemonic: &str) -> Result<R, &'static str> {
     match mnemonic {
-        "add" => Ok(R {
-            shamt: 0,
-            funct: 0x20,
-            form: RForm::RdRsRt,
-        }),
-        "sub" => Ok(R {
-            shamt: 0,
-            funct: 0x22,
-            form: RForm::RdRsRt,
-        }),
         "sll" => Ok(R {
             shamt: 0,
             funct: 0x00,
@@ -104,6 +94,21 @@ pub fn r_operation(mnemonic: &str) -> Result<R, &'static str> {
             shamt: 0,
             funct: 0x02,
             form: RForm::RdRtShamt,
+        }),
+        "syscall" => Ok(R {
+            shamt: 0,
+            funct: 0x0c,
+            form: RForm::RdRtShamt,
+        }),
+        "add" => Ok(R {
+            shamt: 0,
+            funct: 0x20,
+            form: RForm::RdRsRt,
+        }),
+        "sub" => Ok(R {
+            shamt: 0,
+            funct: 0x22,
+            form: RForm::RdRsRt,
         }),
         "xor" => Ok(R {
             shamt: 0,
@@ -117,37 +122,41 @@ pub fn r_operation(mnemonic: &str) -> Result<R, &'static str> {
 /// Parses an I-type instruction mnemonic into an [I]
 pub fn i_operation(mnemonic: &str) -> Result<I, &'static str> {
     match mnemonic {
+        "beq" => Ok(I {
+            opcode: 0x4,
+            form: IForm::RsRtLabel,
+        }),
+        "bne" => Ok(I {
+            opcode: 0x5,
+            form: IForm::RsRtLabel,
+        }),
         "ori" => Ok(I {
-            opcode: 0xd,
+            opcode: 0x0d,
             form: IForm::RtRsImm,
+        }),
+        "lui" => Ok(I {
+            opcode: 0xf,
+            form: IForm::RtImm,
         }),
         "lb" => Ok(I {
             opcode: 0x20,
-            form: IForm::RtImmRs,
-        }),
-        "lbu" => Ok(I {
-            opcode: 0x24,
             form: IForm::RtImmRs,
         }),
         "lh" => Ok(I {
             opcode: 0x21,
             form: IForm::RtImmRs,
         }),
-        "lhu" => Ok(I {
-            opcode: 0x25,
-            form: IForm::RtImmRs,
-        }),
         "lw" => Ok(I {
             opcode: 0x23,
             form: IForm::RtImmRs,
         }),
-        "ll" => Ok(I {
-            opcode: 0x30,
+        "lbu" => Ok(I {
+            opcode: 0x24,
             form: IForm::RtImmRs,
         }),
-        "lui" => Ok(I {
-            opcode: 0xf,
-            form: IForm::RtImm,
+        "lhu" => Ok(I {
+            opcode: 0x25,
+            form: IForm::RtImmRs,
         }),
         "sb" => Ok(I {
             opcode: 0x28,
@@ -161,17 +170,13 @@ pub fn i_operation(mnemonic: &str) -> Result<I, &'static str> {
             opcode: 0x2b,
             form: IForm::RtImmRs,
         }),
+        "ll" => Ok(I {
+            opcode: 0x30,
+            form: IForm::RtImmRs,
+        }),
         "sc" => Ok(I {
             opcode: 0x38,
             form: IForm::RtImmRs,
-        }),
-        "beq" => Ok(I {
-            opcode: 0x4,
-            form: IForm::RsRtLabel,
-        }),
-        "bne" => Ok(I {
-            opcode: 0x5,
-            form: IForm::RsRtLabel,
         }),
         _ => Err("Failed to match I-instr mnemonic"),
     }
@@ -336,8 +341,24 @@ fn assemble_r(r_struct: R, r_args: Vec<&str>) -> Result<u32, &'static str> {
     result = (result << 5) | u32::from(shamt);
 
     // funct : 5 - 0
+    println!("funct: {}", funct);
     result = (result << 6) | u32::from(funct);
 
+    println!(
+        "0x{:0shortwidth$x} {:0width$b}",
+        result,
+        result,
+        shortwidth = 8,
+        width = 32
+    );
+    Ok(result)
+}
+
+fn assemble_r_keyword(r_struct: R) -> Result<u32, &'static str> {
+    let result: u32;
+    println!("funct: {}", r_struct.funct);
+    result = r_struct.funct as u32;
+    
     println!(
         "0x{:0shortwidth$x} {:0width$b}",
         result,
@@ -540,6 +561,7 @@ pub fn assemble(program_arguments: &Args) -> Result<(), String> {
             }
             MipsCST::Instruction(_, _) => (),
             MipsCST::Sequence(_) => unreachable!(),
+            MipsCST::Keyword(_) => (),
         };
 
         current_addr += MIPS_INSTR_BYTE_WIDTH
@@ -612,6 +634,39 @@ pub fn assemble(program_arguments: &Args) -> Result<(), String> {
             // name_const/lineinfo.rs could be updated to include labels in .li. MARS doesn't do this, but this isn't MARS.
             MipsCST::Label(_label) => {
                 continue;
+            }
+
+            MipsCST::Keyword(keyword) => {
+                // If not in section .text while a directive encountered, something tragic is afoot.
+                // TODO
+
+                // If the keyword is syscall in section .text, we can do something with that (assembling an R-form instr)
+                // For now, since directives haven't yet been implemented, all that matters is things like syscall
+
+                // Update line info
+                lineinfo.push(LineInfo {
+                    instr_addr: current_addr,
+                    line_number: line_number,
+                    line_contents: keyword.to_string(),
+                    psuedo_op: "".to_string(),
+                });
+
+                // syscall is just an r-type instr
+                if let Ok(instr_info) = r_operation(keyword) {
+                    println!("-----------------------------------");
+                    println!("Assembling instruction: {}", keyword);
+                    match assemble_r_keyword(instr_info){
+                        Ok(assembled_r) => {
+                            if write_u32(&output_file, assembled_r).is_err() {
+                                return Err("Failed to write to output binary".to_string());
+                            }
+                        }
+                        Err(e) => return Err(e.to_string()),
+                    }
+                } else {
+                    return Err("Failed to match keyword".to_string());
+                }
+
             }
             _ => continue,
         };

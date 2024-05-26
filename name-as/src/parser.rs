@@ -2,6 +2,7 @@ use pest::iterators::Pair;
 use pest_derive::Parser;
 
 #[derive(Parser)]
+// Let the record show this is some insanely smart parsing. However, it's kind of restrictive and results in wrong line numbers in some cases.
 #[grammar_inline = r#"
 alpha = _{ 'a'..'z' | 'A'..'Z' }
 digit = _{ '0'..'9' }
@@ -14,6 +15,8 @@ WHITESPACE = _{ " " | NEWLINE }
 ident = @{ alpha ~ (alpha | digit)* }
 
 label = { ident ~ ":" }
+directive = { "." ~ ident }
+keyword = { ident }
 
 register = @{ "$" ~ ident }
 instruction_arg = @{ ident | register | number }
@@ -24,7 +27,7 @@ mem_access_args = _{ instruction_arg ~ "," ~ number? ~ "(" ~ instruction_arg ~ "
 instruction_args = _{ mem_access_args | standard_args }
 instruction = { ident ~ instruction_args }
 
-vernacular = { (instruction | label)* }
+vernacular = { (instruction | label | keyword)* }
 "#]
 pub struct MipsParser;
 
@@ -33,6 +36,7 @@ pub enum MipsCST<'a> {
     Label(&'a str),
     Instruction(&'a str, Vec<&'a str>),
     Sequence(Vec<MipsCST<'a>>),
+    Keyword(&'a str),
 }
 
 pub fn parse_rule(pair: Pair<Rule>) -> MipsCST {
@@ -45,6 +49,7 @@ pub fn parse_rule(pair: Pair<Rule>) -> MipsCST {
             let args = inner.clone().map(|p| p.as_str()).collect::<Vec<&str>>();
             MipsCST::Instruction(opcode, args)
         }
+        Rule::keyword => MipsCST::Keyword(pair.into_inner().next().unwrap().as_str()),
         _ => {
             println!("Unreachable: {:?}", pair.as_rule());
             unreachable!()
@@ -70,6 +75,7 @@ pub fn print_cst(cst: &MipsCST) {
                 print_cst(sub_cst)
             }
         }
+        MipsCST::Keyword(s) => println!("Keyword encountered: {}", s),
     }
 }
 

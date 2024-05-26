@@ -5,7 +5,7 @@ use std::fs::File;
 use std::io::Write;
 
 
-use crate::{exception::{ExecutionErrors, ExecutionEvents}, syscall::syscall};
+use crate::{exception::{ExecutionErrors, /*ExecutionEvents*/}, syscall::syscall}; // Execution Events not yet implemented
 
 const MIPS_INSTRUCTION_LENGTH: usize = 4;
 const DOT_TEXT_START_ADDRESS: u32 = 0x400000; // Keeping consistency with name-as
@@ -520,7 +520,7 @@ impl Mips {
         self.pc += MIPS_INSTRUCTION_LENGTH;
 
         if self.pc == self.stop_address {
-            return Err(ExecutionErrors::Event { event: ExecutionEvents::ProgramComplete });
+            return Err(ExecutionErrors::ExecutionTerminatedUnexpected);
         }
 
         let instruction = self.decode(opcode);
