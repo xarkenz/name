@@ -11,13 +11,16 @@ use thiserror::Error;
 
 use dap::prelude::*;
 
+mod args;
+use args::parse_args;
+
 mod mips;
 use mips::Mips;
 
 mod exception;
 use exception::{ExecutionErrors, exception_pretty_print, ExecutionEvents};
 
-use name_const::lineinfo::{/*LineInfo, */lineinfo_import}; // LineInfo unused
+use name_const::lineinfo::lineinfo_import; // LineInfo unused
 
 mod syscall;
 
@@ -70,38 +73,28 @@ fn reset_mips(elf_file: &Vec<u8>, elf_parsed: &ElfBytes<'_, LittleEndian>, segme
 
 fn main() -> DynResult<()> {
 
-  let args_strings: Vec<String> = env::args().collect();
+  let args_strings = parse_args()?;
 
-  if args_strings.len() != 5 {
-      return Err("USAGE: name-emu [port number] [source file] [object file] [line info file]".into());
-  }
   let log_path = std::path::Path::join(env::temp_dir().as_path(), "name_log.txt");
   let mut file = File::create(log_path)?;
   file.write_all(b"NAME Development Log\n")?;
 
-  let port_string = args_strings.get(1).unwrap();
+  let port_number = args_strings.port;
   
-  let (in_port, out_port) = if let Ok(port_number) = port_string.parse::<u32>() {
+  let (in_port, out_port) =
 
       if let Ok(listener) = TcpListener::bind(format!("127.0.0.1:{}", port_number)) {
 
         let (stream, _) = listener.accept().unwrap();
         (stream.try_clone().unwrap(), stream)
-      }
-      else {
+      } else {
         println!("Failed to bind port {}", port_number);
         return Err(Box::new(MyAdapterError::ArgumentParsingError));
-      }
-  }
-  else {
-    println!("Failed to parse port number");
-    return Err(Box::new(MyAdapterError::ArgumentParsingError));
-  };
+      };
+  let program_name = args_strings.source_file;
 
-  let program_name = args_strings.get(2).unwrap();
-
-  // Prefixed this with an underscore, since it doesn't seem to be meant to be used except for testing.
-  let _program_data = match std::fs::read(args_strings.get(3).unwrap()) {
+  // Prefixed this with an underscore, since it's not yet used.
+  let _program_data = match std::fs::read(args_strings.object_file) {
     Ok(_program_data) => _program_data,
     Err(why) => {
       println!("Failed to open provided object file. Reason: {}", why);
@@ -109,7 +102,7 @@ fn main() -> DynResult<()> {
     }
   };
 
-  let program_lineinfo = match std::fs::read_to_string(args_strings.get(4).unwrap()) {
+  let program_lineinfo = match std::fs::read_to_string(args_strings.lineinfo_file) {
     Ok(program_lineinfo) => program_lineinfo,
     Err(why) => {
       println!("Failed to open provided line info file. Reason: {}", why);
@@ -167,7 +160,7 @@ fn main() -> DynResult<()> {
   let mut mips: Mips = Default::default();
 
   /*
-  // It is beyond me what the function of this is...
+  // This is bad and is getting reworked.
 
   let elf_file_data = std::fs::read("/home/qwe/Documents/CS4485/Fibonacci_linked").unwrap();
   let elf_file = ElfBytes::<elf::endian::LittleEndian>::minimal_parse(elf_file_data.as_slice()).unwrap();

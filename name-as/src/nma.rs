@@ -354,6 +354,7 @@ fn assemble_r(r_struct: R, r_args: Vec<&str>) -> Result<u32, &'static str> {
     Ok(result)
 }
 
+// Assembles an R-type instruction that takes no arguments (syscall)
 fn assemble_r_keyword(r_struct: R) -> Result<u32, &'static str> {
     let result: u32;
     println!("funct: {}", r_struct.funct);
