@@ -1,4 +1,4 @@
-// use std::collections::HashMap; // Unused
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Write};
 
@@ -20,7 +20,7 @@ use mips::Mips;
 mod exception;
 use exception::{ExecutionErrors, exception_pretty_print, ExecutionEvents};
 
-use name_const::lineinfo::lineinfo_import; // LineInfo unused
+use name_const::lineinfo::{LineInfo, lineinfo_import};
 
 mod syscall;
 
@@ -52,7 +52,11 @@ enum MyAdapterError {
 
 type DynResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
+const MIPS_PC_BASE: u32 = 0x400000;
+
 /*
+// This old impl is bad but keeping it for reference on what reset_mips must do.
+
 fn reset_mips(elf_file: &Vec<u8>, elf_parsed: &ElfBytes<'_, LittleEndian>, segments: &Vec<ProgramHeader>) -> Mips {
   // Reset execution and begin again.
   let mut mips: Mips = Default::default();
@@ -70,6 +74,40 @@ fn reset_mips(elf_file: &Vec<u8>, elf_parsed: &ElfBytes<'_, LittleEndian>, segme
   mips
 }
 */
+
+fn reset_mips(lineinfo: &HashMap<u32, LineInfo>) -> Mips {
+  // Reset execution and begin again.
+  let mut mips: Mips = Default::default();
+  mips.pc = MIPS_PC_BASE as usize;
+
+  let stop_address = match get_stop_address(lineinfo){
+    Ok(sa) => sa,
+    _ => {
+      println!("Failed to properly reset mips - stop address not found.");
+      panic!();
+    },
+  };
+  mips.stop_address = stop_address;
+
+  mips
+}
+
+fn get_stop_address(lineinfo: &HashMap<u32, LineInfo>) -> Result<usize, &'static str> {
+  let stop_address: usize;
+
+  // In its current state, this accesses the last line of the lineinfo file to find the stop address. This sucks like really bad.
+  if let Some(max_key) = lineinfo.keys().copied().max(){
+    if let Some(final_entry) = lineinfo.get(&max_key){
+      stop_address = final_entry.instr_addr as usize;
+    } else {
+      return Err("Stop address not found.");
+    }
+  } else {
+    return Err("Attempting to find program stop failed.");
+  }
+
+  return Ok(stop_address)
+}
 
 fn main() -> DynResult<()> {
 
@@ -159,17 +197,6 @@ fn main() -> DynResult<()> {
 
   let mut mips: Mips = Default::default();
 
-  /*
-  // This is bad and is getting reworked.
-
-  let elf_file_data = std::fs::read("/home/qwe/Documents/CS4485/Fibonacci_linked").unwrap();
-  let elf_file = ElfBytes::<elf::endian::LittleEndian>::minimal_parse(elf_file_data.as_slice()).unwrap();
-  let elf_all_load_phdrs: Vec<ProgramHeader> = elf_file.segments().unwrap()
-    .iter()
-    .filter(|phdr|{phdr.p_type == PT_LOAD})
-    .collect();
-  */
-
 loop {
   let req = match server.poll_request()? {
     Some(req) => req,
@@ -187,7 +214,7 @@ loop {
   
       server.send_event(Event::Initialized)?;
 
-      // mips = reset_mips(&elf_file_data, &elf_file, &elf_all_load_phdrs);
+      mips = reset_mips(&lineinfo);
 
     }
 
@@ -213,17 +240,6 @@ loop {
 
     Command::WriteMemory(write_mem_args) => {
       let bytes = general_purpose::STANDARD.decode(write_mem_args.data)?;
-      // let mut i = 0;
-      // for values in bytes.windows(4) {
-      //   let word: u32 = (values[0] as u32) << 24 & (values[1] as u32) << 16 & (values[2] as u32) << 8 & values[3] as u32;
-        
-      //   match mips.write_w(mips::DOT_TEXT + i, word) {
-      //     Ok(_) => (),
-      //     Err(_) => return Err(Box::new(MyAdapterError::CommandArgumentError))
-      //   }
-
-      //   i += 1;
-      // }
 
       let address = match write_mem_args.memory_reference.parse::<u32>() {
         Ok(i) => i,
