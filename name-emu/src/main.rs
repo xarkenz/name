@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+// use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Write};
 
@@ -20,7 +20,7 @@ use mips::Mips;
 mod exception;
 use exception::{ExecutionErrors, exception_pretty_print, ExecutionEvents};
 
-use name_const::lineinfo::{LineInfo, lineinfo_import};
+use name_const::lineinfo::{/*LineInfo, */lineinfo_import};
 
 mod syscall;
 
@@ -75,43 +75,19 @@ fn reset_mips(elf_file: &Vec<u8>, elf_parsed: &ElfBytes<'_, LittleEndian>, segme
 }
 */
 
-fn reset_mips(lineinfo: &HashMap<u32, LineInfo>) -> Mips {
+fn reset_mips() -> Mips {
   // Reset execution and begin again.
   let mut mips: Mips = Default::default();
   mips.pc = MIPS_PC_BASE as usize;
 
-  let stop_address = match get_stop_address(lineinfo){
-    Ok(sa) => sa,
-    _ => {
-      println!("Failed to properly reset mips - stop address not found.");
-      panic!();
-    },
-  };
-  mips.stop_address = stop_address;
-
   mips
-}
-
-fn get_stop_address(lineinfo: &HashMap<u32, LineInfo>) -> Result<usize, &'static str> {
-  let stop_address: usize;
-
-  // In its current state, this accesses the last line of the lineinfo file to find the stop address. This sucks like really bad.
-  if let Some(max_key) = lineinfo.keys().copied().max(){
-    if let Some(final_entry) = lineinfo.get(&max_key){
-      stop_address = final_entry.instr_addr as usize;
-    } else {
-      return Err("Stop address not found.");
-    }
-  } else {
-    return Err("Attempting to find program stop failed.");
-  }
-
-  return Ok(stop_address)
 }
 
 fn main() -> DynResult<()> {
 
   let args_strings = parse_args()?;
+
+  let debug_mode: bool = args_strings.debug;
 
   let log_path = std::path::Path::join(env::temp_dir().as_path(), "name_log.txt");
   let mut file = File::create(log_path)?;
@@ -197,6 +173,11 @@ fn main() -> DynResult<()> {
 
   let mut mips: Mips = Default::default();
 
+  if !debug_mode {
+    // Just straight up execute the code
+    // For now it won't do anything
+  }
+
 loop {
   let req = match server.poll_request()? {
     Some(req) => req,
@@ -214,8 +195,7 @@ loop {
   
       server.send_event(Event::Initialized)?;
 
-      mips = reset_mips(&lineinfo);
-
+      mips = reset_mips();
     }
 
     // Launch does nothing in NAME, since all state was already set up by the time the protocol reached this point.
@@ -465,7 +445,7 @@ loop {
     }
 
     Command::Restart(_) => {
-      // mips = reset_mips(&elf_file_data, &elf_file, &elf_all_load_phdrs); // This code DOES NOT work.
+      mips = reset_mips();
 
       let rsp = req.success(
         ResponseBody::Restart
