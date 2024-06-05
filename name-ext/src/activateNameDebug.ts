@@ -157,6 +157,6 @@ class NameConfigurationProvider implements vscode.DebugConfigurationProvider {
 class ExecutableDebugAdapterFactory implements vscode.DebugAdapterDescriptorFactory {
 
 	createDebugAdapterDescriptor(_session: vscode.DebugSession): ProviderResult<vscode.DebugAdapterDescriptor> {
-		return new vscode.DebugAdapterExecutable('/home/qwe/Documents/CS4485/name/name-emu/target/release/name');
+		return new vscode.DebugAdapterExecutable('/home/teqqy/Projects/name/name-emu/target/release/name');
 	}
 }

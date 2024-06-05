@@ -5,8 +5,13 @@ Included in this directory are a couple of test files to get you started with NA
 ## Included tests
 
 - ~~Hello, World!~~ *(Not yet included)*
+    - Just a simple test of very basic instructions.
 - ~~Fibonacci sequence (fib.asm)~~ *(Not yet included)*
+    - A more sophisticated test.
+- Palindrome checker (palindromes.asm)
+    - A test for assembly across multiple files.
 - Instruction demonstration (mips_test.asm)
+    - A demo of various instructions present in NAME's simulation.
 
 ## Getting started
 
