@@ -1,4 +1,4 @@
-// use std::collections::HashMap; // Unused
+// use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Write};
 
@@ -11,13 +11,16 @@ use thiserror::Error;
 
 use dap::prelude::*;
 
+mod args;
+use args::parse_args;
+
 mod mips;
 use mips::Mips;
 
 mod exception;
 use exception::{ExecutionErrors, exception_pretty_print, ExecutionEvents};
 
-use name_const::lineinfo::{/*LineInfo, */lineinfo_import}; // LineInfo unused
+use name_const::lineinfo::{/*LineInfo, */lineinfo_import};
 
 mod syscall;
 
@@ -49,7 +52,11 @@ enum MyAdapterError {
 
 type DynResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
+const MIPS_PC_BASE: u32 = 0x400000;
+
 /*
+// This old impl is bad but keeping it for reference on what reset_mips must do.
+
 fn reset_mips(elf_file: &Vec<u8>, elf_parsed: &ElfBytes<'_, LittleEndian>, segments: &Vec<ProgramHeader>) -> Mips {
   // Reset execution and begin again.
   let mut mips: Mips = Default::default();
@@ -68,40 +75,40 @@ fn reset_mips(elf_file: &Vec<u8>, elf_parsed: &ElfBytes<'_, LittleEndian>, segme
 }
 */
 
+fn reset_mips() -> Mips {
+  // Reset execution and begin again.
+  let mut mips: Mips = Default::default();
+  mips.pc = MIPS_PC_BASE as usize;
+
+  mips
+}
+
 fn main() -> DynResult<()> {
 
-  let args_strings: Vec<String> = env::args().collect();
+  let args_strings = parse_args()?;
 
-  if args_strings.len() != 5 {
-      return Err("USAGE: name-emu [port number] [source file] [object file] [line info file]".into());
-  }
+  let debug_mode: bool = args_strings.debug;
+
   let log_path = std::path::Path::join(env::temp_dir().as_path(), "name_log.txt");
   let mut file = File::create(log_path)?;
   file.write_all(b"NAME Development Log\n")?;
 
-  let port_string = args_strings.get(1).unwrap();
+  let port_number = args_strings.port;
   
-  let (in_port, out_port) = if let Ok(port_number) = port_string.parse::<u32>() {
+  let (in_port, out_port) =
 
       if let Ok(listener) = TcpListener::bind(format!("127.0.0.1:{}", port_number)) {
 
         let (stream, _) = listener.accept().unwrap();
         (stream.try_clone().unwrap(), stream)
-      }
-      else {
+      } else {
         println!("Failed to bind port {}", port_number);
         return Err(Box::new(MyAdapterError::ArgumentParsingError));
-      }
-  }
-  else {
-    println!("Failed to parse port number");
-    return Err(Box::new(MyAdapterError::ArgumentParsingError));
-  };
+      };
+  let program_name = args_strings.source_file;
 
-  let program_name = args_strings.get(2).unwrap();
-
-  // Prefixed this with an underscore, since it doesn't seem to be meant to be used except for testing.
-  let _program_data = match std::fs::read(args_strings.get(3).unwrap()) {
+  // Prefixed this with an underscore, since it's not yet used.
+  let _program_data = match std::fs::read(args_strings.object_file) {
     Ok(_program_data) => _program_data,
     Err(why) => {
       println!("Failed to open provided object file. Reason: {}", why);
@@ -109,7 +116,7 @@ fn main() -> DynResult<()> {
     }
   };
 
-  let program_lineinfo = match std::fs::read_to_string(args_strings.get(4).unwrap()) {
+  let program_lineinfo = match std::fs::read_to_string(args_strings.lineinfo_file) {
     Ok(program_lineinfo) => program_lineinfo,
     Err(why) => {
       println!("Failed to open provided line info file. Reason: {}", why);
@@ -166,16 +173,10 @@ fn main() -> DynResult<()> {
 
   let mut mips: Mips = Default::default();
 
-  /*
-  // It is beyond me what the function of this is...
-
-  let elf_file_data = std::fs::read("/home/qwe/Documents/CS4485/Fibonacci_linked").unwrap();
-  let elf_file = ElfBytes::<elf::endian::LittleEndian>::minimal_parse(elf_file_data.as_slice()).unwrap();
-  let elf_all_load_phdrs: Vec<ProgramHeader> = elf_file.segments().unwrap()
-    .iter()
-    .filter(|phdr|{phdr.p_type == PT_LOAD})
-    .collect();
-  */
+  if !debug_mode {
+    // Just straight up execute the code
+    // For now it won't do anything
+  }
 
 loop {
   let req = match server.poll_request()? {
@@ -194,8 +195,7 @@ loop {
   
       server.send_event(Event::Initialized)?;
 
-      // mips = reset_mips(&elf_file_data, &elf_file, &elf_all_load_phdrs);
-
+      mips = reset_mips();
     }
 
     // Launch does nothing in NAME, since all state was already set up by the time the protocol reached this point.
@@ -220,17 +220,6 @@ loop {
 
     Command::WriteMemory(write_mem_args) => {
       let bytes = general_purpose::STANDARD.decode(write_mem_args.data)?;
-      // let mut i = 0;
-      // for values in bytes.windows(4) {
-      //   let word: u32 = (values[0] as u32) << 24 & (values[1] as u32) << 16 & (values[2] as u32) << 8 & values[3] as u32;
-        
-      //   match mips.write_w(mips::DOT_TEXT + i, word) {
-      //     Ok(_) => (),
-      //     Err(_) => return Err(Box::new(MyAdapterError::CommandArgumentError))
-      //   }
-
-      //   i += 1;
-      // }
 
       let address = match write_mem_args.memory_reference.parse::<u32>() {
         Ok(i) => i,
@@ -456,7 +445,7 @@ loop {
     }
 
     Command::Restart(_) => {
-      // mips = reset_mips(&elf_file_data, &elf_file, &elf_all_load_phdrs); // This code DOES NOT work.
+      mips = reset_mips();
 
       let rsp = req.success(
         ResponseBody::Restart

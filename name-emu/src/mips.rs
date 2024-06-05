@@ -5,7 +5,7 @@ use std::fs::File;
 use std::io::Write;
 
 
-use crate::{exception::{ExecutionErrors, ExecutionEvents}, syscall::syscall};
+use crate::{exception::{ExecutionErrors, /*ExecutionEvents*/}, syscall::syscall}; // TODO: Implement execution events
 
 const MIPS_INSTRUCTION_LENGTH: usize = 4;
 const DOT_TEXT_START_ADDRESS: u32 = 0x400000; // Keeping consistency with name-as
@@ -99,7 +99,7 @@ impl Default for Mips {
     fn default() -> Self {
         Self {
             regs: [0; 32],
-            // This is also dead code for right now
+            // This is dead code for right now
             /*
             floats: [0f32; 32],
             mult_hi: 0,
@@ -138,7 +138,6 @@ struct Jtype {
     dest: u32
 }
 
-// struct Jtype
 // struct Ftype
 
 #[derive(Debug)]
@@ -155,19 +154,19 @@ impl Mips {
 
         match ins.funct {
             // Shift-left logical
-            0x0 => {
+            0x00 => {
                 self.regs[ins.rd] = self.regs[ins.rt] << ins.shamt;
             }
             // Shift-right logical
-            0x2 => {
+            0x02 => {
                 self.regs[ins.rd] = self.regs[ins.rt] >> ins.shamt;
             }
             // Jump Register
-            0x8 => {
+            0x08 => {
                 self.pc = self.regs[ins.rs] as usize;
             }
             // System Call
-            0xC => {
+            0x0C => {
                 // Grab 20-bit code field
                 let code = (opcode >> 6) & 0xFFFFF;
                 syscall(self, code)?;
@@ -238,9 +237,21 @@ impl Mips {
         let memory_address = self.regs[ins.rs].wrapping_add(ins.imm as u32);
 
         match ins.opcode {
+            // Branch if Equal
+            0x04 => {
+                if self.regs[ins.rt] == self.regs[ins.rs] {
+                    self.configure_branch(ins);
+                }
+            }
+            // Branch if Not Equal
+            0x05 => {
+                if self.regs[ins.rt] != self.regs[ins.rs] {
+                    self.configure_branch(ins);
+                }
+            }
             // Branch on Less than Zero
             // MIPS manual says: If the contents of GPR rs are less than zero (sign bit is 1)
-            0x6 => {
+            0x06 => {
                 if self.regs[ins.rs] as i32 <= 0 {
                     self.configure_branch(ins);
                 }
@@ -248,13 +259,13 @@ impl Mips {
             // Branch on Greater than Zero
             // MIPS manual says: If the contents of GPR rs 
             // are greater than zero (sign bit is 0 but value not zero)
-            0x7 => {
+            0x07 => {
                 if self.regs[ins.rs] > 0 {
                     self.configure_branch(ins);
                 }
             }
             // Add Immediate
-            0x8 => {
+            0x08 => {
                 let result = self.regs[ins.rs].checked_add_signed(ins.imm as i16 as i32);
                 match result {
                     Some(value) => {self.regs[ins.rt] = value;}
@@ -269,29 +280,39 @@ impl Mips {
                 }
             }
             // Add Immediate Unsigned
-            0x9 => {
+            0x09 => {
                 self.regs[ins.rt] = self.regs[ins.rs].wrapping_add(ins.imm as u32);
             }
             // Set on Less Than Immediate (signed)
             // If rs is less than sign-extended 16 bit immediate using signed comparison, then set rt to 1
             // Casting on imm is to sign extend. See load byte casts
-            0xA => { 
+            0x0A => { 
                 self.regs[ins.rt] = if (self.regs[ins.rs] as i32) < (ins.imm as i16 as i32) { 1 } else { 0 };
             }
             // Set on Less Than Immediate (unsigned)
             // If rs is less than sign-extended 16-bit immediate using unsigned comparison, then set rt to 1
             // casting is to sign extend again
-            0xB => { 
+            0x0B => { 
                 self.regs[ins.rt] = if self.regs[ins.rs] < (ins.imm as i16 as i32 as u32) { 1 } else { 0 };
             }
             // Or Immediate
-            0xD => {
+            0x0D => {
                 // Rust zero-extends unsigned values when up-casting
                 self.regs[ins.rt] = self.regs[ins.rs] | ins.imm as u32;
             }
             // Load Upper Immediate
-            0xF => {
+            0x0F => {
                 self.regs[ins.rt] = (ins.imm as u32) << 16;
+            }
+            // Load byte (signed)
+            // Note that I force a sign extension through a convuluted series of casts
+            // u8 -> i8 (same bits) -> i32 (more bits, sign extension) -> u32 (same bits)
+            0x20 => {
+                self.regs[ins.rt] = self.read_b(memory_address)? as i8 as i32 as u32;
+            }
+            // Load halfword (signed), same deal
+            0x21 => {
+                self.regs[ins.rt] = self.read_h(memory_address)? as i16 as i32 as u32;
             }
             // Load word (0x23) and Load Linked (0x30).
             // A word on Load Linked-- This is an instruction for atomic accesses
@@ -310,16 +331,6 @@ impl Mips {
             0x25 => {
                 self.regs[ins.rt] = self.read_h(memory_address)? as u32;
             }
-            // Load byte (signed)
-            // Note that I force a sign extension through a convuluted series of casts
-            // u8 -> i8 (same bits) -> i32 (more bits, sign extension) -> u32 (same bits)
-            0x20 => {
-                self.regs[ins.rt] = self.read_b(memory_address)? as i8 as i32 as u32;
-            }
-            // Load halfword (signed), same deal
-            0x21 => {
-                self.regs[ins.rt] = self.read_h(memory_address)? as i16 as i32 as u32;
-            }
             // Store byte
             0x28 => {
                 self.write_b(memory_address, self.regs[ins.rt] as u8)?;
@@ -333,18 +344,6 @@ impl Mips {
             // op for the same reason.
             0x2b | 0x38 => {
                 self.write_w(memory_address, self.regs[ins.rt])?;
-            }
-            // Branch if Equal
-            0x4 => {
-                if self.regs[ins.rt] == self.regs[ins.rs] {
-                    self.configure_branch(ins);
-                }
-            }
-            // Branch if Not Equal
-            0x5 => {
-                if self.regs[ins.rt] != self.regs[ins.rs] {
-                    self.configure_branch(ins);
-                }
             }
             
 
@@ -520,7 +519,7 @@ impl Mips {
         self.pc += MIPS_INSTRUCTION_LENGTH;
 
         if self.pc == self.stop_address {
-            return Err(ExecutionErrors::Event { event: ExecutionEvents::ProgramComplete });
+            return Err(ExecutionErrors::ExecutionTerminatedUnexpected);
         }
 
         let instruction = self.decode(opcode);
