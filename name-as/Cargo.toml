@@ -11,3 +11,4 @@ pest = "2.7.4"
 pest_derive = "2.7.4"
 serde = { version = "1.0.188", features = ["derive"] }
 toml = "0.7.6"
+elf = "0.7.4"

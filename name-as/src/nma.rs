@@ -8,6 +8,9 @@ use std::fs::File;
 use std::io::Write;
 use std::str;
 
+use crate::parser::*;
+use pest::Parser;
+
 const TEXT_ADDRESS_BASE: u32 = 0x400000;
 const MIPS_INSTR_BYTE_WIDTH: u32 = 4;
 
@@ -238,6 +241,7 @@ fn reg_number(mnemonic: &str) -> Result<u8, &'static str> {
 }
 
 /// Given a register or number, assemble it into its integer representation
+/// Look, I'm sure this works, but it's not exactly good. Using a hashmap is better.
 fn assemble_reg(mnemonic: &str) -> Result<u8, &'static str> {
     // match on everything after $
     match &mnemonic[1..] {
@@ -509,9 +513,6 @@ fn assemble_j(
     );
     Ok(result)
 }
-
-use crate::parser::*;
-use pest::Parser;
 
 // General assembler entrypoint
 pub fn assemble(program_arguments: &Args) -> Result<(), String> {
