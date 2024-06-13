@@ -1,7 +1,9 @@
 // Utilities to assemble to ELF.
 // This file contains relevant structs and methods to produce valid ET_REL and ET_EXEC files.
+mod elf_utils;
 
-use std::collections::HashMap;              // Used to define modes by name
+// Imports
+use std::vec::Vec;                          // Used for ELF sections
 
 // The following data definitions are required to construct ELF files.
 // The meaning of each field is detailed in the appropriate struct.
@@ -16,9 +18,10 @@ const EI_VERSION: u8 = 1;       // Set original version for first iteration of c
 const EI_OSABI: u8 = 0;         // Specify System V IBA (specified in original ELF TIS)
 const EI_ABIVERSION: u8 = 0;    // Not needed
 const EI_PAD: [u8; 7] = [0, 0, 0, 0, 0, 0, 0];  // Built-in padding
+const EI_NIDENT: u8 = 16;       // Size of this header
 
-// This is the full e_ident field (a complete constant. should never need to be changed).
-const e_ident_default: [u8; 16] = [EI_MAG[0], EI_MAG[1], EI_MAG[2], EI_MAG[3], EI_CLASS, EI_DATA, EI_VERSION, EI_OSABI, EI_ABIVERSION, EI_PAD];
+// this is the full e_ident field (a complete constant. should never need to be changed).
+const e_ident_default: [u8; EI_NIDENT] = [EI_MAG[0], EI_MAG[1], EI_MAG[2], EI_MAG[3], EI_CLASS, EI_DATA, EI_VERSION, EI_OSABI, EI_ABIVERSION, EI_PAD];
 
 
 // I am defining all feasible ET modes for later.
@@ -26,15 +29,17 @@ const ET_NONE: u16 = 0;
 const ET_REL: u16 = 1;
 const ET_EXEC: u16 = 2;
 const ET_DYN: u16 = 3;
-// All ELFs will first be constructed with e_type set to ET_REL. The linker handles any changes.
+// all ELFs will first be constructed with e_type set to ET_REL. The linker handles any changes.
 const e_type_default: u16 = ET_REL;
 
-// The e_machine field value 8 represents the MIPS instruction set.
+// the e_machine field value 8 represents the MIPS instruction set.
 const e_machine_default: u16 = 8;
+
+// versioning begins at 1.
+const e_version_default: u32 = 1;
 
 // the e_entry address cannot be known, as it corresponds to the global main function.
 // the linker will need to handle filling in this field.
-const e_entry_default: u32 = 0;
 
 // the e_phoff field can be known ahead of time, since the program header follows the ELF header by convention.
 // it is simply the size of the elf header in bytes, as is already specified to be 52 for a 32-bit executable.
@@ -42,7 +47,6 @@ const e_phoff_default: u32 = 52;
 
 // by convention, the section header follows all sections and any other headers. its value cannot be known ahead of time.
 // thus, the e_shoff field must be filled in after the full module has been assembled.
-const e_shoff_default: u32 = 0;
 
 // for MIPS, the MIPS ELF specification lays out the e_flags field as follows (irrelevant fields commented out but retained for completeness):
 const EF_MIPS_NONREORDER: u32 = 0x00000001;         // No reordering of code to be done by assembler (better for education)
@@ -66,18 +70,18 @@ const e_ehsize_default: u16 = 52;
 const e_phentsize_default: u16 = 32;
 
 // For our use case, the number of entries in the program header is known.
-// Each object file we assemble prior to linking will have 1 entry for .text, 1 entry for .data, and 1 entry for .bss (heap).
-const e_phnum_default: u16 = 3;
+// Each object file we assemble prior to linking will have 1 entry for .text, and 1 entry for .data. (only loadable semgents)
+const e_phnum_default: u16 = 2;
 
 // Just like the other sizes, e_shentsize is known because it's derived from the struct.
 const e_shentsize_default: u16 = 40;
 
 // For our use case, e_shnum is known.
-// Each object file we assemble needs all program header entries, along with 1 entry for .note (debug/lineinfo).
+// Each object file we assemble needs all program header entries, along with 2 entries for .debug and .line (debug/lineinfo).
 const e_shnum_default:u16 = 4;
 
-// By convention, e_shstrndx is set to the last value in the section header. Therefore,
-const e_shstrndx_default:u16 = e_shnum_default;
+// By convention, e_shstrndx is set to the last value in the section header. The section header is effectively 1-indexed since the first index is reserved
+const e_shstrndx_default:u16 = e_shnum_default + 1;
 
 // This struct for the ELF file header was derived from information found at https://en.wikipedia.org/wiki/Executable_and_Linkable_Format
 // as well as information from the original TIS ELF specification.
@@ -132,9 +136,37 @@ struct Elf32SectionHeader{
     sh_entsize: u32,        // Size in bytes of each entry for sections that contain fixed-size entries (think tables)
 }
 
+// To construct an ET_REL ELF file, we'll need the following struct:
+#[repr(C)]
+#[derive(Debug, Default, Clone, Copy)]
+struct RelocatableElf{
+    file_header: Elf32Header,
+    program_header: Elf32ProgramHeader,
+    section_dot_text: Vec<u32>,
+    section_dot_data: Vec<u8>,
+    section_dot_debug: Vec<u8>,
+    section_dot_line: Vec<u8>,
+    section_headers: Vec<Elf32SectionHeader>,
+}
 
-fn create_new_elf_file_header() -> Result<Elf32Header, &'static str> {
-    
+
+fn create_new_elf_file_header(passed_e_entry: u32, passed_e_shoff: u32) -> Result<Elf32Header, &'static str> {
+    Elf32Header{
+        e_ident: e_ident_default,
+        e_type: e_type_default,
+        e_machine: e_machine_default,
+        e_version: e_version_default,
+        e_entry: passed_e_entry,
+        e_phoff: e_phoff_default,
+        e_shoff: passed_e_shoff,
+        e_flags: e_flags_default,
+        e_ehsize: e_ehsize_default,
+        e_phentsize: e_phentsize_default,
+        e_phnum: e_phnum_default,
+        e_shentsize: e_shentsize_default,
+        e_shnum: e_shnum_default,
+        e_shstrndx: e_shstrndx_default,
+    }
 }
 
 /*
