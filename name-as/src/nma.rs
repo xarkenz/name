@@ -11,6 +11,8 @@ use std::str;
 use crate::parser::*;
 use pest::Parser;
 
+// use crate::elf_utils::*;
+
 const TEXT_ADDRESS_BASE: u32 = 0x400000;
 const MIPS_INSTR_BYTE_WIDTH: u32 = 4;
 
