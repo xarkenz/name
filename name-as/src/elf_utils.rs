@@ -2,12 +2,28 @@
 // This file contains relevant structs and methods to produce valid ET_REL and ET_EXEC files.
 
 // Imports
-use std::{fs, io::Write, mem, slice, vec::Vec};    // Used for ELF sections
+use std::{fs, io::Write, vec::Vec};    // Used for ELF sections
 
 // The following data definitions are required to construct ELF files.
 // The meaning of each field is detailed in the appropriate struct.
 
 // Consts
+
+// Section setup for ET_REL files
+// These are the sections which should be present in each ET_REL constructed by the functions in this file.
+const NUM_OF_SECTIONS: usize = 6;       // This is e_shnum.
+const SECTIONS: [&'static str; NUM_OF_SECTIONS] = [
+    "",
+    ".text",
+    ".data",
+    /*
+    ".symtab",
+    ".strtab",
+    */
+    ".debug",
+    ".line",
+    ".shstrtab",
+];
 
 // Constants pertaining to MIPS conventions
 const MIPS_TEXT_START_ADDR: u32 = 0x00400000; // The address at which, by convention, MIPS begins the .text section
@@ -86,11 +102,11 @@ const E_PHNUM_DEFAULT: u16 = 2;
 const E_SHENTSIZE_DEFAULT: u16 = 40;
 
 // For our use case, e_shnum is known.
-// Each object file we assemble needs all program header entries, along with 2 entries for .debug and .line (debug/lineinfo).
-const E_SHNUM_DEFAULT:u16 = 4;
+// Each object file we assemble needs all program header entries, along with 2 entries for .debug and .line (debug/lineinfo). (plus 1 for null)
+const E_SHNUM_DEFAULT: u16 = NUM_OF_SECTIONS as u16;
 
-// By convention, e_shstrndx is set to the last value in the section header. The section header is effectively 1-indexed since the first index is reserved
-const E_SHSTRNDX_DEFAULT:u16 = E_SHNUM_DEFAULT + 1;
+// By convention, e_shstrndx is set to the last value in the section header. The first index is reserved
+const E_SHSTRNDX_DEFAULT: u16 = E_SHNUM_DEFAULT - 1;
 
 // Program header consts
 
@@ -122,15 +138,6 @@ const SHF_STRINGS: u32 = 0x20;          // contains null-term strings
 // const SHF_GROUP: u32 = 0x200;        // section is a member of a group
 // const SHF_TLS: u32 = 0x400;          // section holds thread-local data
 
-// Section header string table consts
-const SECTION_HEADER_STRING_TABLE_SIZE: usize = 25;
-const SECTION_HEADER_STRING_TABLE_BYTES: [u8; SECTION_HEADER_STRING_TABLE_SIZE] = [
-    b'.', b't', b'e', b'x', b't', b'\0', 
-    b'.', b'd', b'a', b't', b'a', b'\0', 
-    b'.', b'd', b'e', b'b', b'u', b'g', b'\0', 
-    b'.', b'l', b'i', b'n', b'e', b'\0',
-    ];
-
 // Structs
 
 // This struct for the ELF file header was derived from information found at https://en.wikipedia.org/wiki/Executable_and_Linkable_Format
@@ -157,22 +164,22 @@ struct Elf32Header{
 // This associated function serializes the struct to bytes. This is for writing to file.
 impl Elf32Header {
     fn to_bytes(&self) -> Vec<u8> {
-        let mut bytes: Vec<u8> = vec!(E_EHSIZE_DEFAULT as u8);
+        let mut bytes: Vec<u8> = vec!();
         // Append each field to that byte vector
         bytes.extend_from_slice(&self.e_ident);
-        append_bytes(&mut bytes, &self.e_type);
-        append_bytes(&mut bytes, &self.e_machine);
-        append_bytes(&mut bytes, &self.e_version);
-        append_bytes(&mut bytes, &self.e_entry);
-        append_bytes(&mut bytes, &self.e_phoff);
-        append_bytes(&mut bytes, &self.e_shoff);
-        append_bytes(&mut bytes, &self.e_flags);
-        append_bytes(&mut bytes, &self.e_ehsize);
-        append_bytes(&mut bytes, &self.e_phentsize);
-        append_bytes(&mut bytes, &self.e_phnum);
-        append_bytes(&mut bytes, &self.e_shentsize);
-        append_bytes(&mut bytes, &self.e_shnum);
-        append_bytes(&mut bytes, &self.e_shstrndx);
+        bytes.extend_from_slice(&self.e_type.to_be_bytes());
+        bytes.extend_from_slice(&self.e_machine.to_be_bytes());
+        bytes.extend_from_slice(&self.e_version.to_be_bytes());
+        bytes.extend_from_slice(&self.e_entry.to_be_bytes());
+        bytes.extend_from_slice(&self.e_phoff.to_be_bytes());
+        bytes.extend_from_slice(&self.e_shoff.to_be_bytes());
+        bytes.extend_from_slice(&self.e_flags.to_be_bytes());
+        bytes.extend_from_slice(&self.e_ehsize.to_be_bytes());
+        bytes.extend_from_slice(&self.e_phentsize.to_be_bytes());
+        bytes.extend_from_slice(&self.e_phnum.to_be_bytes());
+        bytes.extend_from_slice(&self.e_shentsize.to_be_bytes());
+        bytes.extend_from_slice(&self.e_shnum.to_be_bytes());
+        bytes.extend_from_slice(&self.e_shstrndx.to_be_bytes());
 
         bytes
     }
@@ -189,23 +196,23 @@ struct Elf32ProgramHeader{
     p_paddr: u32,           // Reserved for physical address of segment in memory (likely not used in our use case)
     p_filesz: u32,          // Size in bytes of the segment in the file image, can be 0 (but why?)
     p_memsz: u32,           // Size in bytes of the segment in memory, can be 0 for non-loaded (PT_NULL) segments
-    p_flags: u32,           // Segment dependent flags: PF_R = read, PF_W = write, PF_X = execute. All three should NEVER be specified, though that's not enforced in my implmentation. WX is also generally not a good plan.
+    p_flags: u32,           // Segment dependent flags: PF_R = read, PF_W = write, PF_X = execute. All three should NEVER be specified, though that's not enforced explicitly in my implmentation. WX is also generally not a good plan.
     p_align: u32,           // 0 and 1 specify no alignment, but positive powers of 2 specify p_vaddr = p_offset % p_align
 }
 
 // Similarly serialize Elf32ProgramHeader to bytes for writing to file
 impl Elf32ProgramHeader{
     fn to_bytes(&self) -> Vec<u8> {
-        let mut bytes: Vec<u8> = vec!(E_PHENTSIZE_DEFAULT as u8);
+        let mut bytes: Vec<u8> = vec!();
         // Append all fields to bytes vec
         bytes.extend_from_slice(&self.p_type.to_be_bytes());        // To Big-Endian bytes
-        append_bytes(&mut bytes, &self.p_offset);
-        append_bytes(&mut bytes, &self.p_vaddr);
-        append_bytes(&mut bytes, &self.p_paddr);
-        append_bytes(&mut bytes, &self.p_filesz);
-        append_bytes(&mut bytes, &self.p_memsz);
-        append_bytes(&mut bytes, &self.p_flags);
-        append_bytes(&mut bytes, &self.p_align);
+        bytes.extend_from_slice(&self.p_offset.to_be_bytes());
+        bytes.extend_from_slice(&self.p_vaddr.to_be_bytes());
+        bytes.extend_from_slice(&self.p_paddr.to_be_bytes());
+        bytes.extend_from_slice(&self.p_filesz.to_be_bytes());
+        bytes.extend_from_slice(&self.p_memsz.to_be_bytes());
+        bytes.extend_from_slice(&self.p_flags.to_be_bytes());
+        bytes.extend_from_slice(&self.p_align.to_be_bytes());
 
         bytes
     }
@@ -230,18 +237,18 @@ struct Elf32SectionHeader{
 
 impl Elf32SectionHeader {
     fn to_bytes(&self) -> Vec<u8> {
-        let mut bytes: Vec<u8> = vec!(E_PHENTSIZE_DEFAULT as u8);
+        let mut bytes: Vec<u8> = vec!();
         // Append all fields to bytes vec
         bytes.extend_from_slice(&self.sh_name.to_be_bytes());        // To Big-Endian bytes
-        append_bytes(&mut bytes, &self.sh_type);
-        append_bytes(&mut bytes, &self.sh_flags);
-        append_bytes(&mut bytes, &self.sh_addr);
-        append_bytes(&mut bytes, &self.sh_offset);
-        append_bytes(&mut bytes, &self.sh_size);
-        append_bytes(&mut bytes, &self.sh_link);
-        append_bytes(&mut bytes, &self.sh_info);
-        append_bytes(&mut bytes, &self.sh_addralign);
-        append_bytes(&mut bytes, &self.sh_entsize);
+        bytes.extend_from_slice(&self.sh_type.to_be_bytes());
+        bytes.extend_from_slice(&self.sh_flags.to_be_bytes());
+        bytes.extend_from_slice(&self.sh_addr.to_be_bytes());
+        bytes.extend_from_slice(&self.sh_offset.to_be_bytes());
+        bytes.extend_from_slice(&self.sh_size.to_be_bytes());
+        bytes.extend_from_slice(&self.sh_link.to_be_bytes());
+        bytes.extend_from_slice(&self.sh_info.to_be_bytes());
+        bytes.extend_from_slice(&self.sh_addralign.to_be_bytes());
+        bytes.extend_from_slice(&self.sh_entsize.to_be_bytes());
 
         bytes
     }
@@ -253,26 +260,11 @@ impl Elf32SectionHeader {
 pub struct RelocatableElf{
     file_header: Elf32Header,
     program_header_table: Vec<Elf32ProgramHeader>,
-    section_dot_text: Vec<u32>,
-    section_dot_data: Vec<u8>,
-    section_dot_debug: Vec<u8>,
-    section_dot_line: Vec<u8>,
-    section_dot_shstrtab: [u8; 25],
+    sections: Vec<Vec<u8>>,
     section_header_table: Vec<Elf32SectionHeader>,
 }
 
 // Functions
-
-// Helper function to append bytes of a given field to the passed vector
-fn append_bytes<T>(vec: &mut Vec<u8>, field: &T) {
-    let field_bytes = unsafe {
-        slice::from_raw_parts(
-            (field as *const T) as *const u8,
-            mem::size_of::<T>(),
-        )
-    };
-    vec.extend_from_slice(field_bytes);
-}
 
 // Create a new ET_REL ELF file header with default values
 // takes parameters passed_e_entry, the entry point of the program,
@@ -297,20 +289,30 @@ fn create_new_et_rel_file_header(passed_e_shoff: u32) -> Elf32Header {
 }
 
 // This function combines all the previous to actually create a new object file.
-pub fn create_new_et_rel(text_section: Vec<u32>, data_section: Vec<u8>, debug_section: Vec<u8>, line_section: Vec<u8>) -> RelocatableElf {
+pub fn create_new_et_rel(text_section: Vec<u8>, data_section: Vec<u8>, debug_section: Vec<u8>, line_section: Vec<u8>) -> RelocatableElf {
+    // The section header string table entry requires some calculations.
+    // Here we get the shstrtab as bytes from the constant defined at the top of the file.
+    // We also get the size of the shstrtab.
+    let mut shstrtab_section: Vec<u8> = vec!();
+    for item in SECTIONS {
+        shstrtab_section.extend_from_slice(item.as_bytes());
+        shstrtab_section.extend_from_slice(&[b'\0']);
+    }
+    let shstrtab_size: u32 = shstrtab_section.len() as u32;
+
     // Get size of each section to properly calculate offsets in result file
-    let text_size: u32 = (text_section.len() * 4) as u32;  // The 4 gives us the size of the text section in bytes since it's a u32 (word) vector
-    let data_size: u32 = ((data_section.len() + 3) >> 2 << 2) as u32;    // Rouding up to nearest multiple of 4 with bitwise operations so that we avoid aligment issues later
+    let text_size: u32 = text_section.len() as u32;
+    let data_size: u32 = data_section.len() as u32;
     let debug_size: u32 = debug_section.len() as u32;
     let line_size: u32 = line_section.len() as u32;
 
     // Calculate offsets using sizes
-    let text_offset: u32 = E_PHOFF_DEFAULT + (2 * E_PHENTSIZE_DEFAULT) as u32;     // The two program header entries are for the two loadable segments, .text and .data
+    let text_offset: u32 = E_PHOFF_DEFAULT + (E_PHNUM_DEFAULT * E_PHENTSIZE_DEFAULT) as u32;     // The program header entries are for the two loadable segments, .text and .data
     let data_offset: u32 = text_offset + text_size;
     let debug_offset: u32 = data_offset + data_size;
     let line_offset: u32 = debug_offset + debug_size;
     let shstrtab_offset: u32 = line_offset + line_size;
-    let sh_offset = line_offset + line_size;
+    let sh_offset = shstrtab_offset + shstrtab_size;
 
     // Construct the ELF file header
     let elf_file_header: Elf32Header = create_new_et_rel_file_header(sh_offset);
@@ -344,7 +346,7 @@ pub fn create_new_et_rel(text_section: Vec<u32>, data_section: Vec<u8>, debug_se
     // Populate the section headers - indexes are in the same order as the struct (.text, .data, .debug, .line)
     // First field is SHT_NULL and reserved, but must be included.
     let null_sh: Elf32SectionHeader = Elf32SectionHeader {
-        sh_name: 0,
+        sh_name: 0,     // This is a byte index
         sh_type: SHT_NULL,
         sh_flags: 0,
         sh_addr: 0,
@@ -370,7 +372,7 @@ pub fn create_new_et_rel(text_section: Vec<u32>, data_section: Vec<u8>, debug_se
     };
 
     let data_sh: Elf32SectionHeader = Elf32SectionHeader {
-        sh_name: 2,
+        sh_name: text_sh.sh_name + SECTIONS[1].len() as u32 + 1,
         sh_type: SHT_PROGBITS,
         sh_flags: SHF_ALLOC | SHF_WRITE,    // Allocated and writeable
         sh_addr: MIPS_DATA_START_ADDR,
@@ -383,7 +385,7 @@ pub fn create_new_et_rel(text_section: Vec<u32>, data_section: Vec<u8>, debug_se
     };
 
     let debug_sh: Elf32SectionHeader = Elf32SectionHeader {
-        sh_name: 3,
+        sh_name: data_sh.sh_name + SECTIONS[2].len() as u32 + 1,
         sh_type: SHT_PROGBITS,
         sh_flags: SHF_STRINGS,  // The debug section for NAME contains null-term strings
         sh_addr: 0,             // Not loaded
@@ -396,7 +398,7 @@ pub fn create_new_et_rel(text_section: Vec<u32>, data_section: Vec<u8>, debug_se
     };
 
     let line_sh: Elf32SectionHeader = Elf32SectionHeader {
-        sh_name: 4,
+        sh_name: debug_sh.sh_name + SECTIONS[3].len() as u32 + 1,
         sh_type: SHT_PROGBITS,
         sh_flags: SHF_STRINGS,  // The line info for NAME is also null-term strings
         sh_addr: 0,
@@ -409,30 +411,29 @@ pub fn create_new_et_rel(text_section: Vec<u32>, data_section: Vec<u8>, debug_se
     };
 
     let shstrtab_sh: Elf32SectionHeader = Elf32SectionHeader {
-        sh_name: 5,
+        sh_name: line_sh.sh_name + SECTIONS[4].len() as u32 + 1,
         sh_type: SHT_STRTAB,
         sh_flags: SHF_STRINGS,
         sh_addr: 0,
         sh_offset: shstrtab_offset,
-        sh_size: SECTION_HEADER_STRING_TABLE_SIZE as u32,
+        sh_size: shstrtab_size,
         sh_link: 0,
         sh_info: 0,
         sh_addralign: 0,
         sh_entsize: 0,
     };
 
-    // Collect all previously defined section headers into the section header table (8/8)
+    // Collect all previously defined section headers into the section header table
     let complete_section_header_table: Vec<Elf32SectionHeader> = vec![null_sh, text_sh, data_sh, debug_sh, line_sh, shstrtab_sh];
+
+    // Collect all sections into the sections vector
+    let complete_sections: Vec<Vec<u8>> = vec![text_section, data_section, debug_section, line_section, shstrtab_section];
 
     // Final step is to create the final ElfRelocatable struct
     return RelocatableElf{
         file_header: elf_file_header,
         program_header_table: complete_program_header_table,
-        section_dot_text: text_section,
-        section_dot_data: data_section,
-        section_dot_debug: debug_section,
-        section_dot_line: line_section,
-        section_dot_shstrtab: SECTION_HEADER_STRING_TABLE_BYTES,
+        sections: complete_sections,
         section_header_table: complete_section_header_table,
     }
 }
@@ -440,34 +441,24 @@ pub fn create_new_et_rel(text_section: Vec<u32>, data_section: Vec<u8>, debug_se
 // This function creates a new file with the passed name and writes all bytes in a RelocatableElf object
 pub fn write_et_rel_to_file(file_name: &str, et_rel: &RelocatableElf) -> Result<(), ()> {
     // Declare file_bytes vector to push all these file bytes onto
-    let mut file_bytes: Vec<u8> = vec!();
 
     // Concatenate all bytes in file header
-    file_bytes.extend_from_slice(&et_rel.file_header.to_bytes());
+    let mut file_bytes: Vec<u8> = et_rel.file_header.to_bytes().to_vec();
 
     // Get all bytes in program header table
-    let mut ph_entry_bytes: Vec<u8> = vec!();
     for entry in &et_rel.program_header_table {
-        append_bytes(&mut ph_entry_bytes, &entry.to_bytes());
+        file_bytes.extend(&entry.to_bytes());
     }
-
-    file_bytes.append(&mut ph_entry_bytes);
 
     // Add all sections
-    append_bytes(&mut file_bytes, &et_rel.section_dot_text);
-    append_bytes(&mut file_bytes, &et_rel.section_dot_data);
-    append_bytes(&mut file_bytes, &et_rel.section_dot_debug);
-    append_bytes(&mut file_bytes, &et_rel.section_dot_line);
-    append_bytes(&mut file_bytes, &et_rel.section_dot_shstrtab);
-
-    // Section header table
-    let mut sh_entry_bytes: Vec<u8> = vec!();
-    for entry in &et_rel.section_header_table {
-        append_bytes(&mut sh_entry_bytes, &entry.to_bytes());
+    for section in &et_rel.sections {
+        file_bytes.extend(section);
     }
 
-    file_bytes.append(&mut sh_entry_bytes);
-
+    // Section header table
+    for entry in &et_rel.section_header_table {
+        file_bytes.extend_from_slice(&entry.to_bytes());
+    }
 
     // Write file bytes to output file
     let mut f: fs::File = fs::File::create(file_name).expect("Unable to write file");       // This is really bad and insecure for right now - path MUST be checked before this gets out of alpha
