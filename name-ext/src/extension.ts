@@ -5,7 +5,6 @@ import * as vscode from 'vscode';
 import * as Net from 'net';
 import { activateNameDebug } from './activateNameDebug';
 import * as path from 'path';
-// const { spawn } = require('child_process');
 
 const termName = "NAME Emulator";
 
@@ -32,7 +31,7 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 
 			const nameASPath = path.join(namePath, 'name-as');
-			const nameDefaultCfgPath = path.join(nameASPath, 'configs/default.toml');
+			const nameDefaultCfgPath = path.join(nameASPath, 'configs' + path.sep + 'default.toml');
 			const nameEMUPath = path.join(namePath, 'name-emu');
 			const nameEXTPath = path.join(namePath, 'name-ext');
 			console.log(nameEXTPath);
@@ -85,7 +84,7 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 
 			const nameASPath = path.join(namePath, 'name-as');
-			const nameDefaultCfgPath = path.join(nameASPath, 'configs/default.toml');
+			const nameDefaultCfgPath = path.join(nameASPath, 'configs' + path.sep + 'default.toml');
 			const nameEMUPath = path.join(namePath, 'name-emu');
 			const nameEXTPath = path.join(namePath, 'name-ext');
 			console.log(nameEXTPath);
@@ -112,12 +111,12 @@ export function activate(context: vscode.ExtensionContext) {
 				// Build and run assembler
 				terminal.sendText(`cd ${nameASPath}`);
 				terminal.sendText(`cargo build --release`);
-				terminal.sendText(`cargo run ${nameDefaultCfgPath} ${currentlyOpenTabFilePath} ${currentlyOpenDirectory}/${currentlyOpenTabFileName}.o --lineinfo`);
+				terminal.sendText(`cargo run ${nameDefaultCfgPath} ${currentlyOpenTabFilePath} ${path.join(currentlyOpenDirectory, currentlyOpenTabFileName)}.o --lineinfo`);
 				
 				// Build and run emulator
 				terminal.sendText(`cd ${nameEMUPath}`);
 				terminal.sendText('cargo build --release');
-				terminal.sendText(`cargo run ${currentlyOpenTabFilePath} ${currentlyOpenDirectory}/${currentlyOpenTabFileName}.o ${currentlyOpenDirectory}/${currentlyOpenTabFileName}.o.li --debug`);
+				terminal.sendText(`cargo run ${currentlyOpenTabFilePath} ${path.join(currentlyOpenDirectory, currentlyOpenTabFileName)}.o ${path.join(currentlyOpenDirectory, currentlyOpenTabFileName)}.o.li --debug`);
 				
 				setTimeout(() => {
 					vscode.commands.executeCommand('workbench.action.debug.start');
