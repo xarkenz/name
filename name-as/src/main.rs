@@ -6,6 +6,7 @@ pub mod config;
 
 pub mod nma;
 pub mod parser;
+pub mod elf_utils;
 
 use args::parse_args;
 use nma::assemble;

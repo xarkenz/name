@@ -11,6 +11,22 @@ use std::str;
 use crate::parser::*;
 use pest::Parser;
 
+// use crate::elf_utils::*;
+
+// This is temporary behavior for testing purposes. Uncomment the logic to receive a test object file in /tmp.
+fn test_elf_writing() -> Result <(), ()> {
+    /*
+    let text_section: Vec<u8> = vec![b'h', b'i', b' ', b'\0'];
+    let data_section: Vec<u8> = vec![b'm', b'o', b'm', b' ', b'\0'];
+    let debug_section: Vec<u8> = vec![b'h', b'o', b'p', b'e', b' ', b'y', b'o', b'u', b'\'', b'r', b'e', b' ', b'\0'];
+    let line_section: Vec<u8> = vec![b'w', b'e', b'l', b'l', b'\0'];
+
+    let new_rel = create_new_et_rel(text_section, data_section, debug_section, line_section);
+    write_et_rel_to_file("/tmp/test1.o", &new_rel)?;
+    */
+    Ok(())
+}
+
 const TEXT_ADDRESS_BASE: u32 = 0x400000;
 const MIPS_INSTR_BYTE_WIDTH: u32 = 4;
 
@@ -516,6 +532,8 @@ fn assemble_j(
 
 // General assembler entrypoint
 pub fn assemble(program_arguments: &Args) -> Result<(), String> {
+    let _ = test_elf_writing();
+
     // IO Setup
     let input_fn = &program_arguments.input_as;
     let output_fn = &program_arguments.output_as;
