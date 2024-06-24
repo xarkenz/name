@@ -52,10 +52,10 @@ pub fn assemble(program_arguments: &Args) -> Result<(), String> {
     };
 
     // Prepare for parsing input line by line
-    let mut line_number = 1;
-    let mut current_address = 0;
+    let mut line_number: u32 = 1;
+    let mut current_address: u32 = 0;
 
-    let mut current_section = NULL_SECTION;
+    let mut current_section: usize = NULL_SECTION;
     let mut section_dot_text_bytes: Vec<u8> = vec!();
     let mut section_dot_data_bytes: Vec<u8> = vec!();
     let mut section_dot_debug_bytes: Vec<u8> = vec!();
@@ -78,28 +78,44 @@ pub fn assemble(program_arguments: &Args) -> Result<(), String> {
                 if current_section != DOT_TEXT {
                     return Err(format!("Instruction found outside section .text on line {line_number}"));
                 } else {
+                    // Save line content
+                    let line_content: &str = line.clone().as_str();
                     // Assemble instruction and append it to .text vector
-                    let mut inner = line.into_inner();
-                    let opcode = inner.next().unwrap().as_str();
-                    let args = inner.clone().map(|p| p.as_str()).collect::<Vec<&str>>();
-                    let instr = MipsCST::Instruction(opcode, args);
+                    let mut inner: pest::iterators::Pairs<Rule> = line.into_inner();
+                    let opcode: &str = inner.next().unwrap().as_str();
+                    let args: Vec<&str> = inner.clone().map(|p| p.as_str()).collect::<Vec<&str>>();
+                    let instr: MipsCST = MipsCST::Instruction(opcode, args);
                     if let Ok(instr_as_word) = assemble_instruction(instr, &labels, current_address as u32){
                         section_dot_text_bytes.extend(instr_as_word.to_be_bytes());
                     } else {
                         return Err(format!("Bad instruction on line {line_number}"));
                     };
+
+                    // Append to lineinfo
+                    lineinfo.push(
+                        LineInfo{
+                            instr_addr: current_address,
+                            line_number: line_number,
+                            line_contents: format!("{line_content}"),
+                            psuedo_op: format!(""),
+                        }
+                    )
                 }
             },
             Rule::label => {
                 // Handle label
                 match current_section {
                     DOT_TEXT => {
-                        // Add branch label
-                        todo!();
+                        // Add text label (requires struct not yet impl)
+                        let label_str = line.into_inner().next().unwrap().as_str();
+                        println!("Inserting label {} at {:x}", label_str, current_address);
+                        labels.insert(label_str, current_address);
                     },
                     DOT_DATA => {
-                        // Add data label
-                        todo!();
+                        // Add data label (requires struct not yet impl)
+                        let label_str = line.into_inner().next().unwrap().as_str();
+                        println!("Inserting label {} at {:x}", label_str, current_address);
+                        labels.insert(label_str, current_address);
                     }
                     _ => {
                         return Err(format!("Bad section on line {line_number}"));
@@ -111,10 +127,30 @@ pub fn assemble(program_arguments: &Args) -> Result<(), String> {
                 if current_section != DOT_TEXT {
                     return Err(format!("Instruction found outside section .text on line {line_number}"));
                 } else {
-                let instr = MipsCST::Keyword(line.into_inner().next().unwrap().as_str());
-                let instr_as_word: u32 = assemble_instruction(instr, &labels, current_address as u32)?;
+                    // Save line content
+                    let line_content: &str = line.clone().as_str();
+                    // Update line info
+                    lineinfo.push(LineInfo {
+                        instr_addr: current_address,
+                        line_number: line_number,
+                        line_contents: format!("{line_content}"),
+                        psuedo_op: "".to_string(),
+                    });
 
-                section_dot_text_bytes.extend(instr_as_word.to_be_bytes());
+                    // the only keyword i can think of is syscall, which is just an r-type instruction.
+                    let keyword = line.into_inner().next().unwrap().as_str();
+                    if let Ok(instr_info) = r_operation(keyword) {
+                        println!("-----------------------------------");
+                        println!("Assembling instruction: {}", keyword);
+                        match assemble_r_keyword(instr_info){
+                            Ok(assembled_r) => {
+                                section_dot_text_bytes.extend(assembled_r.to_be_bytes());
+                            }
+                            Err(e) => return Err(e.to_string()),
+                        }
+                    } else {
+                        return Err("Failed to match keyword".to_string());
+                    }
                 }
             },
             Rule::directive => {
@@ -125,12 +161,15 @@ pub fn assemble(program_arguments: &Args) -> Result<(), String> {
                 // Make the directive handler return the current section we're in to update current_section. Check state before and after to update current_address.
                 let given_directive = line.into_inner().next().unwrap().as_str();
                 // Check for invalid directive (error from directive handler)
-                if let Err(_check_good_directive) = follow_directive(given_directive, &mut encountered_section, &mut current_section, &mut current_address, &mut section_dot_data_bytes) {
+                if let Err(_check_good_directive) = follow_directive(given_directive, &mut encountered_section, &mut current_address, &mut current_section, &mut section_dot_data_bytes) {
                     return Err(format!("Invalid directive on line {line_number}"));
                 }
             },
             Rule::comment => {
-                // Handle comment - eventually, add to debug/line. For now, do nothing, just increment line number.
+                // Just add content to debug
+                section_dot_debug_bytes.extend_from_slice(&line_number.to_be_bytes());  // Ensure emulator expects a 4-byte word for line number
+                section_dot_debug_bytes.extend_from_slice((line.as_str()).as_bytes());  // Followed by null-term string
+                section_dot_debug_bytes.extend_from_slice(b"\0");
             },
             Rule::WHITESPACE => {
                 // Do nothing, just increment line number
@@ -140,7 +179,12 @@ pub fn assemble(program_arguments: &Args) -> Result<(), String> {
             }
         }
         line_number += 1;
-        current_address += elf_utils::MIPS_ADDRESS_ALIGNMENT as usize;
+        current_address += elf_utils::MIPS_ADDRESS_ALIGNMENT;
+    }
+
+    // Collect and serialize line info
+    for line in lineinfo {
+        section_dot_line_bytes.extend(line.to_bytes());
     }
 
     let relocatable = elf_utils::create_new_et_rel(section_dot_text_bytes, section_dot_data_bytes, section_dot_debug_bytes, section_dot_line_bytes);
@@ -701,13 +745,13 @@ fn assemble_instruction(instr: MipsCST, labels: &HashMap<&str, u32>, current_add
     };
 }
 
-fn follow_directive(directive: &str, section_tracker: &mut [bool; NUM_OF_SECTIONS], current_address: &mut usize, current_section: &mut usize, _data_section_vec: &mut Vec<u8>) -> Result<(), String> {
+fn follow_directive(directive: &str, section_tracker: &mut [bool; NUM_OF_SECTIONS], current_address: &mut u32, current_section: &mut usize, _data_section_vec: &mut Vec<u8>) -> Result<(), String> {
     match directive {
         ".text" => {
             if *current_section ==  DOT_TEXT || section_tracker[DOT_TEXT] {
                 return Err(format!("Tried to declare section .text twice"));
             } else {
-                *current_address = elf_utils::MIPS_TEXT_START_ADDR as usize;
+                *current_address = elf_utils::MIPS_TEXT_START_ADDR;
                 *current_section = DOT_TEXT;
             }
         },
@@ -715,7 +759,7 @@ fn follow_directive(directive: &str, section_tracker: &mut [bool; NUM_OF_SECTION
             if *current_section == DOT_DATA || section_tracker[DOT_DATA] {
                 return Err(format!("Tried to declare section .data twice"));
             } else {
-                *current_address = elf_utils::MIPS_DATA_START_ADDR as usize;
+                *current_address = elf_utils::MIPS_DATA_START_ADDR;
                 *current_section = DOT_TEXT;
             }
         },
@@ -725,155 +769,3 @@ fn follow_directive(directive: &str, section_tracker: &mut [bool; NUM_OF_SECTION
     }
     Ok(())
 }
-
-/*
-// Old Logic; to be repurposed
-fn assemble_text_section(program_arguments: &Args) -> Result<(), String> {
-    // Parse into CST
-    let cst = parse_rule(
-        MipsParser::parse(Rule::vernacular, file_contents.as_str())
-            .expect("Failed to parse")
-            .next()
-            .unwrap(),
-    );
-    print_cst(&cst);
-
-    // Set up line info
-    let mut lineinfo: Vec<LineInfo> = vec![];
-    let mut line_number: u32 = 1;
-
-    let vernac_sequence: Vec<MipsCST> = if let MipsCST::Sequence(v) = cst {
-        v
-    } else {
-        vec![cst]
-    };
-    // Assign addresses to labels
-    let mut current_addr: u32 = TEXT_ADDRESS_BASE;
-    let mut labels: HashMap<&str, u32> = HashMap::new();
-    for sub_cst in &vernac_sequence {
-        match sub_cst {
-            MipsCST::Label(label_str) => {
-                println!("Inserting label {} at {:x}", label_str, current_addr);
-                labels.insert(label_str, current_addr);
-                continue;
-            }
-            MipsCST::Instruction(_, _) => (),
-            MipsCST::Sequence(_) => unreachable!(),
-            MipsCST::Directive(_) => (),
-            MipsCST::Keyword(_) => (),
-        };
-
-        current_addr += MIPS_INSTR_BYTE_WIDTH
-    }
-
-    current_addr = TEXT_ADDRESS_BASE;
-
-    // Assemble instructions
-    for sub_cst in vernac_sequence {
-        match sub_cst {
-            MipsCST::Instruction(mnemonic, args) => {
-                // Update line info
-                lineinfo.push(LineInfo {
-                    instr_addr: current_addr,
-                    line_number: line_number,
-                    line_contents: instr_to_str(mnemonic, &args),
-                    psuedo_op: "".to_string(),
-                });
-
-                if let Ok(instr_info) = r_operation(mnemonic) {
-                    println!("-----------------------------------");
-                    println!(
-                        "[R] {} - shamt [{:x}] - funct [{:x}] - args [{:?}]",
-                        mnemonic, instr_info.shamt, instr_info.funct, args
-                    );
-                    match assemble_r(instr_info, args) {
-                        Ok(assembled_r) => {
-                            if write_u32(&output_file, assembled_r).is_err() {
-                                return Err("Failed to write to output binary".to_string());
-                            }
-                        }
-                        Err(e) => return Err(e.to_string()),
-                    }
-                } else if let Ok(instr_info) = i_operation(mnemonic) {
-                    println!("-----------------------------------");
-                    println!(
-                        "[I] {} - opcode [{:x}] - args [{:?}]",
-                        mnemonic, instr_info.opcode, args
-                    );
-
-                    match assemble_i(instr_info, args, &labels, current_addr) {
-                        Ok(assembled_i) => {
-                            if write_u32(&output_file, assembled_i).is_err() {
-                                return Err("Failed to write to output binary".to_string());
-                            }
-                        }
-                        Err(e) => return Err(e.to_string()),
-                    }
-                } else if let Ok(instr_info) = j_operation(mnemonic) {
-                    println!("-----------------------------------");
-                    println!(
-                        "[J] {} - opcode [{:x}] - args [{:?}]",
-                        mnemonic, instr_info.opcode, args
-                    );
-
-                    match assemble_j(instr_info, args, &labels) {
-                        Ok(assembled_j) => {
-                            if write_u32(&output_file, assembled_j).is_err() {
-                                return Err("Failed to write to output binary".to_string());
-                            }
-                        }
-                        Err(e) => return Err(e.to_string()),
-                    }
-                } else {
-                    return Err("Failed to match instruction".to_string());
-                }
-            }
-            // The passed label doesn't need to actually do anything yet. Just need to increment line number.
-            // Prefixed with underscore for now as it's not used, however
-            // name_const/lineinfo.rs could be updated to include labels in .li. MARS doesn't do this, but this isn't MARS.
-            MipsCST::Label(_label) => {
-                continue;
-            }
-
-            MipsCST::Keyword(keyword) => {
-                // If not in section .text while a directive encountered, something tragic is afoot.
-                // TODO
-
-                // If the keyword is syscall in section .text, we can do something with that (assembling an R-form instr)
-                // For now, since directives haven't yet been implemented, all that matters is things like syscall
-
-                // Update line info
-                lineinfo.push(LineInfo {
-                    instr_addr: current_addr,
-                    line_number: line_number,
-                    line_contents: keyword.to_string(),
-                    psuedo_op: "".to_string(),
-                });
-
-                // syscall is just an r-type instr
-                if let Ok(instr_info) = r_operation(keyword) {
-                    println!("-----------------------------------");
-                    println!("Assembling instruction: {}", keyword);
-                    match assemble_r_keyword(instr_info){
-                        Ok(assembled_r) => {
-                            if write_u32(&output_file, assembled_r).is_err() {
-                                return Err("Failed to write to output binary".to_string());
-                            }
-                        }
-                        Err(e) => return Err(e.to_string()),
-                    }
-                } else {
-                    return Err("Failed to match keyword".to_string());
-                }
-
-            }
-            _ => continue,
-        };
-
-        current_addr += MIPS_INSTR_BYTE_WIDTH;
-        line_number += 1;
-    }
-
-    Ok(())
-}
-*/

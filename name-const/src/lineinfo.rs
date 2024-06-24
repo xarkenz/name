@@ -21,6 +21,19 @@ pub struct LineInfo {
     pub psuedo_op: String,
 }
 
+impl LineInfo {
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut bytes: Vec<u8> = vec!();
+        bytes.extend_from_slice(&self.instr_addr.to_be_bytes());
+        bytes.extend_from_slice(&self.line_number.to_be_bytes());
+        bytes.extend_from_slice(&self.line_contents.as_bytes());
+        bytes.extend_from_slice(b"\0");
+        bytes.extend_from_slice(&self.psuedo_op.as_bytes());
+        bytes.extend_from_slice(b"\0");
+        bytes
+    }
+}
+
 #[derive(Deserialize, Serialize)]
 struct LineInfoFile {
     pub lineinfo: Vec<LineInfo>,
