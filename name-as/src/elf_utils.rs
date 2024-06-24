@@ -26,10 +26,10 @@ const SECTIONS: [&'static str; NUM_OF_SECTIONS] = [
 ];
 
 // Constants pertaining to MIPS conventions
-const MIPS_TEXT_START_ADDR: u32 = 0x00400000; // The address at which, by convention, MIPS begins the .text section
-const MIPS_DATA_START_ADDR: u32 = 0x10000000; // The address at which, by convention, MIPS begins the .data section (I really typed this out again!)
+pub const MIPS_TEXT_START_ADDR: u32 = 0x00400000; // The address at which, by convention, MIPS begins the .text section
+pub const MIPS_DATA_START_ADDR: u32 = 0x10000000; // The address at which, by convention, MIPS begins the .data section (I really typed this out again!)
 const MIPS_ALIGNMENT: u32 = 0x1000;           // The appropriate alignment for MIPS executables (from all my research)
-const MIPS_ADDRESS_ALIGNMENT: u32 = 4;        // MIPS is aligned by 4-byte word
+pub const MIPS_ADDRESS_ALIGNMENT: u32 = 4;        // MIPS is aligned by 4-byte word
 
 // ELF File Header fields
 
@@ -439,7 +439,7 @@ pub fn create_new_et_rel(text_section: Vec<u8>, data_section: Vec<u8>, debug_sec
 }
 
 // This function creates a new file with the passed name and writes all bytes in a RelocatableElf object
-pub fn write_et_rel_to_file(file_name: &str, et_rel: &RelocatableElf) -> Result<(), ()> {
+pub fn write_et_rel_to_file(file_name: &str, et_rel: &RelocatableElf) -> Result<(), String> {
     // Declare file_bytes vector to push all these file bytes onto
 
     // Concatenate all bytes in file header

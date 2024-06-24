@@ -1,20 +1,19 @@
 /// NAME Mips Assembler
-use crate::args::Args;
-use name_const::lineinfo::*;
-use crate::parser::print_cst;
 use std::collections::HashMap;
 use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::str;
-
-use crate::parser::*;
 use pest::Parser;
 
-// use crate::elf_utils::*;
+use name_const::lineinfo::LineInfo;
+
+use crate::args::Args;
+use crate::parser::*;
+use crate::elf_utils;
 
 // This is temporary behavior for testing purposes. Uncomment the logic to receive a test object file in /tmp.
-fn test_elf_writing() -> Result <(), ()> {
+fn test_elf_writing() -> Result <(), String> {
     /*
     let text_section: Vec<u8> = vec![b'h', b'i', b' ', b'\0'];
     let data_section: Vec<u8> = vec![b'm', b'o', b'm', b' ', b'\0'];
@@ -27,8 +26,128 @@ fn test_elf_writing() -> Result <(), ()> {
     Ok(())
 }
 
-const TEXT_ADDRESS_BASE: u32 = 0x400000;
-const MIPS_INSTR_BYTE_WIDTH: u32 = 4;
+// Declare consts for keeping track of section
+const NUM_OF_SECTIONS: usize = 3;
+const NULL_SECTION: usize = 0;
+const DOT_TEXT: usize = 1;
+const DOT_DATA: usize = 2;
+
+pub fn assemble(program_arguments: &Args) -> Result<(), String> {
+    let _ = test_elf_writing();
+
+    // IO Setup
+    let input_fn = &program_arguments.input_as;
+    let output_fn = &program_arguments.output_as;
+
+    // Read input
+    let unparsed_file: String = match fs::read_to_string(input_fn) {
+        Ok(v) => v,
+        Err(_) => return Err("Failed to read input file contents".to_string()),
+    };
+
+    // Parse input file (check validity)
+    let file_contents = match MipsParser::parse(Rule::file, &unparsed_file) {
+        Ok(v) => v,
+        Err(_) => return Err("Invalid assembly source file (discovered before assembly had begun)".to_string()),
+    };
+
+    // Prepare for parsing input line by line
+    let mut line_number = 1;
+    let mut current_address = 0;
+
+    let mut current_section = NULL_SECTION;
+    let mut section_dot_text_bytes: Vec<u8> = vec!();
+    let mut section_dot_data_bytes: Vec<u8> = vec!();
+    let mut section_dot_debug_bytes: Vec<u8> = vec!();
+    let mut section_dot_line_bytes: Vec<u8> = vec!();
+
+    let mut lineinfo: Vec<LineInfo> = vec![];
+    let mut labels: HashMap<&str, u32> = HashMap::new();
+
+    // Setup encountered sections tracker
+    let mut encountered_section: [bool; NUM_OF_SECTIONS] = [false; NUM_OF_SECTIONS];
+    encountered_section[NULL_SECTION] = true;
+
+    // Parse input line by line
+    for line in file_contents {
+        // Determine type of line - instructions, comments, directives, etc.
+        // Instructions, then labels, then keywords, then directives, then comments, then blank lines. Common case fast
+        match line.as_rule() {
+            Rule::instruction => {
+                // Handle instruction
+                if current_section != DOT_TEXT {
+                    return Err(format!("Instruction found outside section .text on line {line_number}"));
+                } else {
+                    // Assemble instruction and append it to .text vector
+                    let mut inner = line.into_inner();
+                    let opcode = inner.next().unwrap().as_str();
+                    let args = inner.clone().map(|p| p.as_str()).collect::<Vec<&str>>();
+                    let instr = MipsCST::Instruction(opcode, args);
+                    if let Ok(instr_as_word) = assemble_instruction(instr, &labels, current_address as u32){
+                        section_dot_text_bytes.extend(instr_as_word.to_be_bytes());
+                    } else {
+                        return Err(format!("Bad instruction on line {line_number}"));
+                    };
+                }
+            },
+            Rule::label => {
+                // Handle label
+                match current_section {
+                    DOT_TEXT => {
+                        // Add branch label
+                        todo!();
+                    },
+                    DOT_DATA => {
+                        // Add data label
+                        todo!();
+                    }
+                    _ => {
+                        return Err(format!("Bad section on line {line_number}"));
+                    }
+                }
+            },
+            Rule::keyword => {
+                // Handle keyword
+                if current_section != DOT_TEXT {
+                    return Err(format!("Instruction found outside section .text on line {line_number}"));
+                } else {
+                let instr = MipsCST::Keyword(line.into_inner().next().unwrap().as_str());
+                let instr_as_word: u32 = assemble_instruction(instr, &labels, current_address as u32)?;
+
+                section_dot_text_bytes.extend(instr_as_word.to_be_bytes());
+                }
+            },
+            Rule::directive => {
+                // Handle directive
+
+                // New plan: Pass the data section and text section bytes to the directive handler and let it do its thing on its own.
+                // Also hell, let it borrow the encountered_section table. Don't care!
+                // Make the directive handler return the current section we're in to update current_section. Check state before and after to update current_address.
+                let given_directive = line.into_inner().next().unwrap().as_str();
+                // Check for invalid directive (error from directive handler)
+                if let Err(_check_good_directive) = follow_directive(given_directive, &mut encountered_section, &mut current_section, &mut current_address, &mut section_dot_data_bytes) {
+                    return Err(format!("Invalid directive on line {line_number}"));
+                }
+            },
+            Rule::comment => {
+                // Handle comment - eventually, add to debug/line. For now, do nothing, just increment line number.
+            },
+            Rule::WHITESPACE => {
+                // Do nothing, just increment line number
+            },
+            _ => {
+                return Err(format!("Malformed line: {line_number}"));
+            }
+        }
+        line_number += 1;
+        current_address += elf_utils::MIPS_ADDRESS_ALIGNMENT as usize;
+    }
+
+    let relocatable = elf_utils::create_new_et_rel(section_dot_text_bytes, section_dot_data_bytes, section_dot_debug_bytes, section_dot_line_bytes);
+    elf_utils::write_et_rel_to_file(output_fn, &relocatable)?;
+
+    Ok(())
+}
 
 fn mask_u8(n: u8, x: u8) -> Result<u8, &'static str> {
     let out = n & ((1 << x) - 1);
@@ -49,7 +168,7 @@ fn mask_u32(n: u32, x: u8) -> Result<u32, &'static str> {
 }
 
 // Parses literals in hex, bin, oct, and decimal.
-fn base_parse(input: &str) -> Result<u32, &'static str> {
+fn base_parse(input: &String) -> Result<u32, &'static str> {
     if input.starts_with("0x") {
         // Hexadecimal
         u32::from_str_radix(&input[2..], 16).map_err(|_| "Failed to parse as hexadecimal")
@@ -236,7 +355,7 @@ pub fn write_u32(mut file: &File, data: u32) -> std::io::Result<()> {
 }
 
 /// Converts a numbered mnemonic ($t0, $s8, etc) or literal (55, 67, etc) to its integer representation
-fn reg_number(mnemonic: &str) -> Result<u8, &'static str> {
+fn reg_number(mnemonic: &String) -> Result<u8, &'static str> {
     if mnemonic.len() != 3 {
         return Err("Mnemonic out of bounds");
     }
@@ -258,7 +377,7 @@ fn reg_number(mnemonic: &str) -> Result<u8, &'static str> {
 
 /// Given a register or number, assemble it into its integer representation
 /// Look, I'm sure this works, but it's not exactly good. Using a hashmap is better.
-fn assemble_reg(mnemonic: &str) -> Result<u8, &'static str> {
+fn assemble_reg(mnemonic: &String) -> Result<u8, &'static str> {
     // match on everything after $
     match &mnemonic[1..] {
         "zero" => Ok(0),
@@ -268,7 +387,7 @@ fn assemble_reg(mnemonic: &str) -> Result<u8, &'static str> {
         "fp" => Ok(30),
         "ra" => Ok(31),
         _ => {
-            let n = reg_number(mnemonic)?;
+            let n = reg_number(&mnemonic)?;
             let reg = match mnemonic.chars().nth(1) {
                 Some('v') => n + 2,
                 Some('a') => n + 4,
@@ -297,7 +416,7 @@ fn assemble_reg(mnemonic: &str) -> Result<u8, &'static str> {
 }
 
 /// Enforce a specific length for a given vector
-fn enforce_length(arr: &Vec<&str>, len: usize) -> Result<u32, &'static str> {
+fn enforce_length(arr: &Vec<String>, len: usize) -> Result<u32, &'static str> {
     if arr.len() != len {
         Err("Failed length enforcement")
     } else {
@@ -306,7 +425,7 @@ fn enforce_length(arr: &Vec<&str>, len: usize) -> Result<u32, &'static str> {
 }
 
 /// Assembles an R-type instruction
-fn assemble_r(r_struct: R, r_args: Vec<&str>) -> Result<u32, &'static str> {
+fn assemble_r(r_struct: R, r_args: &Vec<String>) -> Result<u32, &'static str> {
     let mut rs: u8;
     let mut rt: u8;
     let mut rd: u8;
@@ -315,17 +434,17 @@ fn assemble_r(r_struct: R, r_args: Vec<&str>) -> Result<u32, &'static str> {
     match r_struct.form {
         RForm::RdRsRt => {
             enforce_length(&r_args, 3)?;
-            rd = assemble_reg(r_args[0])?;
-            rs = assemble_reg(r_args[1])?;
-            rt = assemble_reg(r_args[2])?;
+            rd = assemble_reg(&r_args[0])?;
+            rs = assemble_reg(&r_args[1])?;
+            rt = assemble_reg(&r_args[2])?;
             shamt = r_struct.shamt;
         }
         RForm::RdRtShamt => {
             enforce_length(&r_args, 3)?;
-            rd = assemble_reg(r_args[0])?;
+            rd = assemble_reg(&r_args[0])?;
             rs = 0;
-            rt = assemble_reg(r_args[1])?;
-            shamt = match base_parse(r_args[2]) {
+            rt = assemble_reg(&r_args[1])?;
+            shamt = match base_parse(&r_args[2]) {
                 Ok(v) => v as u8,
                 Err(_) => return Err("Failed to parse shamt"),
             }
@@ -393,7 +512,7 @@ fn assemble_r_keyword(r_struct: R) -> Result<u32, &'static str> {
 /// Assembles an I-type instruction
 fn assemble_i(
     i_struct: I,
-    i_args: Vec<&str>,
+    i_args: &Vec<String>,
     labels: &HashMap<&str, u32>,
     instr_address: u32,
 ) -> Result<u32, &'static str> {
@@ -405,8 +524,8 @@ fn assemble_i(
         IForm::RtImm => {
             enforce_length(&i_args, 2)?;
             rs = 0;
-            rt = assemble_reg(i_args[0])?;
-            imm = match base_parse(i_args[1]) {
+            rt = assemble_reg(&i_args[0])?;
+            imm = match base_parse(&i_args[1]) {
                 Ok(v) => v as u16,
                 Err(_) => return Err("Failed to parse imm"),
             }
@@ -416,34 +535,35 @@ fn assemble_i(
             // such as 'ld $t0, ($t1)'
             let i_args_catch = if i_args.len() == 2 {
                 let mut c = i_args.clone();
-                c.insert(1, "0");
+                c.insert(1, format!("0"));
                 c
             } else {
-                i_args
+                let c = i_args.clone();
+                c
             };
             enforce_length(&i_args_catch, 3)?;
-            rt = assemble_reg(i_args_catch[0])?;
-            imm = match base_parse(i_args_catch[1]) {
+            rt = assemble_reg(&i_args_catch[0])?;
+            imm = match base_parse(&i_args_catch[1]) {
                 Ok(v) => v as u16,
                 Err(_) => return Err("Failed to parse imm"),
             };
-            rs = assemble_reg(i_args_catch[2])?;
+            rs = assemble_reg(&i_args_catch[2])?;
         }
         IForm::RsRtLabel => {
             enforce_length(&i_args, 3)?;
-            rs = assemble_reg(i_args[0])?;
-            rt = assemble_reg(i_args[1])?;
-            match labels.get(i_args[2]) {
+            rs = assemble_reg(&i_args[0])?;
+            rt = assemble_reg(&i_args[1])?;
+            match labels.get(i_args[2].as_str()) {
                 // Subtract byte width due to branch delay
-                Some(v) => imm = ((*v) - instr_address - MIPS_INSTR_BYTE_WIDTH) as u16,
+                Some(v) => imm = ((*v) - instr_address - elf_utils::MIPS_ADDRESS_ALIGNMENT) as u16,
                 None => return Err("Undeclared label"),
             }
         }
         IForm::RtRsImm => {
             enforce_length(&i_args, 3)?;
-            rt = assemble_reg(i_args[0])?;
-            rs = assemble_reg(i_args[1])?;
-            imm = match base_parse(i_args[2]) {
+            rt = assemble_reg(&i_args[0])?;
+            rs = assemble_reg(&i_args[1])?;
+            imm = match base_parse(&i_args[2]) {
                 Ok(v) => v as u16,
                 Err(_) => return Err("Failed to parse imm"),
             };
@@ -489,12 +609,12 @@ fn assemble_i(
 /// Assembles a J-type instruction
 fn assemble_j(
     j_struct: J,
-    j_args: Vec<&str>,
+    j_args: &Vec<String>,
     labels: &HashMap<&str, u32>,
 ) -> Result<u32, &'static str> {
     enforce_length(&j_args, 1)?;
 
-    let jump_address: u32 = labels[j_args[0]];
+    let jump_address: u32 = labels[j_args[0].as_str()];
     println!("Masking jump address");
     println!("Jump address original: {}", jump_address);
     let mut masked_jump_address = mask_u32(jump_address, 28)?;
@@ -530,25 +650,85 @@ fn assemble_j(
     Ok(result)
 }
 
-// General assembler entrypoint
-pub fn assemble(program_arguments: &Args) -> Result<(), String> {
-    let _ = test_elf_writing();
+fn assemble_instruction(instr: MipsCST, labels: &HashMap<&str, u32>, current_addr: u32) -> Result<u32, String> {
+    // First break instr down (should never fail)
+    if let Some((mnemonic, args)) = instr.unpack_instruction() {
+        // Try packing the instruction into each type, starting with R (most common)
+        if let Ok(instr_info) = r_operation(&mnemonic) {
+            println!("-----------------------------------");
+            println!(
+                "[R] {} - shamt [{:x}] - funct [{:x}] - args [{:?}]",
+                mnemonic, instr_info.shamt, instr_info.funct, args
+            );
+            match assemble_r(instr_info, &args) {
+                Ok(assembled_r) => {
+                    return Ok(assembled_r);
+                },
+                Err(_) => return Err(format!("Malformed R-type instruction.")),
+            }
+        } else if let Ok(instr_info) = i_operation(&mnemonic) {
+            println!("-----------------------------------");
+            println!(
+                "[I] {} - opcode [{:x}] - args [{:?}]",
+                mnemonic, instr_info.opcode, args
+            );
 
-    // IO Setup
-    let input_fn = &program_arguments.input_as;
-    let output_fn = &program_arguments.output_as;
+            match assemble_i(instr_info, &args, &labels, current_addr) {
+                Ok(assembled_i) => {
+                    return Ok(assembled_i);
+                }
+                Err(e) => return Err(e.to_string()),
+            }
+        } else if let Ok(instr_info) = j_operation(&mnemonic) {
+            println!("-----------------------------------");
+            println!(
+                "[J] {} - opcode [{:x}] - args [{:?}]",
+                mnemonic, instr_info.opcode, args
+            );
 
-    let output_file: File = match File::create(output_fn) {
-        Ok(v) => v,
-        Err(_) => return Err("Failed to open output file".to_string()),
+            match assemble_j(instr_info, &args, &labels) {
+                Ok(assembled_j) => {
+                    return Ok(assembled_j);
+                }
+                Err(e) => return Err(e.to_string()),
+            }
+        } else {
+            return Err("Failed to match instruction".to_string());
+        }
+    }
+    else {
+        return Err(format!("Failed to pack instruction"));
     };
+}
 
-    // Read input
-    let file_contents: String = match fs::read_to_string(input_fn) {
-        Ok(v) => v,
-        Err(_) => return Err("Failed to read input file contents".to_string()),
-    };
+fn follow_directive(directive: &str, section_tracker: &mut [bool; NUM_OF_SECTIONS], current_address: &mut usize, current_section: &mut usize, _data_section_vec: &mut Vec<u8>) -> Result<(), String> {
+    match directive {
+        ".text" => {
+            if *current_section ==  DOT_TEXT || section_tracker[DOT_TEXT] {
+                return Err(format!("Tried to declare section .text twice"));
+            } else {
+                *current_address = elf_utils::MIPS_TEXT_START_ADDR as usize;
+                *current_section = DOT_TEXT;
+            }
+        },
+        ".data" => {
+            if *current_section == DOT_DATA || section_tracker[DOT_DATA] {
+                return Err(format!("Tried to declare section .data twice"));
+            } else {
+                *current_address = elf_utils::MIPS_DATA_START_ADDR as usize;
+                *current_section = DOT_TEXT;
+            }
+        },
+        _ => {
+            return Err(format!("Provided directive did not match (in directive handler)"));
+        },
+    }
+    Ok(())
+}
 
+/*
+// Old Logic; to be repurposed
+fn assemble_text_section(program_arguments: &Args) -> Result<(), String> {
     // Parse into CST
     let cst = parse_rule(
         MipsParser::parse(Rule::vernacular, file_contents.as_str())
@@ -559,7 +739,6 @@ pub fn assemble(program_arguments: &Args) -> Result<(), String> {
     print_cst(&cst);
 
     // Set up line info
-    let lineinfo_fn = format!("{}.li", &program_arguments.output_as);
     let mut lineinfo: Vec<LineInfo> = vec![];
     let mut line_number: u32 = 1;
 
@@ -568,7 +747,6 @@ pub fn assemble(program_arguments: &Args) -> Result<(), String> {
     } else {
         vec![cst]
     };
-
     // Assign addresses to labels
     let mut current_addr: u32 = TEXT_ADDRESS_BASE;
     let mut labels: HashMap<&str, u32> = HashMap::new();
@@ -581,6 +759,7 @@ pub fn assemble(program_arguments: &Args) -> Result<(), String> {
             }
             MipsCST::Instruction(_, _) => (),
             MipsCST::Sequence(_) => unreachable!(),
+            MipsCST::Directive(_) => (),
             MipsCST::Keyword(_) => (),
         };
 
@@ -695,11 +874,6 @@ pub fn assemble(program_arguments: &Args) -> Result<(), String> {
         line_number += 1;
     }
 
-    if program_arguments.line_info {
-        if let Err(e) = lineinfo_export(lineinfo_fn, lineinfo) {
-            return Err(e.to_string());
-        }
-    }
-
     Ok(())
 }
+*/
