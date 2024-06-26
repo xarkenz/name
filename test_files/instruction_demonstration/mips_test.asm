@@ -1,3 +1,4 @@
+    .text
 main:   
     add          $t0,$t2,$t3
     sub          $t4, $t5, $t6

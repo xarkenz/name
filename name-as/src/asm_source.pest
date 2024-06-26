@@ -1,3 +1,4 @@
+/*
 alpha = _{ 'a'..'z' | 'A'..'Z' }
 digit = _{ '0'..'9' }
 hex   = _{ "0x" ~ (digit | 'a'..'f' | 'A'..'F')+ }
@@ -24,4 +25,38 @@ instruction = { ident ~ instruction_args ~ comment? }
 
 vernacular = { (instruction | (label ~ comment?) | keyword | (directive ~ comment?) | comment )* }
 
-file = { SOI ~ ((vernacular ~ NEWLINE) | (WHITESPACE ~ NEWLINE))* ~ EOI }
+line = _{WHITESPACE* ~ vernacular? ~ WHITESPACE* ~ NEWLINE}
+
+file = { SOI ~ line* ~ EOI }
+*/
+
+alpha = _{ 'a'..'z' | 'A'..'Z' }
+digit = _{ '0'..'9' }
+hex = _{ "0x" ~ (digit | 'a'..'f' | 'A'..'F')+ }
+binary = _{ "0b" ~ ('0'..'1')+ }
+decimal = _{ digit+ }
+number = { hex | binary | decimal }
+WHITESPACE = _{ " " | "\t" }
+NEWLINE = _{ "\n" | "\r\n" }
+
+ident = @{ alpha ~ (alpha | digit)* }
+
+label = @{ ident ~ ":" }
+directive = @{ "." ~ ident }
+keyword = { ident ~ comment? }
+comment = { "#" ~ (!NEWLINE ~ ANY)* }
+
+register = @{ "$" ~ ident }
+instruction_arg = @{ ident | register | number }
+standard_args = _{ 
+   instruction_arg ~ ("," ~ WHITESPACE* ~ instruction_arg){0, 2}
+}
+mem_access_args = _{ instruction_arg ~ "," ~ number? ~ "(" ~ instruction_arg ~ ")" }
+instruction_args = _{ mem_access_args | standard_args }
+instruction = { ident ~ WHITESPACE+ ~ instruction_args ~ comment? }
+
+vernacular = { (instruction | (label ~ comment?) | keyword | (directive ~ comment?) | comment )* }
+
+line = _{ WHITESPACE* ~ vernacular? ~ WHITESPACE* ~ NEWLINE }
+
+file = { SOI ~ line* ~ EOI }

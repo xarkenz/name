@@ -48,7 +48,10 @@ pub fn assemble(program_arguments: &Args) -> Result<(), String> {
     // Parse input file (check validity)
     let file_contents = match MipsParser::parse(Rule::file, &unparsed_file) {
         Ok(v) => v,
-        Err(_) => return Err("Invalid assembly source file (discovered before assembly had begun)".to_string()),
+        Err(e) => {
+            dbg!(&e);
+            return Err("Invalid assembly source file (discovered before assembly had begun)".to_string());
+    },
     };
 
     // Prepare for parsing input line by line
@@ -70,6 +73,7 @@ pub fn assemble(program_arguments: &Args) -> Result<(), String> {
 
     // Parse input line by line
     for line in file_contents {
+        dbg!(&line.as_rule());
         // Determine type of line - instructions, comments, directives, etc.
         // Instructions, then labels, then keywords, then directives, then comments, then blank lines. Common case fast
         match line.as_rule() {
@@ -175,7 +179,7 @@ pub fn assemble(program_arguments: &Args) -> Result<(), String> {
                 // Do nothing, just increment line number
             },
             _ => {
-                return Err(format!("Malformed line: {line_number}"));
+                return Err(format!("Malformed line (match for parse rule failed): {line_number}"));
             }
         }
         line_number += 1;
