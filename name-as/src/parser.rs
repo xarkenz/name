@@ -1,74 +1,69 @@
-use pest::iterators::Pair;
-use pest_derive::Parser;
+use crate::assembly_utils::base_parse;
 
-#[derive(Parser)]
-// Let the record show this is some insanely smart parsing. However, it's kind of restrictive and results in wrong line numbers in some cases.
-#[grammar = "asm_source.pest"]
-pub struct MipsParser;
+use name_const::structs::{ComponentType, LineComponent};
+use name_const::helpers::get_mnemonics;
 
-#[derive(Debug, Clone)]
-pub enum MipsCST<'a> {
-    Label(&'a str),
-    Instruction(&'a str, Vec<&'a str>),
-    Sequence(Vec<MipsCST<'a>>),
-    Directive(&'a str),
-    Keyword(&'a str),
-}
 
-// The following method unpacks the MipsCST instruction into a set of owned values. It's used in assembly.
-impl<'a> MipsCST<'a> {
-    pub fn unpack_instruction(&self) -> Option<(String, Vec<String>)> {
-        match self {
-            MipsCST::Instruction(mnemonic, args) => {
-                Some(((*mnemonic).to_string(), args.iter().map(|&arg| arg.to_string()).collect()))
-            },
-            _ => None,
-        }
-    }
-}
+pub fn parse_components(line: String) -> Option<Vec<LineComponent>> {
+    let mut components: Vec<LineComponent> = vec!();
 
-pub fn parse_rule(pair: Pair<Rule>) -> MipsCST {
-    match pair.as_rule() {
-        Rule::vernacular => MipsCST::Sequence(pair.into_inner().map(parse_rule).collect()),
-        Rule::label => MipsCST::Label(pair.into_inner().next().unwrap().as_str()),
-        Rule::instruction => {
-            let mut inner = pair.into_inner();
-            let opcode = inner.next().unwrap().as_str();
-            let args = inner.clone().map(|p| p.as_str()).collect::<Vec<&str>>();
-            MipsCST::Instruction(opcode, args)
-        }
-        Rule::directive => MipsCST::Directive(pair.into_inner().next().unwrap().as_str()),
-        Rule::keyword => MipsCST::Keyword(pair.into_inner().next().unwrap().as_str()),
-        _ => {
-            println!("Unreachable: {:?}", pair.as_rule());
-            unreachable!()
-        }
-    }
-}
+    for word in line.replace(","," ").split_whitespace() {
+        if word.starts_with('#') {
+            // Disregard entire commented portion and return
+            break;
+        } else if word.starts_with('$') {
+            let register: LineComponent = LineComponent {
+                component_type: ComponentType::Register,
+                content: word.to_string(),
+            };
 
-pub fn cst_map(cst: &MipsCST, f: fn(&MipsCST) -> ()) {
-    match cst {
-        MipsCST::Sequence(v) => {
-            let _ = v.iter().map(f);
-        }
-        _ => f(cst),
-    }
-}
+            components.push(register);
+        } else if word.starts_with('.') {
+            let directive: LineComponent = LineComponent {
+                component_type: ComponentType::Directive,
+                content: word.to_string(),
+            };
 
-pub fn print_cst(cst: &MipsCST) {
-    match cst {
-        MipsCST::Label(s) => println!("{}:", s),
-        MipsCST::Instruction(mnemonic, args) => println!("\t{} {}", mnemonic, args.join(", ")),
-        MipsCST::Sequence(v) => {
-            for sub_cst in v {
-                print_cst(sub_cst)
+            components.push(directive);
+        } else if word.ends_with(':') {
+            let label: LineComponent = LineComponent {
+                component_type: ComponentType::Label,
+                content: word[..word.len()-1].to_string(),
+            };
+
+            components.push(label);
+        } else if let Ok(_) = base_parse(word) {
+            let immediate: LineComponent = LineComponent {
+                component_type: ComponentType::Immediate,
+                content: word.to_string(),
+            };
+
+            components.push(immediate);
+        } else if word.chars().all(|c| c.is_alphanumeric()) {
+            if get_mnemonics().contains(&word.to_string()) {
+                let mnemonic: LineComponent = LineComponent {
+                    component_type: ComponentType::Mnemonic,
+                    content: word.to_string(),
+                };
+
+                components.push(mnemonic);
+            } else {
+                let identifier: LineComponent = LineComponent {
+                    component_type: ComponentType::Identifier,
+                    content: word.to_string(),
+                };
+
+                components.push(identifier);
             }
         }
-        MipsCST::Directive(s) => println!("Directive found: {}", s),
-        MipsCST::Keyword(s) => println!("Keyword encountered: {}", s),
     }
-}
 
-pub fn instr_to_str(mnemonic: &str, args: &[&str]) -> String {
-    format!("{} {}", mnemonic, args.join(" "))
+    match components.len() {
+        0 => {
+            return None;
+        },
+        _ => {
+            return Some(components);
+        }
+    }
 }

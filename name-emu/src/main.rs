@@ -20,7 +20,7 @@ use mips::Mips;
 mod exception;
 use exception::{ExecutionErrors, exception_pretty_print, ExecutionEvents};
 
-use name_const::lineinfo::{/*LineInfo, */lineinfo_import};
+// use name_const::lineinfo::{/*LineInfo, */lineinfo_import};
 
 mod syscall;
 
@@ -115,16 +115,6 @@ fn main() -> DynResult<()> {
       return Err(Box::new(MyAdapterError::ArgumentParsingError));      
     }
   };
-
-  let program_lineinfo = match std::fs::read_to_string(args_strings.lineinfo_file) {
-    Ok(program_lineinfo) => program_lineinfo,
-    Err(why) => {
-      println!("Failed to open provided line info file. Reason: {}", why);
-      return Err(Box::new(MyAdapterError::CommandArgumentError));      
-    }
-  };
-  let lineinfo = lineinfo_import(program_lineinfo)?;
-  writeln!(file, "Lineinfo read: {:?}", lineinfo)?;
 
 
   let mut server = Server::new(BufReader::new(in_port), BufWriter::new(out_port));
@@ -362,7 +352,7 @@ loop {
             id: 0,
             name: "mips".to_string(),
             source: Some(Source { name: Some(program_name.to_string()), path: None, source_reference: Some(0), presentation_hint: None, origin: None, sources: None, adapter_data: None, checksums: None }),
-            line: lineinfo[&(mips.pc as u32)].line_number as i64,
+            line: 0,
             column: 0,
             end_line: None,
             end_column: None,

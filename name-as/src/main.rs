@@ -1,65 +1,37 @@
-extern crate pest;
-extern crate pest_derive;
+mod args;
+mod assembler;
+mod assembly_utils;
+mod lineinfo;
+mod parser;
 
-pub mod args;
-pub mod config;
+use args::Cli;
+use assembler::assemble;
+use lineinfo::get_lineinfo;
 
-pub mod nma;
-pub mod parser;
-pub mod elf_utils;
+use name_const::structs::LineInfo;
 
-use args::parse_args;
-use nma::assemble;
-use std::process::Command;
+use clap::Parser;
 
-fn main() -> Result<(), String> {
-    // Parse command line arguments and the config file
-    let cmd_args = parse_args()?;
+fn main() {
+    let args = Cli::parse();
+    let file_contents: String = std::fs::read_to_string(args.input_filename).expect("Failed to read input file (likely does not exist).");
 
-    let config: config::Config = match config::parse_config(&cmd_args) {
-        Ok(v) => v,
-        _ => {
-            println!("WARN : Failed to parse config file, defaulting to nma");
-            config::backup_config()
-        }
-    };
-
-    if config.as_cmd.is_empty() {
-        // If no provided as config, default to NMA
-        assemble(&cmd_args)?;
-    } else {
-        // Otherwise, use provided assembler command
-        println!("Config Name:   {}", config.config_name);
-        println!("Assembler CMD: {:?}", config.as_cmd);
-
-        for full_cmd in &config.as_cmd {
-            let split_cmd: Vec<&str> = full_cmd.split_whitespace().collect();
-
-            match Command::new(split_cmd[0]).args(&split_cmd[1..]).output() {
-                Ok(output) => {
-                    if output.status.success() {
-                        if !&output.stdout.is_empty() {
-                            println!(
-                                "CMD {}\n{}",
-                                full_cmd,
-                                String::from_utf8_lossy(&output.stdout)
-                            );
-                        }
-                    } else if !&output.stderr.is_empty() {
-                        eprintln!(
-                            "CMD {}\n{}",
-                            full_cmd,
-                            String::from_utf8_lossy(&output.stderr)
-                        );
-                    }
-                }
-                Err(err) => {
-                    eprintln!("CMD {}\nError: {}", full_cmd, err);
-                    return Err("Failed to run assembler command".to_string());
-                }
-            }
-        }
+    if args.lines {
+        let _section_dot_line: Vec<LineInfo> = get_lineinfo(&file_contents).expect("NAME will not assemble an empty file.");
     }
 
-    Ok(())
+    // Preprocessor would do its work in macro expansion here
+
+    // Allowing assemble to take ownership of the source file contents, because this is the end of its utility in this function.
+    let _assembled_output = assemble(file_contents).unwrap();
 }
+
+/*
+#[test]
+fn test_assembly() {
+    let test_file_path = "/home/teqqy/Projects/name/test_files/instruction_demonstration/mips_test.asm";
+    let file_contents: String = std::fs::read_to_string(test_file_path).expect("Failed to read input file (likely does not exist).");
+
+    let _assembled_output = assemble(file_contents).unwrap();
+}
+*/
