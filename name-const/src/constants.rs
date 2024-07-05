@@ -21,7 +21,7 @@ pub const INSTRUCTION_SET: [InstructionInformation; NUM_OF_IMPLEMENTED_INSTRUCTI
         mnemonic: "add",
         instruction_type: InstructionType::RType,
         shamt: 0,
-        funct: 0,
-        args: &[ArgumentType::Rd, ArgumentType::Rs, ArgumentType::Rt],
+        funct: 32,
+        args: &[ArgumentType::Rd, ArgumentType::Rs, ArgumentType::Rt, ],
     },
 ];

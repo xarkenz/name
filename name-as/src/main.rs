@@ -20,18 +20,34 @@ fn main() {
         let _section_dot_line: Vec<LineInfo> = get_lineinfo(&file_contents).expect("NAME will not assemble an empty file.");
     }
 
-    // Preprocessor would do its work in macro expansion here
+    // Preprocessor would do its work in macro/pseudoinstruction expansion here
 
     // Allowing assemble to take ownership of the source file contents, because this is the end of its utility in this function.
-    let _assembled_output = assemble(file_contents).unwrap();
+    let assembled_result = assemble(file_contents);
+    match assembled_result {
+        Ok(_) => {
+            println!("Assembly was successful.");
+            
+            // Explicitly defining for consistency's sake. See below usage.
+            std::process::exit(0);
+        },
+        Err(errors) => {
+            eprintln!("Errors were encountered during assembly: \n");
+            let joined_errors = errors.join("\n");
+            eprintln!("{joined_errors}");
+            
+            // This exit with a bad exit code tells the vscode extension to not bother with linking or emulation.
+            std::process::exit(1);
+        }
+    }
 }
 
-/*
+
 #[test]
-fn test_assembly() {
+fn full_integration_test() {
     let test_file_path = "/home/teqqy/Projects/name/test_files/instruction_demonstration/mips_test.asm";
     let file_contents: String = std::fs::read_to_string(test_file_path).expect("Failed to read input file (likely does not exist).");
 
-    let _assembled_output = assemble(file_contents).unwrap();
+    let assembled_output = assemble(file_contents);
+    assert!(!assembled_output.is_err());
 }
-*/

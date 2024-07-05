@@ -1,7 +1,8 @@
     .text
-main:   
+main: 
+    # I'm still here!
     add          $t0,$t2,$t3
-    sub          $t4, $t5, $t6
+    sub          $t4, $t5, $t6  # as if
     sll          $s0, $s0, 5
     srl          $s5, $s7, 10
     xor          $t7, $t8, $t9
