@@ -1,7 +1,7 @@
 use crate::structs::{ArgumentType, InstructionInformation, InstructionType};
 
 const NUM_OF_REGISTERS: usize = 32;
-const NUM_OF_IMPLEMENTED_INSTRUCTIONS: usize = 1;
+const NUM_OF_IMPLEMENTED_INSTRUCTIONS: usize = 12;
 
 pub const REGISTERS: [&'static str; NUM_OF_REGISTERS] = [
     "$zero", 
@@ -20,8 +20,85 @@ pub const INSTRUCTION_SET: [InstructionInformation; NUM_OF_IMPLEMENTED_INSTRUCTI
     InstructionInformation {
         mnemonic: "add",
         instruction_type: InstructionType::RType,
-        shamt: 0,
-        funct: 32,
-        args: &[ArgumentType::Rd, ArgumentType::Rs, ArgumentType::Rt, ],
+        opcode: None,
+        funct: Some(32),
+        args: &[ArgumentType::Rd, ArgumentType::Rs, ArgumentType::Rt],
+    },
+    InstructionInformation {
+        mnemonic: "addi",
+        instruction_type: InstructionType::IType,
+        opcode: Some(8),
+        funct: None,
+        args: &[ArgumentType::Rt, ArgumentType::Rs, ArgumentType::Immediate],
+    },
+    InstructionInformation {
+        mnemonic: "beq",
+        instruction_type: InstructionType::IType,
+        opcode: Some(4),
+        funct: None,
+        args: &[ArgumentType::Rs, ArgumentType::Rt, ArgumentType::Immediate],
+    },
+    InstructionInformation {
+        mnemonic: "j",
+        instruction_type: InstructionType::JType,
+        opcode: Some(2),
+        funct: None,
+        args: &[ArgumentType::Identifier],
+    },
+    InstructionInformation {
+        mnemonic: "jal",
+        instruction_type: InstructionType::JType,
+        opcode: Some(3),
+        funct: None,
+        args: &[ArgumentType::Identifier],
+    },
+    InstructionInformation {
+        mnemonic: "lb",
+        instruction_type: InstructionType::IType,
+        opcode: Some(32),
+        funct: None,
+        args: &[ArgumentType::Rt, ArgumentType::Immediate, ArgumentType::Rs],
+    },
+    InstructionInformation {
+        mnemonic: "lui",
+        instruction_type: InstructionType::IType,
+        opcode: Some(15),
+        funct: None,
+        args: &[ArgumentType::Rt, ArgumentType::Immediate],
+    },
+    InstructionInformation {
+        mnemonic: "ori",
+        instruction_type: InstructionType::IType,
+        opcode: Some(13),
+        funct: None,
+        args: &[ArgumentType::Rs, ArgumentType::Rt, ArgumentType::Immediate],
+    },
+    InstructionInformation {
+        mnemonic: "sll",
+        instruction_type: InstructionType::RType,
+        opcode: None,
+        funct: Some(0),
+        args: &[ArgumentType::Rd, ArgumentType::Rt, ArgumentType::Immediate],
+    },
+    InstructionInformation {
+        mnemonic: "srl",
+        instruction_type: InstructionType::RType,
+        opcode: None,
+        funct: Some(2),
+        args: &[ArgumentType::Rd, ArgumentType::Rt, ArgumentType::Immediate],
+    },
+    InstructionInformation {
+        mnemonic: "sub",
+        instruction_type: InstructionType::RType,
+        opcode: None,
+        funct: Some(34),
+        args: &[ArgumentType::Rd, ArgumentType::Rs, ArgumentType::Rt],
+    },
+    InstructionInformation {
+        mnemonic: "xor",
+        instruction_type: InstructionType::RType,
+        opcode: None,
+        funct: Some(38),
+        args: &[ArgumentType::Rd, ArgumentType::Rs, ArgumentType::Rt],
     },
 ];

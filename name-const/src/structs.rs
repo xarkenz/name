@@ -24,8 +24,8 @@ pub enum ComponentType {
 pub struct InstructionInformation {
     pub mnemonic: &'static str,
     pub instruction_type: InstructionType,
-    pub shamt: u32,
-    pub funct: u32,
+    pub opcode: Option<u32>,
+    pub funct: Option<u32>,
     pub args: &'static [ArgumentType],
 }
 
@@ -48,7 +48,8 @@ pub enum ArgumentType {
 #[derive(Debug)]
 pub struct Symbol {
     pub symbol_type: SymbolType,
-    pub value: u32,
+    pub identifier: String,
+    pub value: Option<u32>,
 }
 
 #[derive(Debug)]

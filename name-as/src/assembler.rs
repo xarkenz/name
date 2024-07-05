@@ -83,7 +83,8 @@ pub fn assemble(file_contents: String) -> Result<(), Vec<String>> {
                     symbol_table.push(
                         Symbol { 
                             symbol_type: SymbolType::Address,
-                            value: current_address, 
+                            identifier: component.content,
+                            value: Some(current_address), 
                         }
                     );
                 },

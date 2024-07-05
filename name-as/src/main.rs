@@ -49,5 +49,5 @@ fn full_integration_test() {
     let file_contents: String = std::fs::read_to_string(test_file_path).expect("Failed to read input file (likely does not exist).");
 
     let assembled_output = assemble(file_contents);
-    assert!(!assembled_output.is_err());
+    assert!(assembled_output.is_ok());
 }
