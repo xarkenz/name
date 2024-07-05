@@ -1,7 +1,7 @@
 use crate::structs::{ArgumentType, InstructionInformation, InstructionType};
 
 const NUM_OF_REGISTERS: usize = 32;
-const NUM_OF_IMPLEMENTED_INSTRUCTIONS: usize = 12;
+const NUM_OF_IMPLEMENTED_INSTRUCTIONS: usize = 13;
 
 pub const REGISTERS: [&'static str; NUM_OF_REGISTERS] = [
     "$zero", 
@@ -36,7 +36,7 @@ pub const INSTRUCTION_SET: [InstructionInformation; NUM_OF_IMPLEMENTED_INSTRUCTI
         instruction_type: InstructionType::IType,
         opcode: Some(4),
         funct: None,
-        args: &[ArgumentType::Rs, ArgumentType::Rt, ArgumentType::Immediate],
+        args: &[ArgumentType::Rs, ArgumentType::Rt, ArgumentType::Identifier],
     },
     InstructionInformation {
         mnemonic: "j",
@@ -93,6 +93,13 @@ pub const INSTRUCTION_SET: [InstructionInformation; NUM_OF_IMPLEMENTED_INSTRUCTI
         opcode: None,
         funct: Some(34),
         args: &[ArgumentType::Rd, ArgumentType::Rs, ArgumentType::Rt],
+    },
+    InstructionInformation {
+        mnemonic: "syscall",
+        instruction_type: InstructionType::RType,
+        opcode: None,
+        funct: Some(12),
+        args: &[],
     },
     InstructionInformation {
         mnemonic: "xor",

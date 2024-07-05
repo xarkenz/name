@@ -1,16 +1,24 @@
+#[derive(Debug, PartialEq)]
+pub struct Backpatch {
+    pub instruction_info: &'static InstructionInformation,
+    pub arguments: Vec<LineComponent>,
+    pub undiscovered_identifier: String,
+    pub byte_offset: usize,
+}
+
 #[derive(Debug)]
 pub struct LineInfo {
     pub line_number: u32,
     pub content: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct LineComponent {
     pub component_type: ComponentType,
     pub content: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ComponentType {
     Mnemonic,
     Register,
@@ -20,7 +28,7 @@ pub enum ComponentType {
     Directive,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct InstructionInformation {
     pub mnemonic: &'static str,
     pub instruction_type: InstructionType,
@@ -29,14 +37,14 @@ pub struct InstructionInformation {
     pub args: &'static [ArgumentType],
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum InstructionType {
     RType,
     IType,
     JType,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ArgumentType {
     Rd,
     Rs,
@@ -49,7 +57,7 @@ pub enum ArgumentType {
 pub struct Symbol {
     pub symbol_type: SymbolType,
     pub identifier: String,
-    pub value: Option<u32>,
+    pub value: u32,
 }
 
 #[derive(Debug)]

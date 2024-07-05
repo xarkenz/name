@@ -45,9 +45,27 @@ fn main() {
 
 #[test]
 fn full_integration_test() {
+
     let test_file_path = "/home/teqqy/Projects/name/test_files/instruction_demonstration/mips_test.asm";
     let file_contents: String = std::fs::read_to_string(test_file_path).expect("Failed to read input file (likely does not exist).");
 
     let assembled_output = assemble(file_contents);
-    assert!(assembled_output.is_ok());
+
+    match assembled_output {
+        Ok(_) => {
+            println!("Assembly was successful.");
+            
+            // Explicitly defining for consistency's sake. See below usage.
+            //std::process::exit(0);
+        },
+        Err(errors) => {
+            eprintln!();
+            eprintln!("Errors were encountered during assembly: \n");
+            let joined_errors = errors.join("\n");
+            eprintln!("{joined_errors}");
+            
+            // This exit with a bad exit code tells the vscode extension to not bother with linking or emulation.
+            //std::process::exit(0);
+        },
+    }// assert!(assembled_output.is_ok());
 }

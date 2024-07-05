@@ -1,7 +1,7 @@
-use name_const::structs::{ArgumentType, InstructionInformation, InstructionType, LineComponent, Symbol, SymbolType};
+use name_const::structs::{ArgumentType, InstructionInformation, InstructionType, LineComponent, Symbol};
 use name_const::constants::REGISTERS;
 
-pub fn assemble_instruction(info: &InstructionInformation, arguments: Vec<LineComponent>, symbol_table: &Vec<Symbol>) -> Result<u32, String> {
+pub fn assemble_instruction(info: &InstructionInformation, arguments: &Vec<LineComponent>, symbol_table: &Vec<Symbol>, current_address: &u32) -> Result<Option<u32>, String> {
     let num_of_specified_args = info.args.len();
     if arguments.len() != num_of_specified_args {
         return Err("Improper number of arguments provided for instruction.".to_string());
@@ -26,24 +26,53 @@ pub fn assemble_instruction(info: &InstructionInformation, arguments: Vec<LineCo
                 }
             }
 
-            return assemble_r_type(rd, rs, rt, shamt, funct);
+            match assemble_r_type(rd, rs, rt, shamt, funct){
+                Ok(packed_instr) => {
+                    return Ok(Some(packed_instr));
+                },
+                Err(e) => {
+                    return Err(e);
+                }
+            }
         },
         InstructionType::IType => {
             let opcode: u32 = info.opcode.expect("Improper implmentation of instructions (opcode undefined for I-type instr)\nIf you are a student reading this, understand this error comes entirely from the codebase of this vscode extension.");
             let mut rt: Option<String> = None;
             let mut rs: Option<String> = None;
             let mut imm: Option<String> = None;
+            let mut ident: Option<String> = None;
 
             for (i, passed) in arguments.iter().enumerate() {
                 match info.args[i] {
                     ArgumentType::Rt => rt = Some(passed.content.clone()),
                     ArgumentType::Rs => rs = Some(passed.content.clone()),
                     ArgumentType::Immediate => imm = Some(passed.content.clone()),
+                    ArgumentType::Identifier => ident = Some(passed.content.clone()),
                     _ => return Err("Improper type of arguments provided for instruction.".to_string()),
                 }
             }
 
-            return assemble_i_type(opcode, rs, rt, imm);
+            if ident.is_some() {
+                let target_addr: u32;
+                let unwrapped_ident = ident.unwrap();
+                if let Some(symbol) = symbol_table.iter().find(|symbol| symbol.identifier == unwrapped_ident){
+                    target_addr = symbol.value;
+                    // Translate from address to offset from this instruction's address
+                    let offset: i16 = (current_address - target_addr) as i16;
+                    imm = Some((offset as u16).to_string());
+                } else {
+                    return Ok(None);
+                }
+            }
+
+            match assemble_i_type(opcode, rs, rt, imm){
+                Ok(packed_instr) => {
+                    return Ok(Some(packed_instr));
+                },
+                Err(e) => {
+                    return Err(e);
+                }
+            }
         },
         InstructionType::JType => {
             let opcode: u32 = info.opcode.expect("Improper implmentation of instructions (opcode undefined for J-type instr)\nIf you are a student reading this, understand this error comes entirely from the codebase of this vscode extension.");
@@ -60,7 +89,7 @@ pub fn assemble_instruction(info: &InstructionInformation, arguments: Vec<LineCo
             if let Some(ident) = identifier {
                 let lookup_result = symbol_table.iter().find(|symbol| symbol.identifier == ident);
                 match lookup_result {
-                    Some(symbol) => address = symbol.value,
+                    Some(symbol) => address = Some(symbol.value),
                     None => address = None,
                 }
             }
@@ -71,10 +100,10 @@ pub fn assemble_instruction(info: &InstructionInformation, arguments: Vec<LineCo
                 Ok(packed_instr) => {
                     match packed_instr {
                         Some(packed_value) => {
-                            return Ok(packed_value);
+                            return Ok(Some(packed_value));
                         },
                         None => {
-                            todo!("Implement match arm implying backpatching required.");
+                            return Ok(None);
                         }
                     }
                 },
@@ -101,10 +130,12 @@ fn assemble_instruction_test() {
     ).collect();
 
     let mock_symbol_table: Vec<Symbol> = vec![
-        Symbol { symbol_type: SymbolType::Address, identifier: "test".to_string(), value: Some(0x004020) }
+        Symbol { symbol_type: name_const::structs::SymbolType::Address, identifier: "test".to_string(), value: 0x004020 }
     ]; 
 
-    assert_eq!(assemble_instruction(add_info, wrapped_arguments, &mock_symbol_table), Ok(0x012A4020));
+    let mock_current_address = name_const::elf_utils::MIPS_TEXT_START_ADDR;
+
+    assert_eq!(assemble_instruction(add_info, &wrapped_arguments, &mock_symbol_table, &mock_current_address), Ok(Some(0x012A4020)));
     
     // J-Type test
     let jal_info = instruction_table.get(&"jal".to_string()).unwrap();
@@ -116,7 +147,11 @@ fn assemble_instruction_test() {
             }
     ).collect();
 
-    assert_eq!(assemble_instruction(jal_info, wrapped_arguments, &mock_symbol_table), Ok(0x0c004020));
+    assert_eq!(assemble_instruction(jal_info, &wrapped_arguments, &mock_symbol_table, &mock_current_address), Ok(Some(0x0c004020)));
+
+    let mock_symbol_table: Vec<Symbol> = vec!();
+
+    assert_eq!(assemble_instruction(jal_info, &wrapped_arguments, &mock_symbol_table, &mock_current_address), Ok(None));
 }
 
 fn assemble_r_type(rd: Option<String>, rs: Option<String>, rt: Option<String>, shamt: Option<String>, funct: u32) -> Result<u32, String> {
@@ -277,8 +312,6 @@ pub fn base_parse(input: &str) -> Result<u32, &'static str> {
 }
 
 pub fn pretty_print_instruction(packed: &u32){
-    println!();
-    println!("0x{:08x}", packed);
-    println!("0b{:032b}", packed);
-    println!();
+    println!(" - 0x{:08x}", packed);
+    println!(" - 0b{:032b}", packed);
 }
