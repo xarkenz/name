@@ -3,7 +3,9 @@ pub struct Backpatch {
     pub instruction_info: &'static InstructionInformation,
     pub arguments: Vec<LineComponent>,
     pub undiscovered_identifier: String,
+    pub backpatch_address: u32,
     pub byte_offset: usize,
+    pub line_number: usize,
 }
 
 #[derive(Debug)]

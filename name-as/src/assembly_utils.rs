@@ -58,7 +58,7 @@ pub fn assemble_instruction(info: &InstructionInformation, arguments: &Vec<LineC
                 if let Some(symbol) = symbol_table.iter().find(|symbol| symbol.identifier == unwrapped_ident){
                     target_addr = symbol.value;
                     // Translate from address to offset from this instruction's address
-                    let offset: i16 = (current_address - target_addr) as i16;
+                    let offset: i16 = (current_address .clone() as i32 - target_addr as i32) as i16;
                     imm = Some((offset as u16).to_string());
                 } else {
                     return Ok(None);

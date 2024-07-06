@@ -42,7 +42,6 @@ fn main() {
     }
 }
 
-
 #[test]
 fn full_integration_test() {
 
@@ -54,18 +53,12 @@ fn full_integration_test() {
     match assembled_output {
         Ok(_) => {
             println!("Assembly was successful.");
-            
-            // Explicitly defining for consistency's sake. See below usage.
-            //std::process::exit(0);
         },
         Err(errors) => {
             eprintln!();
             eprintln!("Errors were encountered during assembly: \n");
             let joined_errors = errors.join("\n");
             eprintln!("{joined_errors}");
-            
-            // This exit with a bad exit code tells the vscode extension to not bother with linking or emulation.
-            //std::process::exit(0);
         },
     }// assert!(assembled_output.is_ok());
 }

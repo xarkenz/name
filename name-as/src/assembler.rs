@@ -67,7 +67,7 @@ pub fn assemble(file_contents: String) -> Result<(), Vec<String>> {
                             instruction_information = Some(retrieved_instruction_information);
                         },
                         None => {
-                            errors.push(format!("Failed to retrieve instruction information for specified mnemonic on line {line_number}."));
+                            errors.push(format!(" - Failed to retrieve instruction information for specified mnemonic on line {line_number}."));
                             break;
                         },
                     }
@@ -84,17 +84,19 @@ pub fn assemble(file_contents: String) -> Result<(), Vec<String>> {
 
                     if symbol_table.iter().find(|symbol| symbol.identifier == component.content).is_none() {
                         if instruction_information.is_none() {
-                            errors.push(format!("Found dangling identifier attached to no instruction on line {line_number}.\nEnsure you are using a valid instruction."));
+                            errors.push(format!(" - Found dangling identifier attached to no instruction on line {line_number}.\nEnsure you are using a valid instruction."));
                         }
 
                         backpatches.push(Backpatch {
                             instruction_info: instruction_information.unwrap(),
                             arguments: arguments.clone(),
                             undiscovered_identifier: component.content.to_owned(),
+                            backpatch_address: current_address,
                             byte_offset: section_dot_text.len(),
+                            line_number: line_number,
                         });
 
-                        println!("Forward reference detected (line {line_number}).");
+                        println!(" - Forward reference detected (line {line_number}).");
                     }
                 },
                 name_const::structs::ComponentType::Label => {
@@ -115,18 +117,22 @@ pub fn assemble(file_contents: String) -> Result<(), Vec<String>> {
                         } else {
                             backpatch = backpatch_found.unwrap();
                         }
+
+                        let backpatch_address: u32 = backpatch.backpatch_address;
                         
-                        let assembled_result = assemble_instruction(backpatch.instruction_info, &backpatch.arguments, &symbol_table, &current_address);
+                        let assembled_result = assemble_instruction(backpatch.instruction_info, &backpatch.arguments, &symbol_table, &backpatch_address);
                         match assembled_result {
                             Ok(assembled_instruction) => {
                                 match assembled_instruction {
                                     Some(word) => {
                                         let insert_offset = backpatch.byte_offset;
                                         let bytes_to_insert = word.to_be_bytes();
+
                                         section_dot_text.splice(insert_offset..insert_offset+4, bytes_to_insert.iter().cloned());
                                         
                                         let label = backpatch.undiscovered_identifier.clone();
-                                        println!(" - Backpatch resolved for label {label}");
+                                        println!(" - Backpatch resolved for label {label}:");
+                                        pretty_print_instruction(&word);
 
                                         let found_index = backpatches.iter().position(|bp| bp == backpatch).expect("Literally impossible to get this error.");
 
@@ -139,12 +145,12 @@ pub fn assemble(file_contents: String) -> Result<(), Vec<String>> {
                                 }
                             },
                             Err(e) => {
-                                // errors.push(e);
-                                panic!("{e}");
+                                errors.push(e);
+                                let found_index = backpatches.iter().position(|bp| bp == backpatch).expect("Literally impossible to get this error.");
+
+                                backpatches.remove(found_index);
                             },
                         }
-
-                        break;
                         
                     }
                     
@@ -157,7 +163,7 @@ pub fn assemble(file_contents: String) -> Result<(), Vec<String>> {
                                     current_address = text_address
                                 },
                                 Section::Text => {
-                                    errors.push(format!("Cannot declare current_section .text when already in current_section .text on line {line_number}"));
+                                    errors.push(format!(" - Cannot declare current_section .text when already in current_section .text on line {line_number}"));
                                 },
                                 Section::Data => {
                                     data_address = current_address;
@@ -177,14 +183,14 @@ pub fn assemble(file_contents: String) -> Result<(), Vec<String>> {
                                     current_address = data_address;
                                 },
                                 Section::Data => {
-                                    errors.push(format!("Cannot declare current_section .data when already in current_section .data (line {line_number})"));
+                                    errors.push(format!(" - Cannot declare current_section .data when already in current_section .data (line {line_number})"));
                                 },
                             }
 
                             current_section = Section::Data;
                         },
                         _ => {
-                            errors.push(format!("Unrecognized directive on line {line_number}"));
+                            errors.push(format!(" - Unrecognized directive on line {line_number}"));
                         }
                     }
                 },
@@ -216,12 +222,12 @@ pub fn assemble(file_contents: String) -> Result<(), Vec<String>> {
                                     &BACKPATCH_PLACEHOLDER.to_be_bytes()
                                 );
 
-                                println!(" - Placeholder bytes appended to section .text.\n");
+                                println!(" - Placeholder bytes appended to section .text.");
                             }
                         }
                     },
                     Err(e) => {
-                        errors.push(format!("On line {line_number}:"));
+                        errors.push(format!("[*] On line {line_number}:"));
                         errors.push(e);
                         errors.push("".to_string());
                     }
@@ -237,6 +243,20 @@ pub fn assemble(file_contents: String) -> Result<(), Vec<String>> {
     }
 
     // This return logic is out of scope of both the above for loops
+    if backpatches.len() > 0 {
+        let undefined_symbols: Vec<String> = backpatches.iter().map(|backpatch| backpatch.undiscovered_identifier.to_owned()).collect();
+        let line_numbers: Vec<usize> = backpatches.iter().map(|backpatch| backpatch.line_number).collect();
+        
+        let err_string: String = undefined_symbols.iter()
+        .zip(line_numbers.iter())
+        .map(|(symbol, &line_number)| format!(" - {symbol}: line {line_number}"))
+        .collect::<Vec<String>>()
+        .join("\n");
+
+        errors.push(format!("[*] Symbols referenced but undefined:\n{err_string}"));
+    }
+
+
     if errors.len() == 0 {
         return Ok(());
     } else {
