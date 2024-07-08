@@ -16,7 +16,7 @@ pub fn get_mnemonics() -> Vec<String> {
 pub fn generate_instruction_hashmap() -> HashMap<String, &'static InstructionInformation> {
     let mut hashmap: HashMap<String, &'static InstructionInformation> = HashMap::new();
 
-    for instruction in &INSTRUCTION_SET {
+    for instruction in INSTRUCTION_SET {
         hashmap.insert(instruction.mnemonic.to_string(), &instruction);
     }
 

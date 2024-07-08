@@ -31,7 +31,7 @@ pub struct InstructionInformation {
     pub opcode: Option<u32>,
     pub funct: Option<u32>,
     pub args: &'static [ArgumentType],
-    pub has_optional: bool,
+    pub alt_args: Option< &'static [&'static [ArgumentType]] >,
 }
 
 #[derive(Debug, PartialEq)]
@@ -48,6 +48,7 @@ pub enum ArgumentType {
     Rt,
     Immediate,
     Identifier,
+    BranchLabel,
 }
 
 #[derive(Debug)]

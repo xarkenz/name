@@ -1,6 +1,8 @@
 mod args;
 mod assembler;
 mod assembly_utils;
+mod assembly_helpers;
+mod assemble_instruction;
 mod lineinfo;
 mod parser;
 mod tokens;
