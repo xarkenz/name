@@ -60,5 +60,5 @@ fn full_integration_test() {
             let joined_errors = errors.join("\n");
             eprintln!("{joined_errors}");
         },
-    }// assert!(assembled_output.is_ok());
+    }
 }

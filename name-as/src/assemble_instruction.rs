@@ -52,7 +52,7 @@ pub fn assemble_instruction(info: &InstructionInformation, arguments: &Vec<LineC
                 Err(e) => return Err(e),
             };
 
-            if imm.is_none() {
+            if imm.is_none() && configuration_to_use.contains(&ArgumentType::BranchLabel) {
                 return Ok(None);
             }
 
@@ -75,7 +75,7 @@ pub fn assemble_instruction(info: &InstructionInformation, arguments: &Vec<LineC
             };
 
             let address = match translate_identifier_to_address(&identifier, symbol_table) {
-                Some(addr) => addr,
+                Some(addr) => addr >> 2,
                 None => return Ok(None),    // Unresolved symbol (forward reference)
             };
 

@@ -80,7 +80,7 @@ pub const INSTRUCTION_SET: &[InstructionInformation] = &[
         instruction_type: InstructionType::IType,
         opcode: Some(13),
         funct: None,
-        args: &[ArgumentType::Rs, ArgumentType::Rt, ArgumentType::Immediate],
+        args: &[ArgumentType::Rt, ArgumentType::Rs, ArgumentType::Immediate],
         alt_args: None,
     },
     InstructionInformation {
