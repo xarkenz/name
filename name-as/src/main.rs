@@ -3,6 +3,7 @@ mod assembler;
 mod assembly_utils;
 mod lineinfo;
 mod parser;
+mod tokens;
 
 use args::Cli;
 use assembler::assemble;
@@ -27,9 +28,6 @@ fn main() {
     match assembled_result {
         Ok(_) => {
             println!("Assembly was successful.");
-            
-            // Explicitly defining for consistency's sake. See below usage.
-            std::process::exit(0);
         },
         Err(errors) => {
             eprintln!("Errors were encountered during assembly: \n");

@@ -1,69 +1,82 @@
-use crate::assembly_utils::base_parse;
+use crate::tokens::Token; 
 
-use name_const::structs::{ComponentType, LineComponent};
-use name_const::helpers::get_mnemonics;
+use name_const::structs::LineComponent;
+
+use logos::Logos;
+
+// This function uses a regex library to simplify parsing.
+pub fn parse_components(line: String, mnemonics: &Vec<String>) -> Result<Option<Vec<LineComponent>>, String> {
+    let mut components = vec!();
+    let mut lexer = Token::lexer(&line);
+
+    while let Some(token) = lexer.next() {
+        let slice = lexer.slice();
+        let component_result = token_to_line_component(token.unwrap(), slice, &mnemonics);
 
 
-pub fn parse_components(line: String) -> Option<Vec<LineComponent>> {
-    let mut components: Vec<LineComponent> = vec!();
-
-    for word in line.replace(","," ").split_whitespace() {
-        if word.starts_with('#') {
-            // Disregard entire commented portion and return
-            break;
-        } else if word.starts_with('$') {
-            let register: LineComponent = LineComponent {
-                component_type: ComponentType::Register,
-                content: word.to_string(),
-            };
-
-            components.push(register);
-        } else if word.starts_with('.') {
-            let directive: LineComponent = LineComponent {
-                component_type: ComponentType::Directive,
-                content: word.to_string(),
-            };
-
-            components.push(directive);
-        } else if word.ends_with(':') {
-            let label: LineComponent = LineComponent {
-                component_type: ComponentType::Label,
-                content: word[..word.len()-1].to_string(),
-            };
-
-            components.push(label);
-        } else if let Ok(_) = base_parse(word) {
-            let immediate: LineComponent = LineComponent {
-                component_type: ComponentType::Immediate,
-                content: word.to_string(),
-            };
-
-            components.push(immediate);
-        } else if word.chars().all(|c| c.is_alphanumeric()) {
-            if get_mnemonics().contains(&word.to_string()) {
-                let mnemonic: LineComponent = LineComponent {
-                    component_type: ComponentType::Mnemonic,
-                    content: word.to_string(),
-                };
-
-                components.push(mnemonic);
-            } else {
-                let identifier: LineComponent = LineComponent {
-                    component_type: ComponentType::Identifier,
-                    content: word.to_string(),
-                };
-
-                components.push(identifier);
-            }
+        let component: LineComponent;
+        if component_result.is_err() {
+            return Err(component_result.unwrap_err());
+        } else {
+            component = component_result.unwrap();
         }
+
+        components.push(component);
     }
 
     match components.len() {
         0 => {
-            return None;
+            return Ok(None);
         },
         _ => {
-            return Some(components);
+            return Ok(Some(components));
         }
+    }
+}
+
+// Required implementation for regex library
+fn token_to_line_component(token: Token, slice: &str, mnemonics: &Vec<String>) -> Result<LineComponent, String> {
+    match token {
+        Token::Directive => return Ok(LineComponent::Directive(slice.to_string())),
+        Token::Label => {
+            return Ok(LineComponent::Label(slice[..slice.len()-1].to_string()));
+        },
+        Token::Identifier => {
+            if mnemonics.contains(&slice.to_string()) {
+                return Ok(LineComponent::Mnemonic(slice.to_string()));
+            } else {
+                return Ok(LineComponent::Identifier(slice.to_string()));
+            }
+        },
+        Token::Register => return Ok(LineComponent::Register(slice.to_string())),
+        Token::HexNumber => {
+            if let Ok(value) = i32::from_str_radix(&slice[2..], 16) {
+                return Ok(LineComponent::Immediate(value));
+            } else {
+                return Err("Failed to parse as hexadecimal.".to_string());
+            }
+        },
+        Token::BinaryNumber => {
+            if let Ok(value) = i32::from_str_radix(&slice[2..], 2) {
+                return Ok(LineComponent::Immediate(value));
+            } else {
+                return Err("Failed to parse as binary.".to_string());
+            }
+        },
+        Token::OctalNumber => {
+            if let Ok(value) = i32::from_str_radix(&slice[1..], 8) {
+                return Ok(LineComponent::Immediate(value));
+            } else {
+                return Err("Failed to parse as octal.".to_string());
+            }
+        },
+        Token::DecimalNumber => {
+            if let Ok(value) = i32::from_str_radix(&slice, 10) {
+                return Ok(LineComponent::Immediate(value));
+            } else {
+                return Err("Failed to parse as decimal.".to_string());
+            }
+        },
+        _ => return Err(format!("pattern \"{slice}\" could not be matched by parser.")),
     }
 }

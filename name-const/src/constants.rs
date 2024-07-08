@@ -23,6 +23,7 @@ pub const INSTRUCTION_SET: [InstructionInformation; NUM_OF_IMPLEMENTED_INSTRUCTI
         opcode: None,
         funct: Some(32),
         args: &[ArgumentType::Rd, ArgumentType::Rs, ArgumentType::Rt],
+        has_optional: false,
     },
     InstructionInformation {
         mnemonic: "addi",
@@ -30,6 +31,7 @@ pub const INSTRUCTION_SET: [InstructionInformation; NUM_OF_IMPLEMENTED_INSTRUCTI
         opcode: Some(8),
         funct: None,
         args: &[ArgumentType::Rt, ArgumentType::Rs, ArgumentType::Immediate],
+        has_optional: false,
     },
     InstructionInformation {
         mnemonic: "beq",
@@ -37,6 +39,7 @@ pub const INSTRUCTION_SET: [InstructionInformation; NUM_OF_IMPLEMENTED_INSTRUCTI
         opcode: Some(4),
         funct: None,
         args: &[ArgumentType::Rs, ArgumentType::Rt, ArgumentType::Identifier],
+        has_optional: false,
     },
     InstructionInformation {
         mnemonic: "j",
@@ -44,6 +47,7 @@ pub const INSTRUCTION_SET: [InstructionInformation; NUM_OF_IMPLEMENTED_INSTRUCTI
         opcode: Some(2),
         funct: None,
         args: &[ArgumentType::Identifier],
+        has_optional: false,
     },
     InstructionInformation {
         mnemonic: "jal",
@@ -51,6 +55,7 @@ pub const INSTRUCTION_SET: [InstructionInformation; NUM_OF_IMPLEMENTED_INSTRUCTI
         opcode: Some(3),
         funct: None,
         args: &[ArgumentType::Identifier],
+        has_optional: false,
     },
     InstructionInformation {
         mnemonic: "lb",
@@ -58,6 +63,7 @@ pub const INSTRUCTION_SET: [InstructionInformation; NUM_OF_IMPLEMENTED_INSTRUCTI
         opcode: Some(32),
         funct: None,
         args: &[ArgumentType::Rt, ArgumentType::Immediate, ArgumentType::Rs],
+        has_optional: true,
     },
     InstructionInformation {
         mnemonic: "lui",
@@ -65,6 +71,7 @@ pub const INSTRUCTION_SET: [InstructionInformation; NUM_OF_IMPLEMENTED_INSTRUCTI
         opcode: Some(15),
         funct: None,
         args: &[ArgumentType::Rt, ArgumentType::Immediate],
+        has_optional: false,
     },
     InstructionInformation {
         mnemonic: "ori",
@@ -72,6 +79,7 @@ pub const INSTRUCTION_SET: [InstructionInformation; NUM_OF_IMPLEMENTED_INSTRUCTI
         opcode: Some(13),
         funct: None,
         args: &[ArgumentType::Rs, ArgumentType::Rt, ArgumentType::Immediate],
+        has_optional: false,
     },
     InstructionInformation {
         mnemonic: "sll",
@@ -79,6 +87,7 @@ pub const INSTRUCTION_SET: [InstructionInformation; NUM_OF_IMPLEMENTED_INSTRUCTI
         opcode: None,
         funct: Some(0),
         args: &[ArgumentType::Rd, ArgumentType::Rt, ArgumentType::Immediate],
+        has_optional: false,
     },
     InstructionInformation {
         mnemonic: "srl",
@@ -86,6 +95,7 @@ pub const INSTRUCTION_SET: [InstructionInformation; NUM_OF_IMPLEMENTED_INSTRUCTI
         opcode: None,
         funct: Some(2),
         args: &[ArgumentType::Rd, ArgumentType::Rt, ArgumentType::Immediate],
+        has_optional: false,
     },
     InstructionInformation {
         mnemonic: "sub",
@@ -93,6 +103,7 @@ pub const INSTRUCTION_SET: [InstructionInformation; NUM_OF_IMPLEMENTED_INSTRUCTI
         opcode: None,
         funct: Some(34),
         args: &[ArgumentType::Rd, ArgumentType::Rs, ArgumentType::Rt],
+        has_optional: false,
     },
     InstructionInformation {
         mnemonic: "syscall",
@@ -100,6 +111,7 @@ pub const INSTRUCTION_SET: [InstructionInformation; NUM_OF_IMPLEMENTED_INSTRUCTI
         opcode: None,
         funct: Some(12),
         args: &[],
+        has_optional: false,
     },
     InstructionInformation {
         mnemonic: "xor",
@@ -107,5 +119,6 @@ pub const INSTRUCTION_SET: [InstructionInformation; NUM_OF_IMPLEMENTED_INSTRUCTI
         opcode: None,
         funct: Some(38),
         args: &[ArgumentType::Rd, ArgumentType::Rs, ArgumentType::Rt],
+        has_optional: false,
     },
 ];

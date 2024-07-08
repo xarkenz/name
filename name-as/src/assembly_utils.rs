@@ -2,9 +2,11 @@ use name_const::structs::{ArgumentType, InstructionInformation, InstructionType,
 use name_const::constants::REGISTERS;
 
 pub fn assemble_instruction(info: &InstructionInformation, arguments: &Vec<LineComponent>, symbol_table: &Vec<Symbol>, current_address: &u32) -> Result<Option<u32>, String> {
-    let num_of_specified_args = info.args.len();
-    if arguments.len() != num_of_specified_args {
-        return Err("Improper number of arguments provided for instruction.".to_string());
+    let num_of_passed_args = arguments.len();
+    let num_of_specified_args = arguments.len();
+
+    if (num_of_passed_args != num_of_specified_args && !info.has_optional) || (num_of_passed_args > num_of_specified_args) {
+        return Err(format!("Improper number of arguments provided for `{}`", info.mnemonic));
     }
 
     match info.instruction_type {
@@ -12,15 +14,23 @@ pub fn assemble_instruction(info: &InstructionInformation, arguments: &Vec<LineC
             let mut rd: Option<String> = None;
             let mut rs: Option<String> = None;
             let mut rt: Option<String> = None;
-            let mut shamt: Option<String> = None;
+            let mut shamt: Option<i32> = None;
             let funct: u32 = info.funct.expect("Improper implmentation of instructions (funct field undefined for R-type instr)\nIf you are a student reading this, understand this error comes entirely from the codebase of this vscode extension.");
 
             for(i, passed) in arguments.iter().enumerate() {
+                let mut content = String::from("");
+                let mut immediate = 0;
+                match passed {
+                    LineComponent::Register(register) => content = register.clone(),
+                    LineComponent::Immediate(imm) => immediate = imm.clone(),
+                    _ => {}
+                }
+
                 match info.args[i] {
-                    ArgumentType::Rd => rd = Some(passed.content.clone()),
-                    ArgumentType::Rs => rs = Some(passed.content.clone()),
-                    ArgumentType::Rt => rt = Some(passed.content.clone()),
-                    ArgumentType::Immediate => shamt = Some(passed.content.clone()),
+                    ArgumentType::Rd => rd = Some(content.clone()),
+                    ArgumentType::Rs => rs = Some(content.clone()),
+                    ArgumentType::Rt => rt = Some(content.clone()),
+                    ArgumentType::Immediate => shamt = Some(immediate),
 
                     _ => return Err("Improper type of arguments provided for instruction.".to_string()),
                 }
@@ -39,16 +49,25 @@ pub fn assemble_instruction(info: &InstructionInformation, arguments: &Vec<LineC
             let opcode: u32 = info.opcode.expect("Improper implmentation of instructions (opcode undefined for I-type instr)\nIf you are a student reading this, understand this error comes entirely from the codebase of this vscode extension.");
             let mut rt: Option<String> = None;
             let mut rs: Option<String> = None;
-            let mut imm: Option<String> = None;
+            let mut imm: Option<i32> = None;
             let mut ident: Option<String> = None;
 
             for (i, passed) in arguments.iter().enumerate() {
+                let mut content: String = String::from("");
+                let mut immediate: i32 = 0;
+                match passed {
+                    LineComponent::Register(register) => content = register.clone(),
+                    LineComponent::Immediate(imm) => immediate = imm.clone(),
+                    LineComponent::Identifier(identifier) => content = identifier.clone(),
+                    _ => {},
+                }
+
                 match info.args[i] {
-                    ArgumentType::Rt => rt = Some(passed.content.clone()),
-                    ArgumentType::Rs => rs = Some(passed.content.clone()),
-                    ArgumentType::Immediate => imm = Some(passed.content.clone()),
-                    ArgumentType::Identifier => ident = Some(passed.content.clone()),
-                    _ => return Err("Improper type of arguments provided for instruction.".to_string()),
+                    ArgumentType::Rt => rt = Some(content.clone()),
+                    ArgumentType::Rs => rs = Some(content.clone()),
+                    ArgumentType::Immediate => imm = Some(immediate.clone()),
+                    ArgumentType::Identifier => ident = Some(content.clone()),
+                    _ => return Err(" - Improper type of arguments provided for instruction.".to_string()),
                 }
             }
 
@@ -58,8 +77,13 @@ pub fn assemble_instruction(info: &InstructionInformation, arguments: &Vec<LineC
                 if let Some(symbol) = symbol_table.iter().find(|symbol| symbol.identifier == unwrapped_ident){
                     target_addr = symbol.value;
                     // Translate from address to offset from this instruction's address
-                    let offset: i16 = (current_address .clone() as i32 - target_addr as i32) as i16;
-                    imm = Some((offset as u16).to_string());
+                    // Bit shifted twice right for extra range - instruction bytes are already aligned to 4 so bottom 2 bits are extra
+                    let offset_unchecked: i32 = (target_addr as i32 - current_address .clone() as i32) >> 2;
+                    imm = Some(offset_unchecked);
+                    
+                    if offset_unchecked as i16 as i32 != offset_unchecked {
+                        return Err(" - Branch target out of range. I never thought we'd get here...".to_string());
+                    } 
                 } else {
                     return Ok(None);
                 }
@@ -79,9 +103,16 @@ pub fn assemble_instruction(info: &InstructionInformation, arguments: &Vec<LineC
             let mut identifier: Option<String> = None;
 
             for (i, passed) in arguments.iter().enumerate() {
+                let content;
+                if let LineComponent::Identifier(ident) = passed {
+                    content = ident;
+                } else {
+                    return Err(" - Malformed argument.".to_string())
+                }
+                
                 match info.args[i] {
-                    ArgumentType::Identifier => identifier = Some(passed.content.clone()),
-                    _ => return Err("Improper type of arguments provided for instruction.".to_string()),
+                    ArgumentType::Identifier => identifier = Some(content.clone()),
+                    _ => return Err(" - Improper type of arguments provided for instruction.".to_string()),
                 }
             }
             let mut address: Option<u32> = None;
@@ -123,10 +154,7 @@ fn assemble_instruction_test() {
 
     let arguments: Vec<&'static str> = vec!["$t0", "$t1", "$t2"];
     let wrapped_arguments: Vec<LineComponent> = arguments.into_iter().map(|x| 
-            LineComponent {
-                component_type: name_const::structs::ComponentType::Register,
-                content: x.to_string(),
-            }
+            LineComponent::Register(x.to_string())
     ).collect();
 
     let mock_symbol_table: Vec<Symbol> = vec![
@@ -141,10 +169,7 @@ fn assemble_instruction_test() {
     let jal_info = instruction_table.get(&"jal".to_string()).unwrap();
     let arguments: Vec<&'static str> = vec!["test"];
     let wrapped_arguments: Vec<LineComponent> = arguments.into_iter().map(|x| 
-            LineComponent {
-                component_type: name_const::structs::ComponentType::Register,
-                content: x.to_string(),
-            }
+            LineComponent::Register(x.to_string())
     ).collect();
 
     assert_eq!(assemble_instruction(jal_info, &wrapped_arguments, &mock_symbol_table, &mock_current_address), Ok(Some(0x0c004020)));
@@ -154,35 +179,23 @@ fn assemble_instruction_test() {
     assert_eq!(assemble_instruction(jal_info, &wrapped_arguments, &mock_symbol_table, &mock_current_address), Ok(None));
 }
 
-fn assemble_r_type(rd: Option<String>, rs: Option<String>, rt: Option<String>, shamt: Option<String>, funct: u32) -> Result<u32, String> {
+fn assemble_r_type(rd: Option<String>, rs: Option<String>, rt: Option<String>, shamt: Option<i32>, funct: u32) -> Result<u32, String> {
 
     // I'm using these unwrap_or statements to ensure that when packing R-type instructions that don't use all 3, the fields default to 0 in the packed word.
     // The '?' operators are to ensure the proper error message is propagated up through to the assembler's 'errors' vec.
     let parsed_rd: u32 = parse_register_to_u32(&rd.unwrap_or("$0".to_string()))?;
     let parsed_rs: u32 = parse_register_to_u32(&rs.unwrap_or("$0".to_string()))?;
     let parsed_rt: u32 = parse_register_to_u32(&rt.unwrap_or("$0".to_string()))?;
-
-    let parsed_shamt: u32;
-    match shamt {
-        Some(shift_amount) => {
-            if let Ok(parsed_shift_amount) = shift_amount.parse::<u32>(){
-                if parsed_shift_amount < 32 {
-                    parsed_shamt = parsed_shift_amount;
-                } else {
-                    return Err("Shift amount out of bounds (>31)".to_string());
-                }
-            } else {
-                return Err("Shift amount parsing failed.".to_string());
-            }
-
-        },
-        None => {
-            parsed_shamt = 0;
-        },
-    }
+    let unchecked_shamt: i32 = shamt.unwrap_or(0);
 
     // The opcode for all R-type instructions is 0.
     let opcode: u32 = 0;
+
+    // Check shamt for range
+    let parsed_shamt: u32 = unchecked_shamt as u32;
+    if unchecked_shamt < 0 || unchecked_shamt > 31 {
+        return Err("Shift amount out of range on shift instruction.".to_string());
+    }
 
     return Ok(
         (opcode << 26) |
@@ -200,7 +213,7 @@ fn assemble_r_type_test() {
     let rd = Some("$t0".to_string());
     let rs = Some("$t1".to_string());
     let rt = Some("$t2".to_string());
-    let shamt = Some("0".to_string());
+    let shamt = Some(0);
     let assembled_output = assemble_r_type(rd, rs, rt, shamt, 32);
     assert_eq!(assembled_output, Ok(0x012A4020));
 
@@ -209,15 +222,21 @@ fn assemble_r_type_test() {
 
     let rd = Some("$t0".to_string());
     let rs = Some("$t1".to_string());
-    let shamt = Some ("32".to_string());
+    let shamt = Some (32);
     let assembled_shamt_err = assemble_r_type(rd, rs, None, shamt, 32);
     assert!(assembled_shamt_err.is_err());
 }
 
-fn assemble_i_type(opcode: u32, rs: Option<String>, rt: Option<String>, immediate: Option<String>) -> Result<u32, String> {
+fn assemble_i_type(opcode: u32, rs: Option<String>, rt: Option<String>, immediate: Option<i32>) -> Result<u32, String> {
     let parsed_rs: u32 = parse_register_to_u32(&rs.unwrap_or("$0".to_string()))?;
     let parsed_rt: u32 = parse_register_to_u32(&rt.unwrap_or("$0".to_string()))?;
-    let parsed_immediate: u32 = base_parse(&immediate.unwrap_or("0".to_string()))?;
+    let unchecked_immediate: u32 = immediate.unwrap_or(0) as u32;
+
+    // Check range on immediate value
+    let parsed_immediate = unchecked_immediate as u16 as u32;
+    if parsed_immediate != unchecked_immediate {
+        return Err("Immediate out of range. Consider a psuedoinstruction that allows for 32-bit range.".to_string());
+    }
 
     if parsed_immediate > 0x10000 {
         return Err("Immediate exceeds 16 bits".to_string());
@@ -236,7 +255,7 @@ fn assemble_i_type_test() {
     let opcode: u32 = 13;
     let rt: Option<String> = Some("$t0".to_string());
     let rs: Option<String> = Some("$t2".to_string());
-    let immediate: Option<String> = Some("0xBEEF".to_string());
+    let immediate: Option<i32> = Some(0xBEEF);
 
     let assembled_output = assemble_i_type(opcode, rs, rt, immediate);
     assert_eq!(assembled_output, Ok(0x3548BEEF));
@@ -292,26 +311,8 @@ fn parse_register_to_u32(register: &String) -> Result<u32, String> {
     }
 }
 
-// Parses literals in hex, bin, oct, and decimal.
-pub fn base_parse(input: &str) -> Result<u32, &'static str> {
-    if input.starts_with("0x") {
-        // Hexadecimal
-        u32::from_str_radix(&input[2..], 16).map_err(|_| "Failed to parse as hexadecimal")
-    } else if input.starts_with("0b") {
-        // Binary
-        u32::from_str_radix(&input[2..], 2).map_err(|_| "Failed to parse as binary")
-    } else if input.starts_with('0') && input.len() > 1 {
-        // Octal
-        u32::from_str_radix(&input[1..], 8).map_err(|_| "Failed to parse as octal")
-    } else {
-        // Decimal
-        input
-            .parse::<u32>()
-            .map_err(|_| "Failed to parse as decimal")
-    }
-}
-
 pub fn pretty_print_instruction(packed: &u32){
     println!(" - 0x{:08x}", packed);
     println!(" - 0b{:032b}", packed);
+    println!();
 }

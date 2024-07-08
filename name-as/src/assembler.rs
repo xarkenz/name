@@ -1,5 +1,5 @@
 use name_const::structs::{Backpatch, InstructionInformation, LineComponent, Symbol, SymbolType, Section};
-use name_const::helpers::generate_instruction_hashmap;
+use name_const::helpers::{generate_instruction_hashmap, get_mnemonics};
 use name_const::elf_utils::{MIPS_TEXT_START_ADDR, MIPS_DATA_START_ADDR, MIPS_ADDRESS_ALIGNMENT};
 
 use crate::assembly_utils::{assemble_instruction, pretty_print_instruction};
@@ -7,8 +7,8 @@ use crate::parser::parse_components;
 
 use std::collections::HashMap;
 
-
 const BACKPATCH_PLACEHOLDER: u32 = 0;
+
 /*
 I can understand that this assemble function may at first seem to be kind of a behemoth. 
 Perhaps I need to extract some functionality into helpers and be more descriptive.
@@ -44,10 +44,22 @@ pub fn assemble(file_contents: String) -> Result<(), Vec<String>> {
 
     let mut line_number: usize = 1;
 
-    for line in file_contents.split('\n') {
-        println!("\n{line_number}: {line}");
+    let mnemonics = get_mnemonics();
 
-        let line_components = parse_components(line.to_string());
+    for line in file_contents.split('\n') {
+        println!("{line_number}: {line}");
+
+        let line_components_result = parse_components(line.to_string(), &mnemonics);
+
+        let line_components;
+        match line_components_result {
+            Ok(components) => line_components = components,
+            Err(e) => {
+                errors.push(e);
+                line_number += 1;
+                continue;
+            },
+        }
         
         if Option::is_none(&line_components) {
             line_number += 1;
@@ -58,9 +70,9 @@ pub fn assemble(file_contents: String) -> Result<(), Vec<String>> {
         let mut arguments: Vec<LineComponent> = vec!();
 
         for component in line_components.unwrap() {
-            match component.component_type {
-                name_const::structs::ComponentType::Mnemonic => {
-                    let retrieved_instruction_option = instruction_table.get(&component.content);
+            match component {
+                LineComponent::Mnemonic(mnemonic) => {
+                    let retrieved_instruction_option = instruction_table.get(&mnemonic);
                     
                     match retrieved_instruction_option {
                         Some(retrieved_instruction_information) => {
@@ -73,16 +85,18 @@ pub fn assemble(file_contents: String) -> Result<(), Vec<String>> {
                     }
 
                 },
-                name_const::structs::ComponentType::Register => {
+                LineComponent::Register(_) => {
                     arguments.push(component);
                 },
-                name_const::structs::ComponentType::Immediate => {
+                LineComponent::Immediate(_) => {
                     arguments.push(component);
                 },
-                name_const::structs::ComponentType::Identifier => {
-                    arguments.push(component.clone());
+                LineComponent::Identifier(content) => {
+                    arguments.push(
+                        LineComponent::Identifier(content.clone())
+                    );
 
-                    if symbol_table.iter().find(|symbol| symbol.identifier == component.content).is_none() {
+                    if symbol_table.iter().find(|symbol| symbol.identifier == content).is_none() {
                         if instruction_information.is_none() {
                             errors.push(format!(" - Found dangling identifier attached to no instruction on line {line_number}.\nEnsure you are using a valid instruction."));
                         }
@@ -90,7 +104,7 @@ pub fn assemble(file_contents: String) -> Result<(), Vec<String>> {
                         backpatches.push(Backpatch {
                             instruction_info: instruction_information.unwrap(),
                             arguments: arguments.clone(),
-                            undiscovered_identifier: component.content.to_owned(),
+                            undiscovered_identifier: content.to_owned(),
                             backpatch_address: current_address,
                             byte_offset: section_dot_text.len(),
                             line_number: line_number,
@@ -99,17 +113,17 @@ pub fn assemble(file_contents: String) -> Result<(), Vec<String>> {
                         println!(" - Forward reference detected (line {line_number}).");
                     }
                 },
-                name_const::structs::ComponentType::Label => {
+                LineComponent::Label(content) => {
                     symbol_table.push(
                         Symbol { 
                             symbol_type: SymbolType::Address,
-                            identifier: component.content.to_owned(),
+                            identifier: content.to_owned(),
                             value: current_address, 
                         }
                     );
                     
                     loop {
-                        let backpatch_found = backpatches.iter().find(|backpatch| backpatch.undiscovered_identifier == component.content );
+                        let backpatch_found = backpatches.iter().find(|backpatch| backpatch.undiscovered_identifier == content );
                         let backpatch: &Backpatch;
 
                         if backpatch_found.is_none() { 
@@ -131,7 +145,8 @@ pub fn assemble(file_contents: String) -> Result<(), Vec<String>> {
                                         section_dot_text.splice(insert_offset..insert_offset+4, bytes_to_insert.iter().cloned());
                                         
                                         let label = backpatch.undiscovered_identifier.clone();
-                                        println!(" - Backpatch resolved for label {label}:");
+                                        let line = backpatch.line_number.clone();
+                                        println!(" - Backpatch resolved for label {label} on line {line}:");
                                         pretty_print_instruction(&word);
 
                                         let found_index = backpatches.iter().position(|bp| bp == backpatch).expect("Literally impossible to get this error.");
@@ -155,8 +170,8 @@ pub fn assemble(file_contents: String) -> Result<(), Vec<String>> {
                     }
                     
                 },
-                name_const::structs::ComponentType::Directive => {
-                    match component.content.as_str() {
+                LineComponent::Directive(content) => {
+                    match content.as_str() {
                         ".text" => {
                             match current_section {
                                 Section::Null => {
@@ -222,7 +237,7 @@ pub fn assemble(file_contents: String) -> Result<(), Vec<String>> {
                                     &BACKPATCH_PLACEHOLDER.to_be_bytes()
                                 );
 
-                                println!(" - Placeholder bytes appended to section .text.");
+                                println!(" - Placeholder bytes appended to section .text.\n");
                             }
                         }
                     },

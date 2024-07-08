@@ -15,19 +15,13 @@ pub struct LineInfo {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct LineComponent {
-    pub component_type: ComponentType,
-    pub content: String,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum ComponentType {
-    Mnemonic,
-    Register,
-    Immediate,
-    Identifier,
-    Label,
-    Directive,
+pub enum LineComponent {
+    Mnemonic(String),
+    Register(String),
+    Immediate(i32),
+    Identifier(String),
+    Label(String),
+    Directive(String),
 }
 
 #[derive(Debug, PartialEq)]
@@ -37,6 +31,7 @@ pub struct InstructionInformation {
     pub opcode: Option<u32>,
     pub funct: Option<u32>,
     pub args: &'static [ArgumentType],
+    pub has_optional: bool,
 }
 
 #[derive(Debug, PartialEq)]
