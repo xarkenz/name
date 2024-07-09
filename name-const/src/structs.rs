@@ -53,15 +53,20 @@ pub enum ArgumentType {
 
 #[derive(Debug)]
 pub struct Symbol {
-    pub symbol_type: SymbolType,
+    pub symbol_type: u8,
     pub identifier: String,
     pub value: u32,
+    pub size: u32,
+    pub visibility: Visibility,
+    pub section: Section,
 }
 
-#[derive(Debug)]
-pub enum SymbolType {
-    Equivalence,
-    Address,
+#[derive(Debug, Default)]
+pub enum Visibility {
+    #[default]
+    Local,
+    Global,
+    Weak,
 }
 
 #[derive(Debug)]

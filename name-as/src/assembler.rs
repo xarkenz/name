@@ -1,6 +1,6 @@
-use name_const::structs::{Backpatch, InstructionInformation, LineComponent, Symbol, SymbolType, Section};
+use name_const::structs::{Backpatch, InstructionInformation, LineComponent, Section, Symbol, Visibility};
 use name_const::helpers::{generate_instruction_hashmap, get_mnemonics};
-use name_const::elf_utils::{MIPS_TEXT_START_ADDR, MIPS_DATA_START_ADDR, MIPS_ADDRESS_ALIGNMENT};
+use name_const::elf_utils::{MIPS_TEXT_START_ADDR, MIPS_DATA_START_ADDR, MIPS_ADDRESS_ALIGNMENT, STT_FUNC, STT_OBJECT};
 
 use crate::assemble_instruction::assemble_instruction;
 use crate::assembly_helpers::pretty_print_instruction;
@@ -26,8 +26,10 @@ The logic is as follows:
 
 The idea is, once the assembler is done running, if any errors were encountered, their content is pushed to the errors vector,
 and the errors vector is returned as the Err variant of the Result for the caller to handle.
+
+The Ok variant consists of any data needed for the ELF object file output.
 */
-pub fn assemble(file_contents: String) -> Result<(), Vec<String>> {
+pub fn assemble(file_contents: String) -> Result<(Vec<u8>, Vec<Symbol>), Vec<String>> {
     let mut errors: Vec<String> = vec!();
 
     let instruction_table: HashMap<String, &'static InstructionInformation> = generate_instruction_hashmap();
@@ -116,10 +118,20 @@ pub fn assemble(file_contents: String) -> Result<(), Vec<String>> {
                 },
                 LineComponent::Label(content) => {
                     symbol_table.push(
-                        Symbol { 
-                            symbol_type: SymbolType::Address,
+                        Symbol {
+                            symbol_type: match current_section {
+                                Section::Null => {
+                                    errors.push(" - Cannot declare label outside a section.".to_string());
+                                    0
+                                },
+                                Section::Text => STT_FUNC,
+                                Section::Data => STT_OBJECT,
+                            },
                             identifier: content.to_owned(),
-                            value: current_address, 
+                            value: current_address,
+                            size: 4,
+                            visibility: Visibility::Local,
+                            section: Section::Text, 
                         }
                     );
                     
@@ -274,7 +286,7 @@ pub fn assemble(file_contents: String) -> Result<(), Vec<String>> {
 
 
     if errors.len() == 0 {
-        return Ok(());
+        return Ok((section_dot_text, symbol_table));
     } else {
         return Err(errors);
     }

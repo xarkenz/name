@@ -2,10 +2,20 @@
 // This file contains relevant structs and methods to produce valid ET_REL and ET_EXEC files.
 
 // Imports
-use std::{fs, io::Write, vec::Vec};    // Used for ELF sections
+use std::{fs, io::Write, path::PathBuf, vec::Vec};
+
+use crate::structs::{Section, Symbol, Visibility};    // Used for ELF sections
 
 // The following data definitions are required to construct ELF files.
 // The meaning of each field is detailed in the appropriate struct.
+
+// Macros - had to learn somehow!
+
+macro_rules! ELF32_ST_INFO {
+    ($bind:expr, $type:expr) => {
+        (($bind << 4) + ($type & 0xf)) as u8
+    };
+}
 
 // Consts
 
@@ -13,15 +23,11 @@ use std::{fs, io::Write, vec::Vec};    // Used for ELF sections
 // These are the sections which should be present in each ET_REL constructed by the functions in this file.
 const NUM_OF_SECTIONS: usize = 6;       // This is e_shnum.
 const SECTIONS: [&'static str; NUM_OF_SECTIONS] = [
-    "",
+    "",         // Null (reserved) section
     ".text",
     ".data",
-    /*
     ".symtab",
     ".strtab",
-    */
-    ".debug",
-    ".line",
     ".shstrtab",
 ];
 
@@ -119,11 +125,17 @@ const PF_X: u32 = 0x1;  // Execute
 const PF_W: u32 = 0x2;  // Write
 const PF_R: u32 = 0x4;  // Read
 
+// Symbol table consts
+pub const STT_OBJECT: u8 = 1;
+pub const STT_FUNC: u8 = 2;
+const SH_ENTSIZE_SYMTAB: u32 = 16;
+
 // Section header consts
 
 // section header type indicators
 const SHT_NULL: u32 = 0;
 const SHT_PROGBITS: u32 = 1;
+const SHT_SYMTAB: u32 = 2;
 const SHT_STRTAB: u32 = 3;
 
 // sh_flags  (unused commented out):
@@ -254,13 +266,43 @@ impl Elf32SectionHeader {
     }
 }
 
+#[repr(C)]
+#[derive(Debug, Default, Clone)]
+pub struct Elf32Sym{
+    pub st_name: u32,
+    pub st_value: u32,
+    pub st_size: u32,
+    pub st_info: u8,
+    pub st_other: u8,
+    pub st_shndx: u16,
+}
+
+impl Elf32Sym {
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut bytes: Vec<u8> = vec!();
+
+        bytes.extend_from_slice(&self.st_name.to_be_bytes());
+        bytes.extend_from_slice(&self.st_value.to_be_bytes());
+        bytes.extend_from_slice(&self.st_size.to_be_bytes());
+        bytes.extend_from_slice(&[self.st_info]);
+        bytes.extend_from_slice(&[self.st_other]);
+        bytes.extend_from_slice(&self.st_shndx.to_be_bytes());
+
+        bytes
+    }
+}
+
 // To construct an ET_REL ELF file, we'll use the following struct:
 #[repr(C)]
 #[derive(Debug, Default, Clone)]
 pub struct RelocatableElf{
     file_header: Elf32Header,
     program_header_table: Vec<Elf32ProgramHeader>,
-    sections: Vec<Vec<u8>>,
+    section_dot_text: Vec<u8>,
+    section_dot_data: Vec<u8>,
+    section_dot_symtab: Vec<u8>,
+    section_dot_strtab: Vec<u8>,
+    section_dot_shstrtab: Vec<u8>,
     section_header_table: Vec<Elf32SectionHeader>,
 }
 
@@ -289,7 +331,7 @@ fn create_new_et_rel_file_header(passed_e_shoff: u32) -> Elf32Header {
 }
 
 // This function combines all the previous to actually create a new object file.
-pub fn create_new_et_rel(text_section: Vec<u8>, data_section: Vec<u8>, debug_section: Vec<u8>, line_section: Vec<u8>) -> RelocatableElf {
+pub fn create_new_et_rel(text_section: Vec<u8>, data_section: Vec<u8>, symtab_section: Vec<u8>, strtab_section: Vec<u8>) -> RelocatableElf {
     // The section header string table entry requires some calculations.
     // Here we get the shstrtab as bytes from the constant defined at the top of the file.
     // We also get the size of the shstrtab.
@@ -303,15 +345,15 @@ pub fn create_new_et_rel(text_section: Vec<u8>, data_section: Vec<u8>, debug_sec
     // Get size of each section to properly calculate offsets in result file
     let text_size: u32 = text_section.len() as u32;
     let data_size: u32 = data_section.len() as u32;
-    let debug_size: u32 = debug_section.len() as u32;
-    let line_size: u32 = line_section.len() as u32;
+    let symtab_size: u32 = symtab_section.len() as u32;
+    let strtab_size: u32 = strtab_section.len() as u32;
 
     // Calculate offsets using sizes
     let text_offset: u32 = E_PHOFF_DEFAULT + (E_PHNUM_DEFAULT * E_PHENTSIZE_DEFAULT) as u32;     // The program header entries are for the two loadable segments, .text and .data
     let data_offset: u32 = text_offset + text_size;
-    let debug_offset: u32 = data_offset + data_size;
-    let line_offset: u32 = debug_offset + debug_size;
-    let shstrtab_offset: u32 = line_offset + line_size;
+    let symtab_offset: u32 = data_offset + data_size;
+    let strtab_offset: u32 = symtab_offset + symtab_size;
+    let shstrtab_offset: u32 = strtab_offset + strtab_size;
     let sh_offset = shstrtab_offset + shstrtab_size;
 
     // Construct the ELF file header
@@ -384,26 +426,26 @@ pub fn create_new_et_rel(text_section: Vec<u8>, data_section: Vec<u8>, debug_sec
         sh_entsize: 0, // Unused in this section
     };
 
-    let debug_sh: Elf32SectionHeader = Elf32SectionHeader {
+    let symtab_sh: Elf32SectionHeader = Elf32SectionHeader {
         sh_name: data_sh.sh_name + SECTIONS[2].len() as u32 + 1,
-        sh_type: SHT_PROGBITS,
-        sh_flags: SHF_STRINGS,  // The debug section for NAME contains null-term strings
-        sh_addr: 0,             // Not loaded
-        sh_offset: debug_offset,
-        sh_size: debug_size,
-        sh_link: 0,
+        sh_type: SHT_SYMTAB,
+        sh_flags: 0,  // The symtab does not have any flags associated
+        sh_addr: 0,
+        sh_offset: symtab_offset,
+        sh_size: symtab_size,
+        sh_link: 4,             // Link to appropriate string table
         sh_info: 0,
         sh_addralign: 0,
-        sh_entsize: 0,
+        sh_entsize: SH_ENTSIZE_SYMTAB,
     };
 
-    let line_sh: Elf32SectionHeader = Elf32SectionHeader {
-        sh_name: debug_sh.sh_name + SECTIONS[3].len() as u32 + 1,
-        sh_type: SHT_PROGBITS,
-        sh_flags: SHF_STRINGS,  // The line info for NAME is also null-term strings
+    let strtab_sh: Elf32SectionHeader = Elf32SectionHeader {
+        sh_name: symtab_sh.sh_name + SECTIONS[3].len() as u32 + 1,
+        sh_type: SHT_STRTAB,
+        sh_flags: SHF_STRINGS,
         sh_addr: 0,
-        sh_offset: line_offset,
-        sh_size: line_size,
+        sh_offset: strtab_offset,
+        sh_size: strtab_size,
         sh_link: 0,
         sh_info: 0,
         sh_addralign: 0,
@@ -411,7 +453,7 @@ pub fn create_new_et_rel(text_section: Vec<u8>, data_section: Vec<u8>, debug_sec
     };
 
     let shstrtab_sh: Elf32SectionHeader = Elf32SectionHeader {
-        sh_name: line_sh.sh_name + SECTIONS[4].len() as u32 + 1,
+        sh_name: strtab_sh.sh_name + SECTIONS[4].len() as u32 + 1,
         sh_type: SHT_STRTAB,
         sh_flags: SHF_STRINGS,
         sh_addr: 0,
@@ -424,24 +466,24 @@ pub fn create_new_et_rel(text_section: Vec<u8>, data_section: Vec<u8>, debug_sec
     };
 
     // Collect all previously defined section headers into the section header table
-    let complete_section_header_table: Vec<Elf32SectionHeader> = vec![null_sh, text_sh, data_sh, debug_sh, line_sh, shstrtab_sh];
-
-    // Collect all sections into the sections vector
-    let complete_sections: Vec<Vec<u8>> = vec![text_section, data_section, debug_section, line_section, shstrtab_section];
+    let complete_section_header_table: Vec<Elf32SectionHeader> = vec![null_sh, text_sh, data_sh, symtab_sh, strtab_sh, shstrtab_sh];
 
     // Final step is to create the final ElfRelocatable struct
     return RelocatableElf{
         file_header: elf_file_header,
         program_header_table: complete_program_header_table,
-        sections: complete_sections,
         section_header_table: complete_section_header_table,
+        section_dot_text: text_section,
+        section_dot_data: data_section,
+        section_dot_symtab: symtab_section,
+        section_dot_strtab: strtab_section,
+        section_dot_shstrtab: shstrtab_section,
     }
 }
 
 // This function creates a new file with the passed name and writes all bytes in a RelocatableElf object
-pub fn write_et_rel_to_file(file_name: &str, et_rel: &RelocatableElf) -> Result<(), String> {
+pub fn write_et_rel_to_file(file_name: &PathBuf, et_rel: &RelocatableElf) -> Result<(), String> {
     // Declare file_bytes vector to push all these file bytes onto
-
     // Concatenate all bytes in file header
     let mut file_bytes: Vec<u8> = et_rel.file_header.to_bytes().to_vec();
 
@@ -451,9 +493,11 @@ pub fn write_et_rel_to_file(file_name: &str, et_rel: &RelocatableElf) -> Result<
     }
 
     // Add all sections
-    for section in &et_rel.sections {
-        file_bytes.extend(section);
-    }
+    file_bytes.extend(&et_rel.section_dot_text);
+    file_bytes.extend(&et_rel.section_dot_data);
+    file_bytes.extend(&et_rel.section_dot_symtab);
+    file_bytes.extend(&et_rel.section_dot_strtab);
+    file_bytes.extend(&et_rel.section_dot_shstrtab);
 
     // Section header table
     for entry in &et_rel.section_header_table {
@@ -465,4 +509,27 @@ pub fn write_et_rel_to_file(file_name: &str, et_rel: &RelocatableElf) -> Result<
     f.write_all(&file_bytes).expect("Unable to write data.");
 
     Ok(())
+}
+
+pub fn convert_symbol_to_elf32sym(symbol: &Symbol, strtab_index: u32) -> Elf32Sym {
+    Elf32Sym {
+        st_name: strtab_index,
+        st_value: symbol.value,
+        st_size: symbol.size,
+        st_info: match symbol.visibility {
+            Visibility::Local => ELF32_ST_INFO!(0, symbol.symbol_type),
+            Visibility::Global => ELF32_ST_INFO!(1, symbol.symbol_type),
+            Visibility::Weak => ELF32_ST_INFO!(2, symbol.symbol_type),
+        },
+        st_other: match symbol.visibility {
+            Visibility::Local => 2,
+            Visibility::Global => 0,
+            Visibility::Weak => 0,
+        },
+        st_shndx: match symbol.section {
+            Section::Text => 1,
+            Section::Data => 2,
+            _ => 0,
+        },
+    }
 }

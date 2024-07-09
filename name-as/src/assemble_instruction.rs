@@ -105,7 +105,7 @@ fn assemble_instruction_test() {
     ).collect();
 
     let mock_symbol_table: Vec<Symbol> = vec![
-        Symbol { symbol_type: name_const::structs::SymbolType::Address, identifier: "test".to_string(), value: 0x004020 }
+        Symbol {symbol_type: 2, identifier:"test".to_string(),value:0x004020, size: 4, visibility: name_const::structs::Visibility::Local, section: name_const::structs::Section::Text }
     ]; 
 
     let mock_current_address = name_const::elf_utils::MIPS_TEXT_START_ADDR;
