@@ -1,84 +1,82 @@
-use pest::iterators::Pair;
-use pest_derive::Parser;
+use crate::tokens::Token; 
 
-#[derive(Parser)]
-// Let the record show this is some insanely smart parsing. However, it's kind of restrictive and results in wrong line numbers in some cases.
-#[grammar_inline = r#"
-alpha = _{ 'a'..'z' | 'A'..'Z' }
-digit = _{ '0'..'9' }
-hex   = _{ "0x" ~ (digit | 'a'..'f' | 'A'..'F')+ }
-binary = _{ "0b" ~ ('0'..'1')+ }
-decimal = _{ digit+ }
-number = { hex | binary | decimal }
-WHITESPACE = _{ " " | NEWLINE }
+use name_const::structs::LineComponent;
 
-ident = @{ alpha ~ (alpha | digit)* }
+use logos::Logos;
 
-label = { ident ~ ":" }
-directive = { "." ~ ident }
-keyword = { ident }
+// This function uses a regex library to simplify parsing.
+pub fn parse_components(line: String, mnemonics: &Vec<String>) -> Result<Option<Vec<LineComponent>>, String> {
+    let mut components = vec!();
+    let mut lexer = Token::lexer(&line);
 
-register = @{ "$" ~ ident }
-instruction_arg = @{ ident | register | number }
-standard_args = _{ 
-   instruction_arg ~ ("," ~ WHITESPACE* ~ instruction_arg){, 2}
-}
-mem_access_args = _{ instruction_arg ~ "," ~ number? ~ "(" ~ instruction_arg ~ ")" }
-instruction_args = _{ mem_access_args | standard_args }
-instruction = { ident ~ instruction_args }
+    while let Some(token) = lexer.next() {
+        let slice = lexer.slice();
+        let component_result = token_to_line_component(token.unwrap(), slice, &mnemonics);
 
-vernacular = { (instruction | label | keyword)* }
-"#]
-pub struct MipsParser;
 
-#[derive(Debug, Clone)]
-pub enum MipsCST<'a> {
-    Label(&'a str),
-    Instruction(&'a str, Vec<&'a str>),
-    Sequence(Vec<MipsCST<'a>>),
-    Keyword(&'a str),
-}
-
-pub fn parse_rule(pair: Pair<Rule>) -> MipsCST {
-    match pair.as_rule() {
-        Rule::vernacular => MipsCST::Sequence(pair.into_inner().map(parse_rule).collect()),
-        Rule::label => MipsCST::Label(pair.into_inner().next().unwrap().as_str()),
-        Rule::instruction => {
-            let mut inner = pair.into_inner();
-            let opcode = inner.next().unwrap().as_str();
-            let args = inner.clone().map(|p| p.as_str()).collect::<Vec<&str>>();
-            MipsCST::Instruction(opcode, args)
+        let component: LineComponent;
+        if component_result.is_err() {
+            return Err(component_result.unwrap_err());
+        } else {
+            component = component_result.unwrap();
         }
-        Rule::keyword => MipsCST::Keyword(pair.into_inner().next().unwrap().as_str()),
+
+        components.push(component);
+    }
+
+    match components.len() {
+        0 => {
+            return Ok(None);
+        },
         _ => {
-            println!("Unreachable: {:?}", pair.as_rule());
-            unreachable!()
+            return Ok(Some(components));
         }
     }
 }
 
-pub fn cst_map(cst: &MipsCST, f: fn(&MipsCST) -> ()) {
-    match cst {
-        MipsCST::Sequence(v) => {
-            let _ = v.iter().map(f);
-        }
-        _ => f(cst),
-    }
-}
-
-pub fn print_cst(cst: &MipsCST) {
-    match cst {
-        MipsCST::Label(s) => println!("{}:", s),
-        MipsCST::Instruction(mnemonic, args) => println!("\t{} {}", mnemonic, args.join(", ")),
-        MipsCST::Sequence(v) => {
-            for sub_cst in v {
-                print_cst(sub_cst)
+// Required implementation for regex library
+fn token_to_line_component(token: Token, slice: &str, mnemonics: &Vec<String>) -> Result<LineComponent, String> {
+    match token {
+        Token::Directive => return Ok(LineComponent::Directive(slice.to_string())),
+        Token::Label => {
+            return Ok(LineComponent::Label(slice[..slice.len()-1].to_string()));
+        },
+        Token::Identifier => {
+            if mnemonics.contains(&slice.to_string()) {
+                return Ok(LineComponent::Mnemonic(slice.to_string()));
+            } else {
+                return Ok(LineComponent::Identifier(slice.to_string()));
             }
-        }
-        MipsCST::Keyword(s) => println!("Keyword encountered: {}", s),
+        },
+        Token::Register => return Ok(LineComponent::Register(slice.to_string())),
+        Token::HexNumber => {
+            if let Ok(value) = i32::from_str_radix(&slice[2..], 16) {
+                return Ok(LineComponent::Immediate(value));
+            } else {
+                return Err("Failed to parse as hexadecimal.".to_string());
+            }
+        },
+        Token::BinaryNumber => {
+            if let Ok(value) = i32::from_str_radix(&slice[2..], 2) {
+                return Ok(LineComponent::Immediate(value));
+            } else {
+                return Err("Failed to parse as binary.".to_string());
+            }
+        },
+        Token::OctalNumber => {
+            if let Ok(value) = i32::from_str_radix(&slice[1..], 8) {
+                return Ok(LineComponent::Immediate(value));
+            } else {
+                return Err("Failed to parse as octal.".to_string());
+            }
+        },
+        Token::DecimalNumber => {
+            if let Ok(value) = i32::from_str_radix(&slice, 10) {
+                return Ok(LineComponent::Immediate(value));
+            } else {
+                return Err("Failed to parse as decimal.".to_string());
+            }
+        },
+        _ => return Err(format!("pattern \"{slice}\" could not be matched by parser.")),
     }
-}
-
-pub fn instr_to_str(mnemonic: &str, args: &[&str]) -> String {
-    format!("{} {}", mnemonic, args.join(" "))
 }
