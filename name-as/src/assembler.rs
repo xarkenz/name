@@ -1,6 +1,6 @@
 use name_const::structs::{Backpatch, InstructionInformation, LineComponent, Section, Symbol, Visibility};
 use name_const::helpers::{generate_instruction_hashmap, get_mnemonics};
-use name_const::elf_utils::{MIPS_TEXT_START_ADDR, MIPS_DATA_START_ADDR, MIPS_ADDRESS_ALIGNMENT, STT_FUNC, STT_OBJECT};
+use name_const::elf_def::{MIPS_TEXT_START_ADDR, MIPS_DATA_START_ADDR, MIPS_ADDRESS_ALIGNMENT, STT_FUNC, STT_OBJECT};
 
 use crate::assemble_instruction::assemble_instruction;
 use crate::assembly_helpers::pretty_print_instruction;

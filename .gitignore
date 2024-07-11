@@ -8,6 +8,8 @@ name-as/target
 name-as/Cargo.lock
 name-const/target
 name-const/Cargo.lock
+name-ln/target
+name-ln/Cargo.lock
 .obsidian
 *.vsix
 target/*

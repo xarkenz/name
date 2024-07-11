@@ -108,7 +108,7 @@ fn assemble_instruction_test() {
         Symbol {symbol_type: 2, identifier:"test".to_string(),value:0x004020, size: 4, visibility: name_const::structs::Visibility::Local, section: name_const::structs::Section::Text }
     ]; 
 
-    let mock_current_address = name_const::elf_utils::MIPS_TEXT_START_ADDR;
+    let mock_current_address = name_const::elf_def::MIPS_TEXT_START_ADDR;
 
     assert_eq!(assemble_instruction(add_info, &wrapped_arguments, &mock_symbol_table, &mock_current_address), Ok(Some(0x012A4020)));
     
