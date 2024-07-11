@@ -58,7 +58,9 @@ pub fn assemble(file_contents: String) -> Result<(Vec<u8>, Vec<Symbol>), Vec<Str
         match line_components_result {
             Ok(components) => line_components = components,
             Err(e) => {
+                errors.push(format!("[*] On line {line_number}:"));
                 errors.push(e);
+                errors.push("".to_string());
                 line_number += 1;
                 continue;
             },

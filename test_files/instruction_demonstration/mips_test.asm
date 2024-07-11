@@ -16,6 +16,7 @@ main:
     lb           $t0, 50($t1)
     lb           $t0, ($t1)
     beq          $s0, $s0, skip
+#    badmnemonic     $t0, $t0, $t0   # Bad instruction
 test:
     j           skip
 skip:
