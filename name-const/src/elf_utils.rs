@@ -200,6 +200,30 @@ pub fn create_new_et_rel(text_section: Vec<u8>, data_section: Vec<u8>, symtab_se
     }
 }
 
+// Used in et_rel construction process to create .symbtab and .strtab
+pub fn convert_symbol_to_elf32sym(symbol: &Symbol, strtab_index: u32) -> Elf32Sym {
+    Elf32Sym {
+        st_name: strtab_index,
+        st_value: symbol.value,
+        st_size: symbol.size,
+        st_info: match symbol.visibility {
+            Visibility::Local => ELF32_ST_INFO!(0, symbol.symbol_type),
+            Visibility::Global => ELF32_ST_INFO!(1, symbol.symbol_type),
+            Visibility::Weak => ELF32_ST_INFO!(2, symbol.symbol_type),
+        },
+        st_other: match symbol.visibility {
+            Visibility::Local => 2,
+            Visibility::Global => 0,
+            Visibility::Weak => 0,
+        },
+        st_shndx: match symbol.section {
+            Section::Text => 1,
+            Section::Data => 2,
+            _ => 0,
+        },
+    }
+}
+
 // This function creates a new file with the passed name and writes all bytes in a RelocatableElf object
 pub fn write_et_rel_to_file(file_name: &PathBuf, et_rel: &RelocatableElf) -> Result<(), String> {
     // Declare file_bytes vector to push all these file bytes onto
@@ -230,27 +254,8 @@ pub fn write_et_rel_to_file(file_name: &PathBuf, et_rel: &RelocatableElf) -> Res
     Ok(())
 }
 
-pub fn convert_symbol_to_elf32sym(symbol: &Symbol, strtab_index: u32) -> Elf32Sym {
-    Elf32Sym {
-        st_name: strtab_index,
-        st_value: symbol.value,
-        st_size: symbol.size,
-        st_info: match symbol.visibility {
-            Visibility::Local => ELF32_ST_INFO!(0, symbol.symbol_type),
-            Visibility::Global => ELF32_ST_INFO!(1, symbol.symbol_type),
-            Visibility::Weak => ELF32_ST_INFO!(2, symbol.symbol_type),
-        },
-        st_other: match symbol.visibility {
-            Visibility::Local => 2,
-            Visibility::Global => 0,
-            Visibility::Weak => 0,
-        },
-        st_shndx: match symbol.section {
-            Section::Text => 1,
-            Section::Data => 2,
-            _ => 0,
-        },
-    }
+pub fn write_et_exec_to_file(_et_exec: ExecutableElf) -> Result<(), String> {
+    todo!("Implement writing et_exec to file");
 }
 
 /*
@@ -265,3 +270,7 @@ pub fn convert_symbol_to_elf32sym(symbol: &Symbol, strtab_index: u32) -> Elf32Sy
                                 
 
 */
+
+pub fn read_bytes_to_et_rel(_file_contents: Vec<u8>) -> RelocatableElf {
+    todo!("Implement reading ET_REL object file into memory.");
+}

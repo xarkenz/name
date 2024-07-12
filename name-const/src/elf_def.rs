@@ -313,3 +313,9 @@ pub struct RelocatableElf{
     pub(crate) section_dot_shstrtab: Vec<u8>,
     pub(crate) section_header_table: Vec<Elf32SectionHeader>,
 }
+
+#[repr(C)]
+#[derive(Debug, Default, Clone)]
+pub struct ExecutableElf{
+    pub(crate) file_header: Elf32Header,
+}
