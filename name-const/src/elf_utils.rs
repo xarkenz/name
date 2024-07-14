@@ -73,7 +73,7 @@ pub fn create_new_et_rel(text_section: Vec<u8>, data_section: Vec<u8>, symtab_se
     let symtab_offset: u32 = data_offset + data_size;
     let strtab_offset: u32 = symtab_offset + symtab_size;
     let shstrtab_offset: u32 = strtab_offset + strtab_size;
-    let sh_offset = shstrtab_offset + shstrtab_size;
+    let sh_offset: u32 = shstrtab_offset + shstrtab_size;
 
     // Construct the ELF file header
     let elf_file_header: Elf32Header = create_new_et_rel_file_header(sh_offset);
@@ -254,7 +254,7 @@ pub fn write_et_rel_to_file(file_name: &PathBuf, et_rel: &RelocatableElf) -> Res
     Ok(())
 }
 
-pub fn write_et_exec_to_file(_et_exec: ExecutableElf) -> Result<(), String> {
+pub fn write_et_exec_to_file(_output_fn: &PathBuf, _et_exec: ExecutableElf) -> Result<(), String> {
     todo!("Implement writing et_exec to file");
 }
 
@@ -271,6 +271,147 @@ pub fn write_et_exec_to_file(_et_exec: ExecutableElf) -> Result<(), String> {
 
 */
 
-pub fn read_bytes_to_et_rel(_file_contents: Vec<u8>) -> RelocatableElf {
-    todo!("Implement reading ET_REL object file into memory.");
+pub fn read_bytes_to_et_rel(file_contents: Vec<u8>) -> Result<RelocatableElf, String> {
+    if file_contents.len() < E_EHSIZE_DEFAULT as usize {
+        return Err(format!("Incomplete ELF file provided. Please include complete file header. Only {} bytes provided", file_contents.len()))
+    }
+
+    let elf_header: Elf32Header = match parse_et_rel_header(&file_contents[0..52]) {
+        Ok(parsed_header) => parsed_header,
+        Err(e) => return Err(e),
+    };
+
+    let program_header_table_end: usize = (E_EHSIZE_DEFAULT + (E_PHENTSIZE_DEFAULT * E_PHNUM_DEFAULT)) as usize;
+    if file_contents.len() < program_header_table_end {
+        return Err(format!("Incomplete ELF file provided. Please include program header entries for {E_PHNUM_DEFAULT} section(s)."));
+    }
+
+    let program_header_table_bytes = &file_contents[E_EHSIZE_DEFAULT as usize..program_header_table_end];
+    let program_header_table: Vec<Elf32ProgramHeader> = parse_et_rel_ph_table(program_header_table_bytes, E_PHNUM_DEFAULT as usize);
+    
+    let section_header_table_bytes = &file_contents[(elf_header.e_shoff as usize)..file_contents.len()];
+    let section_header_table: Vec<Elf32SectionHeader> = parse_section_header_table_bytes(section_header_table_bytes, E_SHNUM_DEFAULT as usize);
+
+    let mut sections: Vec<Vec<u8>> = vec!();
+    for sh in &section_header_table {
+        sections.push(
+            file_contents[(sh.sh_offset) as usize..(sh.sh_offset+sh.sh_size as u32) as usize].to_owned()
+        );
+    }
+
+    Ok(RelocatableElf{
+        file_header: elf_header,
+        program_header_table: program_header_table,
+        section_dot_text: sections[1].clone(),
+        section_dot_data: sections[2].clone(),
+        section_dot_symtab: sections[3].clone(),
+        section_dot_strtab: sections[4].clone(),
+        section_dot_shstrtab: sections[5].clone(),
+        section_header_table: section_header_table,
+    })
+}
+
+fn parse_et_rel_header(expected_bytes: &[u8]) -> Result<Elf32Header, String> {    
+    Ok(Elf32Header {
+        e_ident: match &expected_bytes[0..16].try_into().unwrap() {
+            &E_IDENT_DEFAULT => E_IDENT_DEFAULT,
+            _ => return Err("Unexpected bytes found in E_IDENT field.".to_string()),
+        },
+        e_type: match u16::from_be_bytes(expected_bytes[16..18].try_into().unwrap()) {
+            ET_REL => ET_REL,
+            _ => return Err("Linker expects object files (E_TYPE == ET_REL)".to_string()),
+        },
+        e_machine: match u16::from_be_bytes(expected_bytes[18..20].try_into().unwrap()) {
+            E_MACHINE_DEFAULT => E_MACHINE_DEFAULT,
+            _ => return Err(format!("Unexpected machine type in ELF header (expected {E_MACHINE_DEFAULT})")),
+        },
+        e_version: u32::from_be_bytes(expected_bytes[20..24].try_into().unwrap()),
+        e_entry: match u32::from_be_bytes(expected_bytes[24..28].try_into().unwrap()) {
+            0 => 0,
+            _ => return Err("Unexpected entry address discovered in ELF header (expected 0).".to_string()),
+        },
+        e_phoff: match u32::from_be_bytes(expected_bytes[28..32].try_into().unwrap()) {
+            E_PHOFF_DEFAULT => E_PHOFF_DEFAULT,
+            _ => return Err(format!("Unexpected program header offset discovered in ELF header (expected {E_PHOFF_DEFAULT}).")),
+        },
+        e_shoff: u32::from_be_bytes(expected_bytes[32..36].try_into().unwrap()),
+        e_flags: match u32::from_be_bytes(expected_bytes[36..40].try_into().unwrap()) {
+            E_FLAGS_DEFAULT => E_FLAGS_DEFAULT,
+            _ => return Err(format!("Unexpected ELF flags discovered in ELF header (expected {:x})", E_FLAGS_DEFAULT)),
+        },
+        e_ehsize: match u16::from_be_bytes(expected_bytes[40..42].try_into().unwrap()) {
+            E_EHSIZE_DEFAULT => E_EHSIZE_DEFAULT,
+            _ => return Err(format!("Unexpected ELF header size discovered in ELF header (expected {E_EHSIZE_DEFAULT}).")),
+        },
+        e_phentsize: match u16::from_be_bytes(expected_bytes[42..44].try_into().unwrap()) {
+            E_PHENTSIZE_DEFAULT => E_PHENTSIZE_DEFAULT,
+            _ => return Err(format!("Unexpected program header entry size discovered in ELF header (expected {E_PHENTSIZE_DEFAULT})")),
+        },
+        e_phnum: match u16::from_be_bytes(expected_bytes[44..46].try_into().unwrap()) {
+            E_PHNUM_DEFAULT => E_PHNUM_DEFAULT,
+            _ => return Err(format!("Unpredictable behavior: NAME-assembled modules have E_PHNUM field {E_PHNUM_DEFAULT}; The linker expects and enforces this.")),
+        },
+        e_shentsize: match u16::from_be_bytes(expected_bytes[46..48].try_into().unwrap()) {
+            E_SHENTSIZE_DEFAULT => E_SHENTSIZE_DEFAULT,
+            _ => return Err(format!("Unexpected section header entry size discovered in ELF header (expected {E_SHENTSIZE_DEFAULT}).")),
+        },
+        e_shnum: match u16::from_be_bytes(expected_bytes[48..50].try_into().unwrap()) {
+            E_SHNUM_DEFAULT => E_SHNUM_DEFAULT,
+            _ => return Err(format!("Unpredictable behavior: NAME-assembled modules have E_SHNUM field {E_SHNUM_DEFAULT}; The linker expects and enforces this.")),
+        },
+        e_shstrndx: match u16::from_be_bytes(expected_bytes[50..52].try_into().unwrap()) {
+            E_SHSTRNDX_DEFAULT => E_SHSTRNDX_DEFAULT,
+            _ => return Err(format!("Unpredictable behavior: NAME-assembled modules have E_SHSTRNDX field {E_SHSTRNDX_DEFAULT}; The linker expects and enforces this.")),
+        },
+    })
+}
+
+fn parse_et_rel_ph_table(program_header_table_bytes: &[u8], entry_num: usize) -> Vec<Elf32ProgramHeader> {
+    let mut tab: Vec<Elf32ProgramHeader> = vec!();
+    
+    let mut i = 0;
+    while i < entry_num {
+        let expected_bytes = &program_header_table_bytes[(i * E_PHENTSIZE_DEFAULT as usize)..((i+1) * E_PHENTSIZE_DEFAULT as usize)];
+        
+        tab.push(Elf32ProgramHeader {
+            p_type: u32::from_be_bytes(expected_bytes[0..4].try_into().unwrap()),
+            p_offset: u32::from_be_bytes(expected_bytes[4..8].try_into().unwrap()),
+            p_vaddr: u32::from_be_bytes(expected_bytes[8..12].try_into().unwrap()),
+            p_paddr: u32::from_be_bytes(expected_bytes[12..16].try_into().unwrap()),
+            p_filesz: u32::from_be_bytes(expected_bytes[16..20].try_into().unwrap()),
+            p_memsz: u32::from_be_bytes(expected_bytes[20..24].try_into().unwrap()),
+            p_flags: u32::from_be_bytes(expected_bytes[24..28].try_into().unwrap()),
+            p_align: u32::from_be_bytes(expected_bytes[28..32].try_into().unwrap()),
+        });
+
+        i += 1;
+    }
+
+    tab
+}
+
+fn parse_section_header_table_bytes(section_header_table_bytes: &[u8], sh_num: usize) -> Vec<Elf32SectionHeader> {
+    let mut tab: Vec<Elf32SectionHeader> = vec!();
+
+    let mut i = 0;
+    while i < sh_num {
+        let expected_bytes = &section_header_table_bytes[(i * E_SHENTSIZE_DEFAULT as usize)..((i+1) * E_SHENTSIZE_DEFAULT as usize)];
+
+        tab.push(Elf32SectionHeader {
+            sh_name: u32::from_be_bytes(expected_bytes[0..4].try_into().unwrap()),
+            sh_type: u32::from_be_bytes(expected_bytes[4..8].try_into().unwrap()),
+            sh_flags: u32::from_be_bytes(expected_bytes[8..12].try_into().unwrap()),
+            sh_addr: u32::from_be_bytes(expected_bytes[12..16].try_into().unwrap()),
+            sh_offset: u32::from_be_bytes(expected_bytes[16..20].try_into().unwrap()),
+            sh_size: u32::from_be_bytes(expected_bytes[20..24].try_into().unwrap()),
+            sh_link: u32::from_be_bytes(expected_bytes[24..28].try_into().unwrap()),
+            sh_info: u32::from_be_bytes(expected_bytes[28..32].try_into().unwrap()),
+            sh_addralign: u32::from_be_bytes(expected_bytes[32..36].try_into().unwrap()),
+            sh_entsize: u32::from_be_bytes(expected_bytes[36..40].try_into().unwrap()),
+        });
+
+        i += 1;
+    }
+
+    tab
 }
