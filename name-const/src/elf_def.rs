@@ -303,19 +303,9 @@ impl Elf32Sym {
 // To construct an ET_REL ELF file, we'll use the following struct:
 #[repr(C)]
 #[derive(Debug, Default, Clone)]
-pub struct RelocatableElf{
+pub struct Elf{
     pub(crate) file_header: Elf32Header,
     pub(crate) program_header_table: Vec<Elf32ProgramHeader>,
-    pub(crate) section_dot_text: Vec<u8>,
-    pub(crate) section_dot_data: Vec<u8>,
-    pub(crate) section_dot_symtab: Vec<u8>,
-    pub(crate) section_dot_strtab: Vec<u8>,
-    pub(crate) section_dot_shstrtab: Vec<u8>,
+    pub(crate) sections: Vec<Vec<u8>>,
     pub(crate) section_header_table: Vec<Elf32SectionHeader>,
-}
-
-#[repr(C)]
-#[derive(Debug, Default, Clone)]
-pub struct ExecutableElf{
-    pub(crate) file_header: Elf32Header,
 }

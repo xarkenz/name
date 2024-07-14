@@ -50,7 +50,7 @@ fn create_new_et_rel_file_header(passed_e_shoff: u32) -> Elf32Header {
 }
 
 // This function combines all the previous to actually create a new object file.
-pub fn create_new_et_rel(text_section: Vec<u8>, data_section: Vec<u8>, symtab_section: Vec<u8>, strtab_section: Vec<u8>) -> RelocatableElf {
+pub fn create_new_et_rel(text_section: Vec<u8>, data_section: Vec<u8>, symtab_section: Vec<u8>, strtab_section: Vec<u8>) -> Elf {
     // The section header string table entry requires some calculations.
     // Here we get the shstrtab as bytes from the constant defined at the top of the file.
     // We also get the size of the shstrtab.
@@ -184,19 +184,18 @@ pub fn create_new_et_rel(text_section: Vec<u8>, data_section: Vec<u8>, symtab_se
         sh_entsize: 0,
     };
 
+    // Collect all sections into sections Vec
+    let sections: Vec<Vec<u8>> = vec![text_section, data_section, symtab_section, strtab_section, shstrtab_section];
+
     // Collect all previously defined section headers into the section header table
     let complete_section_header_table: Vec<Elf32SectionHeader> = vec![null_sh, text_sh, data_sh, symtab_sh, strtab_sh, shstrtab_sh];
 
-    // Final step is to create the final ElfRelocatable struct
-    return RelocatableElf{
+    // Final step is to create the final Elf struct
+    return Elf{
         file_header: elf_file_header,
         program_header_table: complete_program_header_table,
+        sections: sections,
         section_header_table: complete_section_header_table,
-        section_dot_text: text_section,
-        section_dot_data: data_section,
-        section_dot_symtab: symtab_section,
-        section_dot_strtab: strtab_section,
-        section_dot_shstrtab: shstrtab_section,
     }
 }
 
@@ -225,7 +224,7 @@ pub fn convert_symbol_to_elf32sym(symbol: &Symbol, strtab_index: u32) -> Elf32Sy
 }
 
 // This function creates a new file with the passed name and writes all bytes in a RelocatableElf object
-pub fn write_et_rel_to_file(file_name: &PathBuf, et_rel: &RelocatableElf) -> Result<(), String> {
+pub fn write_et_rel_to_file(file_name: &PathBuf, et_rel: &Elf) -> Result<(), String> {
     // Declare file_bytes vector to push all these file bytes onto
     // Concatenate all bytes in file header
     let mut file_bytes: Vec<u8> = et_rel.file_header.to_bytes().to_vec();
@@ -236,11 +235,9 @@ pub fn write_et_rel_to_file(file_name: &PathBuf, et_rel: &RelocatableElf) -> Res
     }
 
     // Add all sections
-    file_bytes.extend(&et_rel.section_dot_text);
-    file_bytes.extend(&et_rel.section_dot_data);
-    file_bytes.extend(&et_rel.section_dot_symtab);
-    file_bytes.extend(&et_rel.section_dot_strtab);
-    file_bytes.extend(&et_rel.section_dot_shstrtab);
+    for section in &et_rel.sections {
+        file_bytes.extend(section);
+    }
 
     // Section header table
     for entry in &et_rel.section_header_table {
@@ -254,7 +251,7 @@ pub fn write_et_rel_to_file(file_name: &PathBuf, et_rel: &RelocatableElf) -> Res
     Ok(())
 }
 
-pub fn write_et_exec_to_file(_output_fn: &PathBuf, _et_exec: ExecutableElf) -> Result<(), String> {
+pub fn write_et_exec_to_file(_output_fn: &PathBuf, _et_exec: Elf) -> Result<(), String> {
     todo!("Implement writing et_exec to file");
 }
 
@@ -271,7 +268,7 @@ pub fn write_et_exec_to_file(_output_fn: &PathBuf, _et_exec: ExecutableElf) -> R
 
 */
 
-pub fn read_bytes_to_et_rel(file_contents: Vec<u8>) -> Result<RelocatableElf, String> {
+pub fn read_bytes_to_et_rel(file_contents: Vec<u8>) -> Result<Elf, String> {
     if file_contents.len() < E_EHSIZE_DEFAULT as usize {
         return Err(format!("Incomplete ELF file provided. Please include complete file header. Only {} bytes provided", file_contents.len()))
     }
@@ -299,14 +296,10 @@ pub fn read_bytes_to_et_rel(file_contents: Vec<u8>) -> Result<RelocatableElf, St
         );
     }
 
-    Ok(RelocatableElf{
+    Ok(Elf{
         file_header: elf_header,
         program_header_table: program_header_table,
-        section_dot_text: sections[1].clone(),
-        section_dot_data: sections[2].clone(),
-        section_dot_symtab: sections[3].clone(),
-        section_dot_strtab: sections[4].clone(),
-        section_dot_shstrtab: sections[5].clone(),
+        sections: sections,
         section_header_table: section_header_table,
     })
 }
