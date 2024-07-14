@@ -308,30 +308,21 @@ fn parse_et_rel_header(expected_bytes: &[u8]) -> Result<Elf32Header, String> {
     Ok(Elf32Header {
         e_ident: match &expected_bytes[0..16].try_into().unwrap() {
             &E_IDENT_DEFAULT => E_IDENT_DEFAULT,
-            _ => return Err("Unexpected bytes found in E_IDENT field.".to_string()),
+            _ => return Err("E_IDENT field did not match expected format.".to_string()),
         },
-        e_type: match u16::from_be_bytes(expected_bytes[16..18].try_into().unwrap()) {
-            ET_REL => ET_REL,
-            _ => return Err("Linker expects object files (E_TYPE == ET_REL)".to_string()),
-        },
+        e_type: u16::from_be_bytes(expected_bytes[16..18].try_into().unwrap()),
         e_machine: match u16::from_be_bytes(expected_bytes[18..20].try_into().unwrap()) {
             E_MACHINE_DEFAULT => E_MACHINE_DEFAULT,
             _ => return Err(format!("Unexpected machine type in ELF header (expected {E_MACHINE_DEFAULT})")),
         },
         e_version: u32::from_be_bytes(expected_bytes[20..24].try_into().unwrap()),
-        e_entry: match u32::from_be_bytes(expected_bytes[24..28].try_into().unwrap()) {
-            0 => 0,
-            _ => return Err("Unexpected entry address discovered in ELF header (expected 0).".to_string()),
-        },
+        e_entry: u32::from_be_bytes(expected_bytes[24..28].try_into().unwrap()),
         e_phoff: match u32::from_be_bytes(expected_bytes[28..32].try_into().unwrap()) {
             E_PHOFF_DEFAULT => E_PHOFF_DEFAULT,
             _ => return Err(format!("Unexpected program header offset discovered in ELF header (expected {E_PHOFF_DEFAULT}).")),
         },
         e_shoff: u32::from_be_bytes(expected_bytes[32..36].try_into().unwrap()),
-        e_flags: match u32::from_be_bytes(expected_bytes[36..40].try_into().unwrap()) {
-            E_FLAGS_DEFAULT => E_FLAGS_DEFAULT,
-            _ => return Err(format!("Unexpected ELF flags discovered in ELF header (expected {:x})", E_FLAGS_DEFAULT)),
-        },
+        e_flags: u32::from_be_bytes(expected_bytes[36..40].try_into().unwrap()),
         e_ehsize: match u16::from_be_bytes(expected_bytes[40..42].try_into().unwrap()) {
             E_EHSIZE_DEFAULT => E_EHSIZE_DEFAULT,
             _ => return Err(format!("Unexpected ELF header size discovered in ELF header (expected {E_EHSIZE_DEFAULT}).")),
@@ -340,22 +331,13 @@ fn parse_et_rel_header(expected_bytes: &[u8]) -> Result<Elf32Header, String> {
             E_PHENTSIZE_DEFAULT => E_PHENTSIZE_DEFAULT,
             _ => return Err(format!("Unexpected program header entry size discovered in ELF header (expected {E_PHENTSIZE_DEFAULT})")),
         },
-        e_phnum: match u16::from_be_bytes(expected_bytes[44..46].try_into().unwrap()) {
-            E_PHNUM_DEFAULT => E_PHNUM_DEFAULT,
-            _ => return Err(format!("Unpredictable behavior: NAME-assembled modules have E_PHNUM field {E_PHNUM_DEFAULT}; The linker expects and enforces this.")),
-        },
+        e_phnum: u16::from_be_bytes(expected_bytes[44..46].try_into().unwrap()),
         e_shentsize: match u16::from_be_bytes(expected_bytes[46..48].try_into().unwrap()) {
             E_SHENTSIZE_DEFAULT => E_SHENTSIZE_DEFAULT,
             _ => return Err(format!("Unexpected section header entry size discovered in ELF header (expected {E_SHENTSIZE_DEFAULT}).")),
         },
-        e_shnum: match u16::from_be_bytes(expected_bytes[48..50].try_into().unwrap()) {
-            E_SHNUM_DEFAULT => E_SHNUM_DEFAULT,
-            _ => return Err(format!("Unpredictable behavior: NAME-assembled modules have E_SHNUM field {E_SHNUM_DEFAULT}; The linker expects and enforces this.")),
-        },
-        e_shstrndx: match u16::from_be_bytes(expected_bytes[50..52].try_into().unwrap()) {
-            E_SHSTRNDX_DEFAULT => E_SHSTRNDX_DEFAULT,
-            _ => return Err(format!("Unpredictable behavior: NAME-assembled modules have E_SHSTRNDX field {E_SHSTRNDX_DEFAULT}; The linker expects and enforces this.")),
-        },
+        e_shnum: u16::from_be_bytes(expected_bytes[48..50].try_into().unwrap()),
+        e_shstrndx: u16::from_be_bytes(expected_bytes[50..52].try_into().unwrap()),
     })
 }
 
