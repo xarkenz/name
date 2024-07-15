@@ -28,6 +28,7 @@ name-ext/node_modules/*
 *.out
 *.o
 *.li
+
 name-as/.artifacts/*
 name-fmt/node_modules/
 
@@ -35,5 +36,3 @@ test_files/*/*.o
 test_files/*/*
 
 !test_files/*/*.asm
-!test_files/
-!test_files/*/
