@@ -1,10 +1,11 @@
 mod args;
+mod conformity;
 mod one_module_linker;
 
 use args::Cli;
 use one_module_linker::one_module_linker;
 
-use name_const::elf_utils::{read_bytes_to_et_rel, write_et_exec_to_file};
+use name_const::elf_utils::{read_bytes_to_et_rel, write_elf_to_file};
 use name_const::elf_def::Elf;
 
 use clap::Parser;
@@ -20,7 +21,7 @@ fn main() {
     let linked_single_module = one_module_linker(single_et_rel);
 
     // output final ET_EXEC ELF
-    let _ = write_et_exec_to_file(&args.output_filename, linked_single_module.unwrap());
+    let _ = write_elf_to_file(&args.output_filename, &linked_single_module.unwrap());
     println!("Imagine, if you will, an ET_EXEC has been emitted.");
 }
 
@@ -36,8 +37,6 @@ fn one_module_linker_test() {
         Err(e) => panic!("{e}"),
     };
 
-    dbg!(&constructed_elf);
-
     let executable_contents: name_const::elf_def::Elf = match one_module_linker::one_module_linker(constructed_elf) {
         Ok(result) => result,
         Err(e) => {
@@ -45,7 +44,7 @@ fn one_module_linker_test() {
         },
     };
 
-    match name_const::elf_utils::write_et_exec_to_file(&single_module_output_fn, executable_contents) {
+    match name_const::elf_utils::write_elf_to_file(&single_module_output_fn, &executable_contents) {
         Ok(_) => println!("Single module linking performed successfully."),
         Err(e) => panic!("{e}"),
     }

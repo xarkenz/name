@@ -54,7 +54,7 @@ pub const E_IDENT_DEFAULT: [u8; EI_NIDENT] = [EI_MAG[0], EI_MAG[1], EI_MAG[2], E
 // I am defining all feasible ET modes for later.
 // const ET_NONE: u16 = 0;
 pub const ET_REL: u16 = 1;
-// const ET_EXEC: u16 = 2;
+pub const ET_EXEC: u16 = 2;
 // const ET_DYN: u16 = 3;
 
 // all ELFs will first be constructed with e_type set to ET_REL. The linker handles any changes.
@@ -165,20 +165,20 @@ pub const SHF_STRINGS: u32 = 0x20;          // contains null-term strings
 #[repr(C)]                  // Used to avoid aligment issues. Not sure it's necessary but honestly better safe than sorry in this case.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Elf32Header{
-    pub(crate) e_ident: [u8; 16],      // Contains { {EI_MAG0 .. EIMAG3}, EI_CLASS, EI_DATA, EI_VERSION, EI_OSABI, EI_ABIVERSION, EI_PAD}
-    pub(crate) e_type: u16,            // Identifies object file type (ET_REL before linking, ET_EXEC after)
-    pub(crate) e_machine: u16,         // Target ISA
-    pub(crate) e_version: u32,         // ELF version (will be 1 prior to linking, and incremented to 2 once linking is complete)
-    pub(crate) e_entry: u32,           // Address of program entry point
-    pub(crate) e_phoff: u32,           // Program header offset
+    pub e_ident: [u8; 16],             // Contains { {EI_MAG0 .. EIMAG3}, EI_CLASS, EI_DATA, EI_VERSION, EI_OSABI, EI_ABIVERSION, EI_PAD}
+    pub e_type: u16,                   // Identifies object file type (ET_REL before linking, ET_EXEC after)
+    pub e_machine: u16,                // Target ISA
+    pub e_version: u32,                // ELF version (will be 1 prior to linking, and incremented to 2 once linking is complete)
+    pub e_entry: u32,                  // Address of program entry point
+    pub e_phoff: u32,                  // Program header offset
     pub(crate) e_shoff: u32,           // Section header offset
-    pub(crate) e_flags: u32,           // Flags are interpreted differently based on OS. For our use case, I don't yet know what they must be.
-    pub(crate) e_ehsize: u16,          // Size of ELF Header (changes based on 32/64b arch)
-    pub(crate) e_phentsize: u16,       // Size of program header entry
-    pub(crate) e_phnum: u16,           // Number of entries in program header
-    pub(crate) e_shentsize: u16,       // Size of section header entry
-    pub(crate) e_shnum: u16,           // Number of entries in header entry
-    pub(crate) e_shstrndx: u16,        // Index of section header containing section names (section header string index)
+    pub e_flags: u32,                  // Flags are interpreted differently based on OS. For our use case, I don't yet know what they must be.
+    pub e_ehsize: u16,                 // Size of ELF Header (changes based on 32/64b arch)
+    pub e_phentsize: u16,              // Size of program header entry
+    pub e_phnum: u16,                  // Number of entries in program header
+    pub e_shentsize: u16,              // Size of section header entry
+    pub e_shnum: u16,                  // Number of entries in header entry
+    pub e_shstrndx: u16,               // Index of section header containing section names (section header string index)
 }
 
 // This associated function serializes the struct to bytes. This is for writing to file.
@@ -304,8 +304,8 @@ impl Elf32Sym {
 #[repr(C)]
 #[derive(Debug, Default, Clone)]
 pub struct Elf{
-    pub(crate) file_header: Elf32Header,
-    pub(crate) program_header_table: Vec<Elf32ProgramHeader>,
-    pub(crate) sections: Vec<Vec<u8>>,
-    pub(crate) section_header_table: Vec<Elf32SectionHeader>,
+    pub file_header: Elf32Header,
+    pub program_header_table: Vec<Elf32ProgramHeader>,
+    pub sections: Vec<Vec<u8>>,
+    pub section_header_table: Vec<Elf32SectionHeader>,
 }

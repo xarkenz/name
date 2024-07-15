@@ -224,7 +224,7 @@ pub fn convert_symbol_to_elf32sym(symbol: &Symbol, strtab_index: u32) -> Elf32Sy
 }
 
 // This function creates a new file with the passed name and writes all bytes in a RelocatableElf object
-pub fn write_et_rel_to_file(file_name: &PathBuf, et_rel: &Elf) -> Result<(), String> {
+pub fn write_elf_to_file(file_name: &PathBuf, et_rel: &Elf) -> Result<(), String> {
     // Declare file_bytes vector to push all these file bytes onto
     // Concatenate all bytes in file header
     let mut file_bytes: Vec<u8> = et_rel.file_header.to_bytes().to_vec();
@@ -249,10 +249,6 @@ pub fn write_et_rel_to_file(file_name: &PathBuf, et_rel: &Elf) -> Result<(), Str
     f.write_all(&file_bytes).expect("Unable to write data.");
 
     Ok(())
-}
-
-pub fn write_et_exec_to_file(_output_fn: &PathBuf, _et_exec: Elf) -> Result<(), String> {
-    todo!("Implement writing et_exec to file");
 }
 
 /*
@@ -284,10 +280,10 @@ pub fn read_bytes_to_et_rel(file_contents: Vec<u8>) -> Result<Elf, String> {
     }
 
     let program_header_table_bytes = &file_contents[E_EHSIZE_DEFAULT as usize..program_header_table_end];
-    let program_header_table: Vec<Elf32ProgramHeader> = parse_et_rel_ph_table(program_header_table_bytes, E_PHNUM_DEFAULT as usize);
+    let program_header_table: Vec<Elf32ProgramHeader> = parse_et_rel_ph_table(program_header_table_bytes);
     
     let section_header_table_bytes = &file_contents[(elf_header.e_shoff as usize)..file_contents.len()];
-    let section_header_table: Vec<Elf32SectionHeader> = parse_section_header_table_bytes(section_header_table_bytes, E_SHNUM_DEFAULT as usize);
+    let section_header_table: Vec<Elf32SectionHeader> = parse_section_header_table_bytes(section_header_table_bytes);
 
     let mut sections: Vec<Vec<u8>> = vec!();
     for sh in &section_header_table {
@@ -341,52 +337,67 @@ fn parse_et_rel_header(expected_bytes: &[u8]) -> Result<Elf32Header, String> {
     })
 }
 
-fn parse_et_rel_ph_table(program_header_table_bytes: &[u8], entry_num: usize) -> Vec<Elf32ProgramHeader> {
-    let mut tab: Vec<Elf32ProgramHeader> = vec!();
-    
-    let mut i = 0;
-    while i < entry_num {
-        let expected_bytes = &program_header_table_bytes[(i * E_PHENTSIZE_DEFAULT as usize)..((i+1) * E_PHENTSIZE_DEFAULT as usize)];
-        
-        tab.push(Elf32ProgramHeader {
-            p_type: u32::from_be_bytes(expected_bytes[0..4].try_into().unwrap()),
-            p_offset: u32::from_be_bytes(expected_bytes[4..8].try_into().unwrap()),
-            p_vaddr: u32::from_be_bytes(expected_bytes[8..12].try_into().unwrap()),
-            p_paddr: u32::from_be_bytes(expected_bytes[12..16].try_into().unwrap()),
-            p_filesz: u32::from_be_bytes(expected_bytes[16..20].try_into().unwrap()),
-            p_memsz: u32::from_be_bytes(expected_bytes[20..24].try_into().unwrap()),
-            p_flags: u32::from_be_bytes(expected_bytes[24..28].try_into().unwrap()),
-            p_align: u32::from_be_bytes(expected_bytes[28..32].try_into().unwrap()),
-        });
-
-        i += 1;
-    }
-
-    tab
+fn parse_et_rel_ph_table(program_header_table_bytes: &[u8]) -> Vec<Elf32ProgramHeader> {
+    program_header_table_bytes.chunks(E_PHENTSIZE_DEFAULT as usize).map(|entry| Elf32ProgramHeader {
+            p_type: u32::from_be_bytes(entry[0..4].try_into().unwrap()),
+            p_offset: u32::from_be_bytes(entry[4..8].try_into().unwrap()),
+            p_vaddr: u32::from_be_bytes(entry[8..12].try_into().unwrap()),
+            p_paddr: u32::from_be_bytes(entry[12..16].try_into().unwrap()),
+            p_filesz: u32::from_be_bytes(entry[16..20].try_into().unwrap()),
+            p_memsz: u32::from_be_bytes(entry[20..24].try_into().unwrap()),
+            p_flags: u32::from_be_bytes(entry[24..28].try_into().unwrap()),
+            p_align: u32::from_be_bytes(entry[28..32].try_into().unwrap()),
+        }).collect()
 }
 
-fn parse_section_header_table_bytes(section_header_table_bytes: &[u8], sh_num: usize) -> Vec<Elf32SectionHeader> {
-    let mut tab: Vec<Elf32SectionHeader> = vec!();
+fn parse_section_header_table_bytes(section_header_table_bytes: &[u8]) -> Vec<Elf32SectionHeader> {
+    section_header_table_bytes.chunks(E_SHENTSIZE_DEFAULT as usize).map(|entry| Elf32SectionHeader {
+            sh_name: u32::from_be_bytes(entry[0..4].try_into().unwrap()),
+            sh_type: u32::from_be_bytes(entry[4..8].try_into().unwrap()),
+            sh_flags: u32::from_be_bytes(entry[8..12].try_into().unwrap()),
+            sh_addr: u32::from_be_bytes(entry[12..16].try_into().unwrap()),
+            sh_offset: u32::from_be_bytes(entry[16..20].try_into().unwrap()),
+            sh_size: u32::from_be_bytes(entry[20..24].try_into().unwrap()),
+            sh_link: u32::from_be_bytes(entry[24..28].try_into().unwrap()),
+            sh_info: u32::from_be_bytes(entry[28..32].try_into().unwrap()),
+            sh_addralign: u32::from_be_bytes(entry[32..36].try_into().unwrap()),
+            sh_entsize: u32::from_be_bytes(entry[36..40].try_into().unwrap()),
+        }).collect()
+}
 
-    let mut i = 0;
-    while i < sh_num {
-        let expected_bytes = &section_header_table_bytes[(i * E_SHENTSIZE_DEFAULT as usize)..((i+1) * E_SHENTSIZE_DEFAULT as usize)];
+pub fn parse_elf_symbols(symbol_table: &Vec<u8>) -> Vec<Elf32Sym> {
+    symbol_table.chunks(16).map(|entry| {
+        Elf32Sym {
+            st_name: u32::from_be_bytes(entry[0..4].try_into().unwrap()),
+            st_value: u32::from_be_bytes(entry[4..8].try_into().unwrap()),
+            st_size: u32::from_be_bytes(entry[8..12].try_into().unwrap()),
+            st_info: entry[12],
+            st_other: entry[13],
+            st_shndx: u16::from_be_bytes(entry[14..16].try_into().unwrap()),
+        }
+    }).collect()
+}
 
-        tab.push(Elf32SectionHeader {
-            sh_name: u32::from_be_bytes(expected_bytes[0..4].try_into().unwrap()),
-            sh_type: u32::from_be_bytes(expected_bytes[4..8].try_into().unwrap()),
-            sh_flags: u32::from_be_bytes(expected_bytes[8..12].try_into().unwrap()),
-            sh_addr: u32::from_be_bytes(expected_bytes[12..16].try_into().unwrap()),
-            sh_offset: u32::from_be_bytes(expected_bytes[16..20].try_into().unwrap()),
-            sh_size: u32::from_be_bytes(expected_bytes[20..24].try_into().unwrap()),
-            sh_link: u32::from_be_bytes(expected_bytes[24..28].try_into().unwrap()),
-            sh_info: u32::from_be_bytes(expected_bytes[28..32].try_into().unwrap()),
-            sh_addralign: u32::from_be_bytes(expected_bytes[32..36].try_into().unwrap()),
-            sh_entsize: u32::from_be_bytes(expected_bytes[36..40].try_into().unwrap()),
-        });
-
-        i += 1;
+fn get_string_from_strtab(strtab: &Vec<u8>, offset: u32) -> Option<&str> {
+    let start = offset as usize;
+    if start >= strtab.len() {
+        return None;
     }
+    let end = strtab[start..].iter().position(|&c| c == 0)?;
+    std::str::from_utf8(&strtab[start..start + end]).ok()
+}
 
-    tab
+pub fn find_global_symbol_address(symbols: &[Elf32Sym], strtab: &Vec<u8>, target: &str) -> Option<u32> {
+    const STB_GLOBAL: u8 = 1;
+    for symbol in symbols {
+        let binding = symbol.st_info >> 4;
+        if binding == STB_GLOBAL {
+            if let Some(name) = get_string_from_strtab(strtab, symbol.st_name) {
+                if name == target {
+                    return Some(symbol.st_value);
+                }
+            }
+        }
+    }
+    None
 }
