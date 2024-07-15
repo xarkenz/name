@@ -36,3 +36,4 @@ test_files/*/*.o
 test_files/*/*
 
 !test_files/*/*.asm
+!test_files/*/*
