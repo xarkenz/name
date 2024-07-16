@@ -13,7 +13,7 @@ use assembly_helpers::extract_symbol_table_to_sections;
 use lineinfo::get_lineinfo;
 
 use name_const::structs::LineInfo;
-use name_const::elf_utils::{create_new_et_rel, write_et_rel_to_file};
+use name_const::elf_utils::{create_new_et_rel, write_elf_to_file};
 
 use clap::Parser;
 
@@ -35,7 +35,7 @@ fn main() {
             let (section_dot_symtab, section_dot_strtab) = extract_symbol_table_to_sections(symbol_table);
 
             let et_rel = create_new_et_rel(section_dot_text, section_dot_data, section_dot_symtab, section_dot_strtab);
-            match write_et_rel_to_file(&args.output_filename, &et_rel) {
+            match write_elf_to_file(&args.output_filename, &et_rel) {
                 Ok(()) => println!("Object file successfuly written to {:?}", args.output_filename),
                 Err(e) => {
                     eprintln!("{}", e);
@@ -71,7 +71,7 @@ fn full_integration_test() {
             let (section_dot_symtab, section_dot_strtab) = extract_symbol_table_to_sections(symbol_table);
 
             let et_rel = create_new_et_rel(section_dot_text, section_dot_data, section_dot_symtab, section_dot_strtab);
-            match write_et_rel_to_file(&test_output_filename, &et_rel) {
+            match write_elf_to_file(&test_output_filename, &et_rel) {
                 Ok(()) => println!("Object file successfuly written to {:?}.", test_output_filename),
                 Err(e) => {
                     eprintln!("{}", e);
