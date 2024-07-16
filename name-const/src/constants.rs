@@ -33,6 +33,14 @@ pub const INSTRUCTION_SET: &[InstructionInformation] = &[
         alt_args: None,
     },
     InstructionInformation {
+        mnemonic: "addiu",
+        instruction_type: InstructionType::IType,
+        opcode: Some(9),
+        funct: None,
+        args: &[ArgumentType::Rt, ArgumentType::Rs, ArgumentType::Immediate],
+        alt_args: None,
+    },
+    InstructionInformation {
         mnemonic: "beq",
         instruction_type: InstructionType::IType,
         opcode: Some(4),
