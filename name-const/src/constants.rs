@@ -107,8 +107,8 @@ pub const INSTRUCTION_SET: &[InstructionInformation] = &[
     InstructionInformation {
         mnemonic: "jalr",
         instruction_type: InstructionType::RType,
-        opcode: Some(3),
-        funct: None,
+        opcode: None,
+        funct: Some(9),
         args: &[ArgumentType::Rs],
         alt_args: Some(&[
             &[ArgumentType::Rd, ArgumentType::Rs],
@@ -147,8 +147,8 @@ pub const INSTRUCTION_SET: &[InstructionInformation] = &[
     InstructionInformation {
         mnemonic: "mfhi",
         instruction_type: InstructionType::RType,
-        opcode: Some(16),
-        funct: None,
+        opcode: None,
+        funct: Some(16),
         args: &[ArgumentType::Rd],
         alt_args: None,
     },
@@ -156,7 +156,7 @@ pub const INSTRUCTION_SET: &[InstructionInformation] = &[
         mnemonic: "mflo",
         instruction_type: InstructionType::RType,
         opcode: None,
-        funct: Some(16),
+        funct: Some(18),
         args: &[ArgumentType::Rd],
         alt_args: None,
     },
@@ -187,8 +187,8 @@ pub const INSTRUCTION_SET: &[InstructionInformation] = &[
     InstructionInformation {
         mnemonic: "ori",
         instruction_type: InstructionType::IType,
-        opcode: None,
-        funct: Some(18),
+        opcode: Some(13),
+        funct: None,
         args: &[ArgumentType::Rt, ArgumentType::Rs, ArgumentType::Immediate],
         alt_args: None,
     },
@@ -270,8 +270,8 @@ pub const INSTRUCTION_SET: &[InstructionInformation] = &[
     InstructionInformation {
         mnemonic: "sw",
         instruction_type: InstructionType::IType,
-        opcode: None,
-        funct: Some(43),
+        opcode: Some(43),
+        funct: None,
         args: &[ArgumentType::Rs, ArgumentType::Immediate, ArgumentType::Rt],
         alt_args: Some(&[
             &[ArgumentType::Rt, ArgumentType::Rs],
