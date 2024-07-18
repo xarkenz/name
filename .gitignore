@@ -1,21 +1,22 @@
 out
 dist
+
 node_modules/
+
 .vscode-test/
+
 name-emu/target
-name-emu/Cargo.lock
 name-as/target
-name-as/Cargo.lock
 name-const/target
-name-const/Cargo.lock
 name-ln/target
-name-ln/Cargo.lock
-.obsidian
+
 *.vsix
+
 target/*
-Cargo.lock
+
 package-lock.json
 .eslistrc.json
+
 name-ext/node_modules
 name-ext/node_modules/*
 
@@ -27,12 +28,9 @@ name-ext/node_modules/*
 
 *.out
 *.o
-*.li
 
-name-as/.artifacts/*
 name-fmt/node_modules/
 
 test_files/*/*.o
 test_files/*/*
-
 !test_files/*/*.asm

@@ -75,3 +75,18 @@ pub enum Section {
     Text,
     Data,
 }
+
+#[derive(Debug)]
+pub struct Processor {
+    pub pc: u32,
+    pub registers: [u32; 32],
+}
+
+pub struct Memory {
+    pub text: Vec<u8>,
+    pub data: Vec<u8>,
+    pub text_start: u32,
+    pub text_end: u32,
+    pub data_start: u32,
+    pub data_end: u32,
+}

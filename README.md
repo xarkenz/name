@@ -88,8 +88,15 @@ The convention when linking into an executable is to search the symbol table for
 The linker outputs a single file with no extension - an ET_EXEC ELF executable that [name-emu](name-emu/) can interpret.
 
 ## Emulation
-NAME's emulator, in its current state, is largely integrated with vscode, though the eventual goal is some degree of separation.
+Thanks for giving me a few development cycles.
 
-Funny story - it also doesn't work. Give me a few development cycles, would you?
+The NAME emulator accepts ELF files of type `ET_EXEC`. Emulation is carried out using some structs: the `Processor` struct contains the registers as well as the program counter, and the `Memory` struct contains sections `.text` and `.data`. While I could have kept all these pieces separate, it simplifies some later portions of the approach tremendously. The logic for simulation is present in [simulator.rs](name-emu/src/simulator.rs).
 
-[mips.rs](name-emu/src/mips.rs) contains the MIPS object. The MIPS object contains the registers, data, and associated program information for an assembled executable.
+### Fetch
+Fetching is a simple access of `.text` from where `$pc`, the program counter, points to. If the address currently in `$pc` is not accessible by the emulator, an error is thrown. This is an intuitive and straightforward approach, so it's included in [simulator.rs](name-emu/src/simulator.rs).
+
+### Decode
+Decoding is the first novel approach in the emulation process. First, the instruction passed to the decode function has its opcode extracted. The opcode is put through a lookup table for a function pointer with the signature `Fn(&mut Processor, &mut Memory)`. This function pointer represents the target instruction's implementation. If the opcode is `0`, a separate lookup is performed specific for R-type instructions. This allows instruction addition to be a simple edit of a data structure followed by implementing a microscopic function, improving NAME's extensibility. See [decode.rs](name-emu/src/decode.rs) for implementation details.
+
+### Execute
+Execution is as simple as invoking the extracted function pointer from the previous step. There exists no separate `execute.rs` since it's a one-liner.
