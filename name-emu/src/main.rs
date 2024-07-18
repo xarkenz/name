@@ -1,7 +1,10 @@
 mod args;
 mod decode;
 mod execute;
+mod instruction_implementations;
+mod lookup_tables;
 mod simulator;
+mod syscalls;
 
 use crate::args::Cli;
 
@@ -40,7 +43,13 @@ fn emulator_quick_test() {
 
     // TODO: compliance check executable (format, existence, etc.)
 
-    let _ = simulator::simulate(executable);
+    let simulator_result = simulator::simulate(executable);
 
+    match simulator_result {
+        Ok(_) => {},
+        Err(e) => panic!("{e}"),
+    }
+
+    // NOTE: most important test case ever.
     assert_eq!(1+1, 2);
 }

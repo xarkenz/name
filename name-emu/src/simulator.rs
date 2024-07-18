@@ -6,8 +6,6 @@ use name_const::structs::{Memory, Processor};
 
 // There's some simplicity to appreciate here. This is an excellent solution.
 pub fn simulate(elf: Elf) -> Result<(), String> {
-    // TODO: Compliance check executable
-
     // Set up simulation environment
     let mut cpu: Processor = Processor::new(elf.file_header.e_entry);
 
@@ -15,25 +13,45 @@ pub fn simulate(elf: Elf) -> Result<(), String> {
 
     let mut memory: Memory = Memory::new(text, data);
 
+    dbg!(&memory);
 
     // Begin fetch/decode/execute cycle
     loop {
+        dbg!(&cpu.pc);
         // Fetch
         let fetched_instruction: u32 = fetch(&cpu.pc, &memory)?;
         cpu.pc += MIPS_ADDRESS_ALIGNMENT;
 
-        if cpu.pc >= memory.text_end || cpu.pc < memory.text_start {
-            break;
+        if cpu.pc > memory.text_end || cpu.pc < memory.text_start {
+            dbg!(&memory.text_start);
+            dbg!(&memory.text_end);
+            return Err(format!("Program fell off bottom."));
         }
 
         // Decode
-        let decoded_instruction_fn: InstructionFn = decode(&fetched_instruction);
+        let decoded_instruction_fn: InstructionFn = match decode(&fetched_instruction) {
+            Ok(fun) => fun,
+            Err(e) => return Err(format!("An error occurred at address 0x{} (instruction {}): {}.", cpu.pc-4, (cpu.pc-4-memory.text_start)/4, e)),
+        };
 
         // Execute
-        let _instruction_result = decoded_instruction_fn(&mut cpu, &mut memory);
-    }
+        let instruction_result = decoded_instruction_fn(&mut cpu, &mut memory, fetched_instruction);
 
-    Ok(())
+        // The instruction result contains a boolean value representing "execution should stop now".
+        match instruction_result {
+            Ok(execution_should_halt) => {
+                if execution_should_halt {
+                    return Ok(());
+                }
+            },
+            Err(e) => return Err(format!("An error occurred at address 0x{} (instruction #{}): {}.", cpu.pc-4, (cpu.pc-memory.text_start)/4, e)),
+        }
+
+        // The $0 register should never have been permanently changed. Don't let it remain changed.
+        cpu.general_purpose_registers[0] = 0;
+
+        dbg!(&cpu);
+    }
 }
 
 // Extract section .text and section .data from the ELF

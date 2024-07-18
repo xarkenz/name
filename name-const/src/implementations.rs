@@ -11,7 +11,7 @@ impl Processor {
     pub fn new(entry: u32) -> Self {
         Processor {
             pc: entry,
-            registers: [0;32],
+            general_purpose_registers: [0;32],
         }
     }
 }
