@@ -12,9 +12,9 @@ main:
     ori          $t0, $t0, 050
     ori          $t0, $t0, 0b1010
 #    beq          $t1, $t1, bad      # Bad label
-    lb           $t0, 0x50($t1)
-    lb           $t0, 50($t1)
-    lb           $t0, ($t1)
+#    lb           $t0, 0x50($t1)
+#    lb           $t0, 50($t1)
+#    lb           $t0, ($t1)
     beq          $s0, $s0, skip
 #    badmnemonic     $t0, $t0, $t0   # Bad instruction
 test:
@@ -26,4 +26,5 @@ done:
     j           exit
 exit:
     lui         $v0, 10
+    srl         $v0, $v0, 16
     syscall

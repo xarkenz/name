@@ -264,26 +264,29 @@ pub fn write_elf_to_file(file_name: &PathBuf, et_rel: &Elf) -> Result<(), String
 
 */
 
-pub fn read_bytes_to_et_rel(file_contents: Vec<u8>) -> Result<Elf, String> {
+// read input byte vector in as ELF.
+pub fn read_bytes_to_elf(file_contents: Vec<u8>) -> Result<Elf, String> {
     if file_contents.len() < E_EHSIZE_DEFAULT as usize {
         return Err(format!("Incomplete ELF file provided. Please include complete file header. Only {} bytes provided", file_contents.len()))
     }
 
-    let elf_header: Elf32Header = match parse_et_rel_header(&file_contents[0..52]) {
+    let elf_header: Elf32Header = match parse_elf_header(&file_contents[0..52]) {
         Ok(parsed_header) => parsed_header,
         Err(e) => return Err(e),
     };
 
-    let program_header_table_end: usize = (E_EHSIZE_DEFAULT + (E_PHENTSIZE_DEFAULT * E_PHNUM_DEFAULT)) as usize;
+    let num_of_ph_sections: u16 = elf_header.e_phnum;
+
+    let program_header_table_end: usize = (E_EHSIZE_DEFAULT + (E_PHENTSIZE_DEFAULT * num_of_ph_sections)) as usize;
     if file_contents.len() < program_header_table_end {
-        return Err(format!("Incomplete ELF file provided. Please include program header entries for {E_PHNUM_DEFAULT} section(s)."));
+        return Err(format!("Incomplete ELF file provided. Please include program header entries for {num_of_ph_sections} section(s)."));
     }
 
     let program_header_table_bytes = &file_contents[E_EHSIZE_DEFAULT as usize..program_header_table_end];
-    let program_header_table: Vec<Elf32ProgramHeader> = parse_et_rel_ph_table(program_header_table_bytes);
+    let program_header_table: Vec<Elf32ProgramHeader> = parse_ph_table(program_header_table_bytes);
     
     let section_header_table_bytes = &file_contents[(elf_header.e_shoff as usize)..file_contents.len()];
-    let section_header_table: Vec<Elf32SectionHeader> = parse_section_header_table_bytes(section_header_table_bytes);
+    let section_header_table: Vec<Elf32SectionHeader> = parse_sh_table_bytes(section_header_table_bytes);
 
     let mut sections: Vec<Vec<u8>> = vec!();
     for sh in &section_header_table {
@@ -300,7 +303,7 @@ pub fn read_bytes_to_et_rel(file_contents: Vec<u8>) -> Result<Elf, String> {
     })
 }
 
-fn parse_et_rel_header(expected_bytes: &[u8]) -> Result<Elf32Header, String> {    
+fn parse_elf_header(expected_bytes: &[u8]) -> Result<Elf32Header, String> {    
     Ok(Elf32Header {
         e_ident: match &expected_bytes[0..16].try_into().unwrap() {
             &E_IDENT_DEFAULT => E_IDENT_DEFAULT,
@@ -337,7 +340,7 @@ fn parse_et_rel_header(expected_bytes: &[u8]) -> Result<Elf32Header, String> {
     })
 }
 
-fn parse_et_rel_ph_table(program_header_table_bytes: &[u8]) -> Vec<Elf32ProgramHeader> {
+fn parse_ph_table(program_header_table_bytes: &[u8]) -> Vec<Elf32ProgramHeader> {
     program_header_table_bytes.chunks(E_PHENTSIZE_DEFAULT as usize).map(|entry| Elf32ProgramHeader {
             p_type: u32::from_be_bytes(entry[0..4].try_into().unwrap()),
             p_offset: u32::from_be_bytes(entry[4..8].try_into().unwrap()),
@@ -350,7 +353,7 @@ fn parse_et_rel_ph_table(program_header_table_bytes: &[u8]) -> Vec<Elf32ProgramH
         }).collect()
 }
 
-fn parse_section_header_table_bytes(section_header_table_bytes: &[u8]) -> Vec<Elf32SectionHeader> {
+fn parse_sh_table_bytes(section_header_table_bytes: &[u8]) -> Vec<Elf32SectionHeader> {
     section_header_table_bytes.chunks(E_SHENTSIZE_DEFAULT as usize).map(|entry| Elf32SectionHeader {
             sh_name: u32::from_be_bytes(entry[0..4].try_into().unwrap()),
             sh_type: u32::from_be_bytes(entry[4..8].try_into().unwrap()),
@@ -396,6 +399,17 @@ pub fn find_global_symbol_address(symbols: &[Elf32Sym], strtab: &Vec<u8>, target
                 if name == target {
                     return Some(symbol.st_value);
                 }
+            }
+        }
+    }
+    None
+}
+
+pub fn find_target_section_index(section_header_table: &Vec<Elf32SectionHeader>, strtab: &Vec<u8>, target: &str) -> Option<usize> {
+    for (i, section) in section_header_table.iter().enumerate() {
+        if let Some(name) = get_string_from_strtab(strtab, section.sh_name) {
+            if name == target {
+                return Some(i)
             }
         }
     }
