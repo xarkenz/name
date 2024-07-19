@@ -21,14 +21,14 @@ pub const OPCODE_TABLE: [Option<InstructionFn>; 64] = [
     Some(j),  // 0x02
     Some(jal),  // 0x03
     Some(beq),  // 0x04
-    None,  // 0x05
+    Some(bne),  // 0x05
     None,  // 0x06
     None,  // 0x07
-    None,  // 0x08
-    None,  // 0x09
-    None,  // 0x0A
-    None,  // 0x0B
-    None,  // 0x0C
+    Some(addi),  // 0x08
+    None /*Some(addiu)*/,  // 0x09
+    None /*Some(slti)*/,  // 0x0A
+    None /*Some(sltiu)*/,  // 0x0B
+    Some(andi),  // 0x0C
     Some(ori),  // 0x0D
     None,  // 0x0E
     Some(lui),  // 0x0F
@@ -51,15 +51,15 @@ pub const OPCODE_TABLE: [Option<InstructionFn>; 64] = [
     Some(lb),  // 0x20
     None,  // 0x21
     None,  // 0x22
-    None,  // 0x23
+    Some(lw),  // 0x23
     None,  // 0x24
     None,  // 0x25
     None,  // 0x26
     None,  // 0x27
-    None,  // 0x28
+    None /*Some(sb)*/,  // 0x28
     None,  // 0x29
     None,  // 0x2A
-    None,  // 0x2B
+    None /*Some(sw)*/,  // 0x2B
     None,  // 0x2C
     None,  // 0x2D
     None,  // 0x2E
@@ -102,7 +102,7 @@ pub const FUNCT_TABLE: [Option<InstructionFn>; 64] = [
     None, // 0x03
     None, // 0x04
     None, // 0x05
-    None, // 0x06
+    None, // 0x06oiuougou
     None, // 0x07
     None, // 0x08
     None, // 0x09
@@ -129,16 +129,16 @@ pub const FUNCT_TABLE: [Option<InstructionFn>; 64] = [
     None, // 0x1E
     None, // 0x1F
     Some(add), // 0x20
-    None, // 0x21
+    None /*Some(addu)*/, // 0x21
     Some(sub), // 0x22
-    None, // 0x23
-    None, // 0x24
-    None, // 0x25
+    None /*Some(subu)*/, // 0x23
+    Some(and), // 0x24
+    Some(or), // 0x25
     Some(xor), // 0x26
-    None, // 0x27
+    Some(nor), // 0x27
     None, // 0x28
     None, // 0x29
-    None, // 0x2A
+    Some(slt), // 0x2A
     None, // 0x2B
     None, // 0x2C
     None, // 0x2D

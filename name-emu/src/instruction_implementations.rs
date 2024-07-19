@@ -49,6 +49,14 @@ pub fn add(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Resul
     Ok(false)
 }
 
+// 0x21 - addu
+/* pub fn addu(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Result<bool, String> {
+    let (rd, rs, rt, _) = unpack_r_type(instruction);
+    // check that below works
+    cpu.general_purpose_registers[rd] = cpu.general_purpose_registers[rs] + cpu.general_purpose_registers[rt];
+    Ok(false)
+} */
+
 // 0x22 - sub
 pub fn sub(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Result<bool, String> {
     let (rd, rs, rt, _) = unpack_r_type(instruction);
@@ -67,10 +75,60 @@ pub fn sub(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Resul
     Ok(false)
 }
 
+// 0x23 - subu
+/* pub fn subu(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Result<bool, String> {
+    let (rd, rs, rt, _) = unpack_r_type(instruction);
+
+    let temp: (u32, bool) = cpu.general_purpose_registers[rs].overflowing_sub(cpu.general_purpose_registers[rt]);
+
+    cpu.general_purpose_registers[AS_TEMP] = temp.0;
+
+    if temp.1 {
+        // TODO: Implement coprocessor 0 and signal integer overflow
+        return Err(format!("Integer underflow occurred in subtraction."));
+    } else {
+        cpu.general_purpose_registers[rd] = cpu.general_purpose_registers[AS_TEMP];
+    }
+
+    Ok(false)
+} */
+
+// 0x24 - and
+pub fn and(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Result<bool, String>{
+    let (rd, rs, rt, _) = unpack_r_type(instruction);
+    cpu.general_purpose_registers[rd] = cpu.general_purpose_registers[rs] & cpu.general_purpose_registers[rt];
+    Ok(false)
+}
+
+// 0x25 - or
+pub fn or(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Result<bool, String> {
+    let (rd, rs, rt, _) = unpack_r_type(instruction);
+    cpu.general_purpose_registers[rd] = cpu.general_purpose_registers[rs] | cpu.general_purpose_registers[rt];
+    Ok(false)
+}
+
 // 0x26 - xor
 pub fn xor(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Result<bool, String> {
     let (rd, rs, rt, _) = unpack_r_type(instruction);
     cpu.general_purpose_registers[rd] = cpu.general_purpose_registers[rs] ^ cpu.general_purpose_registers[rt];
+    Ok(false)
+}
+
+// 0x27 - nor
+pub fn nor(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Result<bool, String>{
+    let (rd, rs, rt, _) = unpack_r_type(instruction);
+    cpu.general_purpose_registers[rd] = !(cpu.general_purpose_registers[rs] | cpu.general_purpose_registers[rt]);
+    Ok(false)
+}
+
+// 0x2A - slt
+pub fn slt(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Result<bool, String>{
+    let (rd, rs, rt, _) = unpack_r_type(instruction);
+    if cpu.general_purpose_registers[rs] < cpu.general_purpose_registers[rt] {
+        cpu.general_purpose_registers[rd] = 1; // check if this is kosher or if i need to do 00..001 for some reason
+    } else {
+        cpu.general_purpose_registers[rd] = 0;
+    }
     Ok(false)
 }
 
@@ -134,6 +192,49 @@ pub fn beq(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Result
     Ok(false)
 }
 
+// 0x05 - bne
+pub fn bne(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Result<bool, String> {
+    let (rs, rt, imm) = unpack_i_type(instruction);
+
+    // Sign extend offset
+    let offset: i32 = ((imm & 0xFFFF) as i16 as i32) << 2;
+
+    if cpu.general_purpose_registers[rs] == cpu.general_purpose_registers[rt] {
+        return Ok(false)
+    }
+    
+    cpu.general_purpose_registers[AS_TEMP] = (cpu.pc as i32 + offset) as u32;
+
+    if cpu.general_purpose_registers[AS_TEMP] >= memory.text_end || cpu.general_purpose_registers[AS_TEMP] < memory.text_start {
+        return Err(format!("Attempted to access unowned address 0x{:x}", cpu.general_purpose_registers[AS_TEMP]));
+    }
+    
+    Ok(false)
+}
+
+// 0x08 - addi
+pub fn addi(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Result<bool, String>{
+    let (rs, rt, imm) = unpack_i_type(instruction);
+    cpu.general_purpose_registers[rt] = cpu.general_purpose_registers[rs] + imm;
+    Ok(false)
+}
+
+/*
+// 0x09 - addiu
+pub fn addiu(cpu: &mut Processor, memory: &mut Memory, instruction: u32){
+    let (rs, rt, imm) = unpack_i_type(instruction);
+    cpu.general_purpose_registers[rt] = cpu.general_purpose_registers[rs] + imm;
+    Ok(false)
+}
+*/
+
+// 0x0C - andi
+pub fn andi(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Result<bool, String> {
+    let (rs, rt, imm) = unpack_i_type(instruction);
+    cpu.general_purpose_registers[rt] = cpu.general_purpose_registers[rs] & imm;
+    Ok(false)
+}
+
 // 0x0D - ori
 pub fn ori(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Result<bool, String> {
     let (rs, rt, imm) = unpack_i_type(instruction);
@@ -157,6 +258,22 @@ pub fn lb(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Result<
     if cpu.general_purpose_registers[AS_TEMP] >= memory.data_end || cpu.general_purpose_registers[AS_TEMP] < memory.data_start {
         return Err(format!("Attempted to access unowned address 0x{:x}", cpu.general_purpose_registers[AS_TEMP]));
     } else {
+        cpu.general_purpose_registers[rt] = memory.data[(cpu.general_purpose_registers[AS_TEMP] - memory.data_start) as usize] as u32;
+    }
+
+    Ok(false)
+}
+
+// 0x23 - lw
+pub fn lw(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Result<bool, String> {
+    let (rs, rt, imm) = unpack_i_type(instruction);
+
+    cpu.general_purpose_registers[AS_TEMP] = (cpu.general_purpose_registers[rs] as i32 + imm as i32) as u32;
+
+    if cpu.general_purpose_registers[AS_TEMP] >= memory.data_end || cpu.general_purpose_registers[AS_TEMP] < memory.data_start {
+        return Err(format!("Attempted to access unowned address 0x{:x}", cpu.general_purpose_registers[AS_TEMP]));
+    } else {
+        // FIXME implement lw
         cpu.general_purpose_registers[rt] = memory.data[(cpu.general_purpose_registers[AS_TEMP] - memory.data_start) as usize] as u32;
     }
 
