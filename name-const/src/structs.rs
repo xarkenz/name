@@ -8,12 +8,6 @@ pub struct Backpatch {
     pub line_number: usize,
 }
 
-#[derive(Debug)]
-pub struct LineInfo {
-    pub line_number: u32,
-    pub content: String,
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum LineComponent {
     Mnemonic(String),

@@ -92,36 +92,3 @@ pub fn assemble_instruction(info: &InstructionInformation, arguments: &Vec<LineC
         },
     }
 }
-
-#[test]
-fn assemble_instruction_test() {
-    // R-Type test
-    let instruction_table = name_const::helpers::generate_instruction_hashmap();
-    let add_info = instruction_table.get(&"add".to_string()).unwrap();
-
-    let arguments: Vec<&'static str> = vec!["$t0", "$t1", "$t2"];
-    let wrapped_arguments: Vec<LineComponent> = arguments.into_iter().map(|x| 
-            LineComponent::Register(x.to_string())
-    ).collect();
-
-    let mock_symbol_table: Vec<Symbol> = vec![
-        Symbol {symbol_type: 2, identifier:"test".to_string(),value:0x004020, size: 4, visibility: name_const::structs::Visibility::Local, section: name_const::structs::Section::Text }
-    ]; 
-
-    let mock_current_address = name_const::elf_def::MIPS_TEXT_START_ADDR;
-
-    assert_eq!(assemble_instruction(add_info, &wrapped_arguments, &mock_symbol_table, &mock_current_address), Ok(Some(0x012A4020)));
-    
-    // J-Type test
-    let jal_info = instruction_table.get(&"jal".to_string()).unwrap();
-    let arguments: Vec<&'static str> = vec!["test"];
-    let wrapped_arguments: Vec<LineComponent> = arguments.into_iter().map(|x| 
-            LineComponent::Identifier(x.to_string())
-    ).collect();
-
-    assert_eq!(assemble_instruction(jal_info, &wrapped_arguments, &mock_symbol_table, &mock_current_address), Ok(Some(0x0c004020)));
-
-    let mock_symbol_table: Vec<Symbol> = vec!();
-
-    assert_eq!(assemble_instruction(jal_info, &wrapped_arguments, &mock_symbol_table, &mock_current_address), Ok(None));
-}

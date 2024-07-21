@@ -14,35 +14,6 @@ use crate::assembly_helpers::{parse_register_to_u32, translate_identifier_to_add
                                           
 
 */
-
-// I understand this function header can be... hairy. The added context of usage in the assemble_instruction function makes this far easier to parse.
-pub fn assign_r_type_arguments(arguments: &Vec<LineComponent>, args_to_use: &[ArgumentType]) -> Result< (Option<String>, Option<String>, Option<String>, Option<i32>), String > {
-    let mut rd: Option<String> = None;
-    let mut rs: Option<String> = None;
-    let mut rt: Option<String> = None;
-    let mut shamt: Option<i32> = None;
-
-    for (i, passed) in arguments.iter().enumerate() {
-        let mut content = String::from("");
-        let mut immediate = 0;
-        match passed {
-            LineComponent::Register(register) => content = register.clone(),
-            LineComponent::Immediate(imm) => immediate = imm.clone(),
-            _ => return Err(" - Bad argument types provided to instruction.".to_string()),
-        }
-
-        match args_to_use[i] {
-            ArgumentType::Rd => rd = Some(content.clone()),
-            ArgumentType::Rs => rs = Some(content.clone()),
-            ArgumentType::Rt => rt = Some(content.clone()),
-            ArgumentType::Immediate => shamt = Some(immediate),
-            _ => unreachable!(),
-        }
-    }
-
-    return Ok( (rd, rs, rt, shamt) );
-}
-
 pub fn assemble_r_type(rd: Option<String>, rs: Option<String>, rt: Option<String>, shamt: Option<i32>, funct: u32) -> Result<u32, String> {
 
     // I'm using these unwrap_or statements to ensure that when packing R-type instructions that don't use all 3, the fields default to 0 in the packed word.
@@ -73,23 +44,32 @@ pub fn assemble_r_type(rd: Option<String>, rs: Option<String>, rt: Option<String
 
 }
 
-#[test]
-fn assemble_r_type_test() {
-    let rd = Some("$t0".to_string());
-    let rs = Some("$t1".to_string());
-    let rt = Some("$t2".to_string());
-    let shamt = Some(0);
-    let assembled_output = assemble_r_type(rd, rs, rt, shamt, 32);
-    assert_eq!(assembled_output, Ok(0x012A4020));
+// I understand this function header can be... hairy. The added context of usage in the assemble_instruction function makes this far easier to parse.
+pub fn assign_r_type_arguments(arguments: &Vec<LineComponent>, args_to_use: &[ArgumentType]) -> Result< (Option<String>, Option<String>, Option<String>, Option<i32>), String > {
+    let mut rd: Option<String> = None;
+    let mut rs: Option<String> = None;
+    let mut rt: Option<String> = None;
+    let mut shamt: Option<i32> = None;
 
-    let assembled_err = assemble_r_type(Some("bad register".to_string()), None, None, None, 32);
-    assert!(assembled_err.is_err());
+    for (i, passed) in arguments.iter().enumerate() {
+        let mut content = String::from("");
+        let mut immediate = 0;
+        match passed {
+            LineComponent::Register(register) => content = register.clone(),
+            LineComponent::Immediate(imm) => immediate = imm.clone(),
+            _ => return Err(" - Bad argument types provided to instruction.".to_string()),
+        }
 
-    let rd = Some("$t0".to_string());
-    let rs = Some("$t1".to_string());
-    let shamt = Some (32);
-    let assembled_shamt_err = assemble_r_type(rd, rs, None, shamt, 32);
-    assert!(assembled_shamt_err.is_err());
+        match args_to_use[i] {
+            ArgumentType::Rd => rd = Some(content.clone()),
+            ArgumentType::Rs => rs = Some(content.clone()),
+            ArgumentType::Rt => rt = Some(content.clone()),
+            ArgumentType::Immediate => shamt = Some(immediate),
+            _ => unreachable!(),
+        }
+    }
+
+    return Ok( (rd, rs, rt, shamt) );
 }
 
 /*
@@ -178,17 +158,6 @@ pub fn assign_i_type_arguments(arguments: &Vec<LineComponent>, args_to_use: &[Ar
     return Ok( (rs, rt, imm) );
 }
 
-#[test]
-fn assemble_i_type_test() {
-    let opcode: u32 = 13;
-    let rt: Option<String> = Some("$t0".to_string());
-    let rs: Option<String> = Some("$t2".to_string());
-    let immediate: Option<i32> = Some(0xBEEF);
-
-    let assembled_output = assemble_i_type(opcode, rs, rt, immediate);
-    assert_eq!(assembled_output, Ok(0x3548BEEF));
-}
-
 /*
 
        _     _________     _______  ______ 
@@ -242,13 +211,4 @@ pub fn assign_j_type_arguments(arguments: &Vec<LineComponent>, args_to_use: &[Ar
         Some(ident) => Ok(ident),
         None => Err(" - No identifier provided for J-Type instruction.".to_string()),
     }
-}
-
-#[test]
-fn assemble_j_type_test() {
-    let opcode: u32 = 3;
-    let target: u32 = 0x40BEE0;
-
-    let assembled_output = assemble_j_type(opcode, Some(target));
-    assert_eq!(assembled_output, Ok(Some(0x0c40BEE0)));
 }

@@ -2,6 +2,9 @@ mod args;
 mod conformity;
 mod one_module_linker;
 
+#[cfg(test)]
+mod tests;
+
 use args::Cli;
 use one_module_linker::one_module_linker;
 
@@ -23,29 +26,4 @@ fn main() {
     // output final ET_EXEC ELF
     let _ = write_elf_to_file(&args.output_filename, &linked_single_module.unwrap());
     println!("Imagine, if you will, an ET_EXEC has been emitted.");
-}
-
-
-#[test]
-fn one_module_linker_test() {
-    let single_module_input_fn = "/home/teqqy/Projects/name/test_files/instruction_demonstration/mips_test.o";
-    let single_module_output_fn = std::path::PathBuf::from("/home/teqqy/Projects/name/test_files/instruction_demonstration/mips_test");
-
-    let single_file_contents: Vec<u8> = std::fs::read(single_module_input_fn).expect("Unable to open object file");
-    let constructed_elf: name_const::elf_def::Elf = match name_const::elf_utils::read_bytes_to_elf(single_file_contents) {
-        Ok(relocatable) => relocatable,
-        Err(e) => panic!("{e}"),
-    };
-
-    let executable_contents: name_const::elf_def::Elf = match one_module_linker::one_module_linker(constructed_elf) {
-        Ok(result) => result,
-        Err(e) => {
-            panic!("{e}");
-        },
-    };
-
-    match name_const::elf_utils::write_elf_to_file(&single_module_output_fn, &executable_contents) {
-        Ok(_) => println!("Single module linking performed successfully."),
-        Err(e) => panic!("{e}"),
-    }
 }

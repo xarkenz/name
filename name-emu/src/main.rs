@@ -1,10 +1,12 @@
 mod args;
 mod decode;
-mod execute;
 mod instruction_implementations;
 mod lookup_tables;
 mod simulator;
 mod syscalls;
+
+#[cfg(test)]
+mod tests;
 
 use crate::args::Cli;
 
@@ -28,28 +30,4 @@ pub fn main() {
     let _ = simulator::simulate(executable);
     
     println!("Hello, world!");
-}
-
-#[test]
-fn emulator_quick_test() {
-    let input_fn: std::path::PathBuf = From::from("/home/teqqy/Projects/name/test_files/instruction_demonstration/mips_test");
-    
-    let elf_contents: Vec<u8> = read(input_fn).expect("[*] FATAL: NAME cannot files that don't exist...");
-    
-    let executable: Elf = match read_bytes_to_elf(elf_contents){
-        Ok(elf) => elf,
-        Err(e) => panic!("{}", e),
-    };
-
-    // TODO: compliance check executable (format, existence, etc.)
-
-    let simulator_result = simulator::simulate(executable);
-
-    match simulator_result {
-        Ok(_) => {},
-        Err(e) => panic!("{e}"),
-    }
-
-    // NOTE: most important test case ever.
-    assert_eq!(1+1, 2);
 }

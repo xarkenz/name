@@ -6,5 +6,5 @@ pub(crate) struct Cli {
     pub(crate) output_filename: std::path::PathBuf,
 
     #[arg(short, long)]
-    pub(crate) lines: bool,
+    pub(crate) verbose: bool,
 }
