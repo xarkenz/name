@@ -1,13 +1,12 @@
 use name_const::elf_def::{MIPS_DATA_START_ADDR, MIPS_TEXT_START_ADDR, STT_FUNC, STT_OBJECT};
 use name_const::helpers::{generate_instruction_hashmap, get_mnemonics};
 use name_const::structs::{Backpatch, InstructionInformation, LineComponent, Section, Symbol, Visibility};
+use name_const::traits::Expandable;
 
 use crate::assembler::assemble_instruction::assemble_instruction;
 use crate::assembler::assembly_helpers::pretty_print_instruction;
 
-
 // This file contains the struct definition and extracted functions used in the assembler_logic file. There was far too much inlined, so I have extracted it.
-
 
 #[derive(Debug)]
 pub(crate) struct Assembler {
@@ -15,6 +14,7 @@ pub(crate) struct Assembler {
     pub(crate) mnemonics: Vec<String>,
     pub(crate) section_dot_text: Vec<u8>,
     pub(crate) symbol_table: Vec<Symbol>,
+    pub(crate) _expandables: Vec<Box<dyn Expandable>>,
     pub(crate) errors: Vec<String>,
     pub(crate) backpatches: Vec<Backpatch>,
     pub(crate) current_section: Section,
@@ -33,6 +33,7 @@ impl Assembler {
             mnemonics: get_mnemonics(),
             section_dot_text: vec![],
             symbol_table: vec![],
+            _expandables: vec![],
             errors: vec![],
             backpatches: vec![],
             current_section: Section::Null,

@@ -93,6 +93,9 @@ fn token_to_line_component(token: Token, slice: &str, mnemonics: &Vec<String>, m
                 return Err("Failed to parse as decimal.".to_string());
             }
         },
+        Token::DoubleQuote => {
+            return Ok(LineComponent::DoubleQuote(slice[1..slice.len()-1].to_string()));
+        }
         _ => return Err(format!("pattern \"{slice}\" could not be matched by parser.")),
     }
 }

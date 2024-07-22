@@ -29,6 +29,9 @@ pub enum Token {
     #[regex(r"-?[0-9]+")]
     DecimalNumber,
 
+    #[regex(r#""([^"\\]*(?:\\.[^"\\]*)*)""#)]
+    DoubleQuote,
+
     #[token(",", logos::skip)]
     Comma,
 

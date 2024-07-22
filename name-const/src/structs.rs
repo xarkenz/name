@@ -16,6 +16,7 @@ pub enum LineComponent {
     Identifier(String),
     Label(String),
     Directive(String),
+    DoubleQuote(String),
 }
 
 #[derive(Debug, PartialEq)]

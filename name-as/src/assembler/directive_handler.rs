@@ -1,16 +1,19 @@
 use crate::assembler::assembler::Assembler;
 
-use name_const::structs::Section;
+use name_const::structs::{LineComponent, Section};
 
 impl Assembler {
-    pub(crate) fn handle_directive(&mut self, ident: &String) {
+    pub(crate) fn handle_directive(&mut self, ident: &String, _arguments: &Vec<LineComponent>) {
         match ident.as_str() {
-            ".text" => {
-                self.switch_to_text_section();
-            },
             ".data" => {
                 self.switch_to_data_section();
             },
+            ".text" => {
+                self.switch_to_text_section();
+            },
+            ".include" => {
+                todo!("Implement .include directive");
+            }
             _ => {
                 self.errors.push(format!(" - Unrecognized directive on line {}", self.line_number));
             }

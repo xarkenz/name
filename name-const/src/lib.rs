@@ -4,3 +4,4 @@ pub mod elf_utils;
 pub mod helpers;
 pub mod implementations;
 pub mod structs;
+pub mod traits;

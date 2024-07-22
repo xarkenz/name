@@ -12,22 +12,23 @@ const BACKPATCH_PLACEHOLDER: u32 = 0;
 
 /*
 I can understand that this assemble function may at first seem to be kind of a behemoth. 
-Perhaps I need to extract some functionality into helpers and be more descriptive.
+Perhaps I need to extract some functionality into helpers and be more descriptive (that is indeed what needed to happen. what a prophet).
 
 The logic is as follows:
-- Define the variables needed for the assembly environment
+- Initialize the assembly environment (symbol table, sections, etc.)
 - Move through file contents line by line
-- Break each line into its components and specify by type what's going on
-- If an instruction was present, retrieve its information from the table
+- Break each line into its components and specify by type what needs to happen for each component
+- If an instruction was present, retrieve its information from the constant table
 - If registers/immediates/identifiers are provided, push them to an arguments vector
-- If symbols are encountered, attempt to resolve them
+- If symbols are encountered, attempt to resolve them. If unresolvable, save them to the environment's backpatches for fixing later.
 - After all this is said and done, call the assemble_instruction helper with the arguments and symbol table if an instruction was present
 - Update tracking variables (line_number, current_address, etc.) appropriately
 
 The idea is, once the assembler is done running, if any errors were encountered, their content is pushed to the errors vector,
-and the errors vector is returned as the Err variant of the Result for the caller to handle.
+and the errors vector is returned as the Err variant of the Result for the caller to handle. This way, all forseeable errors are printed in one pass.
+There should be next to no fatal errors. I will be vetting this code later to ensure there are no execution paths which crash.
 
-The Ok variant consists of any data needed for the ELF object file output.
+The Ok variant consists of the data needed for ELF object file output.
 */
 
 pub fn assemble(file_contents: String) -> Result<(Vec<u8>, Vec<Symbol>), Vec<String>> {
@@ -42,9 +43,7 @@ pub fn assemble(file_contents: String) -> Result<(Vec<u8>, Vec<Symbol>), Vec<Str
         match line_components_result {
             Ok(components) => line_components = components,
             Err(e) => {
-                environment.errors.push(format!("[*] On line {}:", environment.line_number));
-                environment.errors.push(e);
-                environment.errors.push("".to_string());
+                environment.errors.push(format!("[*] On line {}:", environment.line_number) + &e);
                 environment.line_number += 1;
                 continue;
             },
@@ -56,6 +55,7 @@ pub fn assemble(file_contents: String) -> Result<(Vec<u8>, Vec<Symbol>), Vec<Str
         }
 
         let mut instruction_information: Option<&'static InstructionInformation> = None;
+        let mut found_directive: Option<String> = None;
         let mut arguments: Vec<LineComponent> = vec!();
 
         for component in line_components.unwrap() {
@@ -85,6 +85,7 @@ pub fn assemble(file_contents: String) -> Result<(Vec<u8>, Vec<Symbol>), Vec<Str
                         LineComponent::Identifier(content.clone())
                     );
 
+                    // If the symbol does not exist in the symbol table, a backpatch must be created.
                     if !environment.symbol_exists(&content) {
                         match instruction_information {
                             Some(instruction_info) => {
@@ -100,8 +101,11 @@ pub fn assemble(file_contents: String) -> Result<(Vec<u8>, Vec<Symbol>), Vec<Str
                     environment.resolve_backpatches(&content);
                 },
                 LineComponent::Directive(content) => {
-                    environment.handle_directive(&content);
+                    found_directive = Some(content.clone());
                 },
+                LineComponent::DoubleQuote(_) => {
+                    arguments.push(component);
+                }
             }
         }
 
@@ -141,6 +145,11 @@ pub fn assemble(file_contents: String) -> Result<(Vec<u8>, Vec<Symbol>), Vec<Str
                     }
                 }
             }
+        }
+
+        match found_directive {
+            Some(directive) => environment.handle_directive(&directive, &arguments),
+            None => {},
         }
 
         if let Section::Text = environment.current_section {
