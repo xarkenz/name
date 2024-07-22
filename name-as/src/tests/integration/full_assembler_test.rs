@@ -1,8 +1,8 @@
 use std::fs::read_to_string;
 use std::path::PathBuf;
 
-use crate::assembler::assemble;
-use crate::assembly_helpers::extract_symbol_table_to_sections;
+use crate::assembler::assemble_file::assemble;
+use crate::helpers::extract_symbol_table_to_sections;
 
 use name_const::elf_utils::{create_new_et_rel, write_elf_to_file};
 

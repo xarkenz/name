@@ -1,4 +1,4 @@
-use crate::assembly_utils::assemble_r_type;
+use crate::assembler::assembly_utils::assemble_r_type;
 
 #[test]
 fn assemble_r_type_test() {

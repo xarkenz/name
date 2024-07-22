@@ -63,7 +63,7 @@ pub enum Visibility {
     Weak,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Section {
     Null,
     Text,

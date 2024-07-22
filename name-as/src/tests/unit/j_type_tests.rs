@@ -1,4 +1,4 @@
-use crate::assembly_utils::assemble_j_type;
+use crate::assembler::assembly_utils::assemble_j_type;
 
 #[test]
 fn assemble_j_type_test() {

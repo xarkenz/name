@@ -1,8 +1,6 @@
 mod args;
 mod assembler;
-mod assembly_utils;
-mod assembly_helpers;
-mod assemble_instruction;
+mod helpers;
 mod parser;
 mod tokens;
 
@@ -10,8 +8,8 @@ mod tokens;
 mod tests;
 
 use args::Cli;
-use assembler::assemble;
-use assembly_helpers::extract_symbol_table_to_sections;
+use assembler::assemble_file::assemble;
+use helpers::extract_symbol_table_to_sections;
 
 use name_const::elf_utils::{create_new_et_rel, write_elf_to_file};
 
@@ -21,7 +19,7 @@ fn main() {
     let args = Cli::parse();
     let file_contents: String = std::fs::read_to_string(args.input_filename).expect("Failed to read input file (likely does not exist).");
 
-    // Preprocessor would do its work in macro/pseudoinstruction expansion here
+    // Preprocessor would do its work here
 
     // Allowing assemble to take ownership of the source file contents, because this is the end of its utility in this function.
     let assembled_result = assemble(file_contents);

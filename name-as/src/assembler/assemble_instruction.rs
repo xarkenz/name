@@ -1,6 +1,6 @@
 use name_const::structs::{ArgumentType, InstructionInformation, InstructionType, LineComponent, Symbol};
-use crate::assembly_utils::*;
-use crate::assembly_helpers::{arg_configuration_is_ok, translate_identifier_to_address};
+use crate::assembler::assembly_utils::*;
+use crate::assembler::assembly_helpers::{arg_configuration_is_ok, translate_identifier_to_address};
 
 // Big logic for instruction assembly - this is the main driver code for actual packing of instructions once parsed.
 pub fn assemble_instruction(info: &InstructionInformation, arguments: &Vec<LineComponent>, symbol_table: &Vec<Symbol>, current_address: &u32) -> Result<Option<u32>, String> {

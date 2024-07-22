@@ -1,6 +1,6 @@
 use name_const::structs::{LineComponent, Symbol};
 
-use crate::assemble_instruction::assemble_instruction;
+use crate::assembler::assemble_instruction::assemble_instruction;
 
 #[test]
 // Test ensures an arbitrary r-type instruction is correctly detected and packed by the assembler.
