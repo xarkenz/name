@@ -5,6 +5,9 @@ use name_const::structs::LineComponent;
 impl Assembler {
     pub(crate) fn handle_directive(&mut self, ident: &String, arguments: &Vec<LineComponent>) {
         match ident.as_str() {
+            ".asciiz" => {
+                self.add_new_asciiz(arguments);
+            }
             ".data" => {
                 self.switch_to_data_section();
             },

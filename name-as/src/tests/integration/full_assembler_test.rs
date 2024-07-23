@@ -11,10 +11,10 @@ fn full_integration_test() {
     let base_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
     .parent().expect("[*] FATAL: No parent directory found (did you clone the entire repo?)")
     .join("test_files")
-    .join("instruction_demonstration");
+    .join("hello_world");
 
-    let test_file_path: PathBuf = base_path.join("mips_test.asm");
-    let test_output_filename: PathBuf = base_path.join("mips_test.o");
+    let test_file_path: PathBuf = base_path.join("hello_world.asm");
+    let test_output_filename: PathBuf = base_path.join("hello_world.o");
 
     let file_contents: String = read_to_string(test_file_path).expect("Failed to read input file (likely does not exist).");
 
@@ -32,7 +32,7 @@ fn full_integration_test() {
                     panic!();
                 }
             }
-            
+
             println!("Assembly was successful.");
         },
         Err(errors) => {
@@ -40,6 +40,8 @@ fn full_integration_test() {
             eprintln!("Errors were encountered during assembly: \n");
             let joined_errors = errors.join("\n");
             eprintln!("{joined_errors}");
+
+            println!("\nAssembly was unsuccessful.");
         },
     }
 }

@@ -8,9 +8,26 @@ use crate::assembler::expandables::Equivalence;
 use name_const::structs::{LineComponent, Section};
 
 impl Assembler {
+    pub(crate) fn add_new_asciiz(&mut self, arguments: &Vec<LineComponent>) {
+        if arguments.len() != 1 {
+            self.errors.push(format!(" - `.asciiz` directive expects only one argument, received {}", arguments.len()));
+            return;
+        }
+
+        let mut to_push: Vec<u8> = arguments[0].to_string().chars().map(|c| c as u8).collect::<Vec<u8>>();
+        to_push.push(b'\0');
+
+        self.current_address += to_push.len() as u32;
+        self.section_dot_data.extend(&to_push);
+
+        match self.symbol_table.iter_mut().find(|s| s.identifier == self.most_recent_label) {
+            Some(res) => res.size = to_push.len() as u32,
+            None => {},
+        }
+    }
     pub(crate) fn new_eqv(&mut self, arguments: &Vec<LineComponent>) {
         if arguments.len() < 2 {
-            self.errors.push(" - `.eqv` expected 2 or more arguments.".to_string());
+            self.errors.push(format!(" - `.eqv` expected 2 or more arguments, received {}.", arguments.len()));
             return;
         }
         

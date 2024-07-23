@@ -1,6 +1,5 @@
 # Hello, world!
-    .eqv    SysPrintString, 4
-    .eqv    SysExit, 10
+    .include    "SysCalls.asm"
     
     .data
 

@@ -26,6 +26,7 @@ pub(crate) struct Assembler {
     pub(crate) text_address: u32,
     pub(crate) data_address: u32,
     pub(crate) line_number: usize,
+    pub(crate) most_recent_label: String,
 }
 
 impl Assembler {
@@ -47,6 +48,7 @@ impl Assembler {
             text_address: MIPS_TEXT_START_ADDR,
             data_address: MIPS_DATA_START_ADDR,
             line_number: 1,
+            most_recent_label: String::from(""),
         }
     }
 
@@ -91,6 +93,8 @@ impl Assembler {
                 section: self.current_section.clone(), 
             }
         );
+
+        self.most_recent_label = ident.clone();
     }
 
     // Resolve all backpatches attached to a label. Used once a forward-reference label has been discovered and defined.

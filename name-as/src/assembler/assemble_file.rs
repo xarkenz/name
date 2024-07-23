@@ -182,6 +182,7 @@ pub fn assemble(file_contents: String, current_dir: PathBuf) -> Result<Assembler
         environment.errors.push(format!("[*] Symbols referenced but undefined:\n{err_string}"));
     }
 
+    dbg!(&environment.symbol_table);
 
     if environment.errors.len() == 0 {
         return Ok(environment);
