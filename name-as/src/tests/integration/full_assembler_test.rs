@@ -18,14 +18,13 @@ fn full_integration_test() {
 
     let file_contents: String = read_to_string(test_file_path).expect("Failed to read input file (likely does not exist).");
 
-    let assembled_output = assemble(file_contents);
+    let assembled_output = assemble(file_contents, base_path);
 
     match assembled_output {
-        Ok((section_dot_text, symbol_table)) => {
-            let section_dot_data: Vec<u8> = vec!();
-            let (section_dot_symtab, section_dot_strtab) = extract_symbol_table_to_sections(symbol_table);
+        Ok(assembler_environment) => {
+            let (section_dot_symtab, section_dot_strtab) = extract_symbol_table_to_sections(assembler_environment.symbol_table);
 
-            let et_rel = create_new_et_rel(section_dot_text, section_dot_data, section_dot_symtab, section_dot_strtab);
+            let et_rel = create_new_et_rel(assembler_environment.section_dot_text, assembler_environment.section_dot_data, section_dot_symtab, section_dot_strtab);
             match write_elf_to_file(&test_output_filename, &et_rel) {
                 Ok(()) => println!("Object file successfuly written to {:?}.", test_output_filename),
                 Err(e) => {
@@ -33,7 +32,7 @@ fn full_integration_test() {
                     panic!();
                 }
             }
-
+            
             println!("Assembly was successful.");
         },
         Err(errors) => {

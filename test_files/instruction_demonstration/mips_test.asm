@@ -1,3 +1,4 @@
+    .include    "SysCalls.asm"
     .text
 main: 
     # I'm still here!
@@ -25,6 +26,6 @@ done:
     add         $t0, $zero, $zero
     j           exit
 exit:
-    lui         $v0, 10
+    lui         $v0, SysExit
     srl         $v0, $v0, 16
     syscall

@@ -1,10 +1,12 @@
+use std::path::PathBuf;
+
 use name_const::elf_def::{MIPS_DATA_START_ADDR, MIPS_TEXT_START_ADDR, STT_FUNC, STT_OBJECT};
 use name_const::helpers::{generate_instruction_hashmap, get_mnemonics};
 use name_const::structs::{Backpatch, InstructionInformation, LineComponent, Section, Symbol, Visibility};
-use name_const::traits::Expandable;
 
 use crate::assembler::assemble_instruction::assemble_instruction;
 use crate::assembler::assembly_helpers::pretty_print_instruction;
+use crate::assembler::expandables::Expandable;
 
 // This file contains the struct definition and extracted functions used in the assembler_logic file. There was far too much inlined, so I have extracted it.
 
@@ -13,12 +15,14 @@ pub(crate) struct Assembler {
     pub(crate) instruction_table: std::collections::HashMap<String, &'static InstructionInformation>,
     pub(crate) mnemonics: Vec<String>,
     pub(crate) section_dot_text: Vec<u8>,
+    pub(crate) section_dot_data: Vec<u8>,
     pub(crate) symbol_table: Vec<Symbol>,
-    pub(crate) _expandables: Vec<Box<dyn Expandable>>,
+    pub(crate) expandables: Vec<Box<dyn Expandable>>,
     pub(crate) errors: Vec<String>,
     pub(crate) backpatches: Vec<Backpatch>,
     pub(crate) current_section: Section,
     pub(crate) current_address: u32,
+    pub(crate) current_dir: PathBuf,
     pub(crate) text_address: u32,
     pub(crate) data_address: u32,
     pub(crate) line_number: usize,
@@ -32,12 +36,14 @@ impl Assembler {
             instruction_table: generate_instruction_hashmap(),
             mnemonics: get_mnemonics(),
             section_dot_text: vec![],
+            section_dot_data: vec![],
             symbol_table: vec![],
-            _expandables: vec![],
+            expandables: vec![],
             errors: vec![],
             backpatches: vec![],
             current_section: Section::Null,
             current_address: 0,
+            current_dir: PathBuf::new(),
             text_address: MIPS_TEXT_START_ADDR,
             data_address: MIPS_DATA_START_ADDR,
             line_number: 1,
@@ -71,6 +77,7 @@ impl Assembler {
             Symbol {
                 symbol_type: match self.current_section {
                     Section::Null => {
+                        self.errors.push(format!("[*] On line {}:", self.line_number));
                         self.errors.push(" - Cannot declare label outside a section.".to_string());
                         0
                     },

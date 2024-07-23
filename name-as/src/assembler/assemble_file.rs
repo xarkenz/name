@@ -1,4 +1,6 @@
-use name_const::structs::{InstructionInformation, LineComponent, Section, Symbol};
+use std::path::PathBuf;
+
+use name_const::structs::{InstructionInformation, LineComponent, Section};
 use name_const::elf_def::MIPS_ADDRESS_ALIGNMENT;
 
 use crate::assembler::assembler::Assembler;
@@ -28,16 +30,23 @@ The idea is, once the assembler is done running, if any errors were encountered,
 and the errors vector is returned as the Err variant of the Result for the caller to handle. This way, all forseeable errors are printed in one pass.
 There should be next to no fatal errors. I will be vetting this code later to ensure there are no execution paths which crash.
 
-The Ok variant consists of the data needed for ELF object file output.
+The Ok variant contains the Assembler environment, which contains the needed information for ELF object file output.
 */
 
-pub fn assemble(file_contents: String) -> Result<(Vec<u8>, Vec<Symbol>), Vec<String>> {
+pub fn assemble(file_contents: String, current_dir: PathBuf) -> Result<Assembler, Vec<String>> {
     let mut environment: Assembler = Assembler::new();
+
+    environment.current_dir = current_dir;
 
     for line in file_contents.split('\n') {
         println!("{}: {}", environment.line_number, line);
 
-        let line_components_result = parse_components(line.to_string(), &environment.mnemonics);
+        let mut expanded_line = line.to_string();
+        for expandable in &environment.expandables {
+            expanded_line = expandable.expand(&expanded_line);
+        }
+
+        let line_components_result = parse_components(expanded_line.to_string(), &environment.mnemonics);
 
         let line_components;
         match line_components_result {
@@ -68,7 +77,8 @@ pub fn assemble(file_contents: String) -> Result<(Vec<u8>, Vec<Symbol>), Vec<Str
                             instruction_information = Some(retrieved_instruction_information);
                         },
                         None => {
-                            environment.errors.push(format!(" - Failed to retrieve instruction information for specified mnemonic on line {}.", environment.line_number));
+                            environment.errors.push(format!("[*] On line {}:", environment.line_number));
+                            environment.errors.push(format!(" - Failed to retrieve instruction information for specified mnemonic"));
                             break;
                         },
                     }
@@ -92,7 +102,10 @@ pub fn assemble(file_contents: String) -> Result<(Vec<u8>, Vec<Symbol>), Vec<Str
                                 environment.add_backpatch(instruction_info, &arguments, content);
                                 println!(" - Forward reference detected (line {}).", environment.line_number);
                             },
-                            None => environment.errors.push(format!(" - Found dangling identifier attached to no instruction on line {}.\nEnsure you are using a valid instruction.", environment.line_number)),
+                            None => {
+                                // If there's no instruction information on this line, the identifier is likely for a preprocessor macro.
+                                // Nothing else needs to be done at this time.
+                            },
                         }
                     }
                 },
@@ -112,10 +125,7 @@ pub fn assemble(file_contents: String) -> Result<(Vec<u8>, Vec<Symbol>), Vec<Str
         // To save you time on reading closing braces, at this point of execution all the components of an individual line have been processed.
         // We are still in scope of the outer for loop, iterating line by line
         match instruction_information {
-            None => {
-                environment.line_number += 1;
-                continue;
-            },
+            None => {},
             Some(info) => {
                 let assembled_instruction_result = assemble_instruction(info, &arguments, &environment.symbol_table, &environment.current_address);
 
@@ -141,7 +151,6 @@ pub fn assemble(file_contents: String) -> Result<(Vec<u8>, Vec<Symbol>), Vec<Str
                     Err(e) => {
                         environment.errors.push(format!("[*] On line {}:", environment.line_number));
                         environment.errors.push(e);
-                        environment.errors.push("".to_string());
                     }
                 }
             }
@@ -175,7 +184,7 @@ pub fn assemble(file_contents: String) -> Result<(Vec<u8>, Vec<Symbol>), Vec<Str
 
 
     if environment.errors.len() == 0 {
-        return Ok((environment.section_dot_text, environment.symbol_table));
+        return Ok(environment);
     } else {
         return Err(environment.errors);
     }
