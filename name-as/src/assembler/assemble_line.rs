@@ -1,10 +1,11 @@
-use name_const::structs::{InstructionInformation, LineComponent, Section};
+use name_const::structs::Section;
 use name_const::elf_def::MIPS_ADDRESS_ALIGNMENT;
 
 use crate::assembler::assembler::Assembler;
 
 use crate::assembler::assemble_instruction::assemble_instruction;
 use crate::assembler::assembly_helpers::pretty_print_instruction;
+use crate::constants::structs::{InstructionInformation, LineComponent};
 
 use crate::parser::parse_components;
 

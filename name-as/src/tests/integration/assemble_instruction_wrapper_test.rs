@@ -1,11 +1,12 @@
-use name_const::structs::{LineComponent, Symbol};
+use name_const::structs::Symbol;
 
 use crate::assembler::assemble_instruction::assemble_instruction;
+use crate::constants::structs::LineComponent;
 
 #[test]
 // Test ensures an arbitrary r-type instruction is correctly detected and packed by the assembler.
 fn r_type_assemble() {
-    let instruction_table = name_const::helpers::generate_instruction_hashmap();
+    let instruction_table = crate::assembler::assembly_helpers::generate_instruction_hashmap();
     let add_info = instruction_table.get(&"add".to_string()).unwrap();
 
     let arguments: Vec<&'static str> = vec!["$t0", "$t1", "$t2"];
@@ -25,7 +26,7 @@ fn r_type_assemble() {
 #[test]
 // Test ensures an arbitrary i-type instruction is detected and packed by assembler.
 fn i_type_assemble() {
-    let instruction_table = name_const::helpers::generate_instruction_hashmap();
+    let instruction_table = crate::assembler::assembly_helpers::generate_instruction_hashmap();
     let ori_info = instruction_table.get(&"ori".to_string()).unwrap();
 
     let arguments: Vec<LineComponent> = vec![
@@ -44,7 +45,7 @@ fn i_type_assemble() {
 #[test]
 // Test ensures a j-type instruction without forward referencing is correctly packed.
 fn good_j_type_assemble() {
-        let instruction_table = name_const::helpers::generate_instruction_hashmap();
+        let instruction_table = crate::assembler::assembly_helpers::generate_instruction_hashmap();
         // J-Type test
         let jal_info = instruction_table.get(&"jal".to_string()).unwrap();
         let arguments: Vec<&'static str> = vec!["test"];
@@ -64,7 +65,7 @@ fn good_j_type_assemble() {
 #[test]
 // Test ensures a j-type instruction with a forward reference correctly signals a forward reference was detected.
 fn forward_reference_detection_j_type() {
-    let instruction_table = name_const::helpers::generate_instruction_hashmap();
+    let instruction_table = crate::assembler::assembly_helpers::generate_instruction_hashmap();
     // J-Type test
     let jal_info = instruction_table.get(&"jal".to_string()).unwrap();
     let arguments: Vec<&'static str> = vec!["test"];

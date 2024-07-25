@@ -1,5 +1,11 @@
 use name_const::constants::REGISTERS;
-use name_const::structs::{ArgumentType, LineComponent, Symbol};
+use name_const::structs::Symbol;
+
+use crate::constants::structs::{ArgumentType, LineComponent};
+use crate::constants::instructions::INSTRUCTION_SET;
+use crate::constants::structs::InstructionInformation;
+
+use std::collections::HashMap;
 
 // Helper function for assemble_instruction for use when multiple argument configurations are available.
 // Checks argument configuration against what was passed.
@@ -47,6 +53,26 @@ pub fn parse_register_to_u32(register: &String) -> Result<u32, String> {
     } else {
         return Err("Register parse failed".to_string());
     }
+}
+
+pub fn get_mnemonics() -> Vec<String> {
+    let mut mnemonics: Vec<String> = vec!();
+    
+    for instruction in INSTRUCTION_SET {
+        mnemonics.push(instruction.get_mnemonic());
+    }
+
+    return mnemonics;
+}
+
+pub fn generate_instruction_hashmap() -> HashMap<String, &'static InstructionInformation> {
+    let mut hashmap: HashMap<String, &'static InstructionInformation> = HashMap::new();
+
+    for instruction in INSTRUCTION_SET {
+        hashmap.insert(instruction.mnemonic.to_string(), &instruction);
+    }
+
+    return hashmap;
 }
 
 /*

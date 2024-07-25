@@ -1,6 +1,6 @@
 use crate::assembler::assembler::Assembler;
 
-use name_const::structs::LineComponent;
+use crate::constants::structs::LineComponent;
 
 impl Assembler {
     pub(crate) fn handle_directive(&mut self, ident: &String, arguments: &Vec<LineComponent>) {

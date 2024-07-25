@@ -4,7 +4,9 @@ use std::path::PathBuf;
 use crate::assembler::assemble_file::assemble;
 use crate::assembler::assembler::Assembler;
 
-use name_const::structs::{LineComponent, Section};
+use crate::constants::structs::LineComponent;
+
+use name_const::structs::Section;
 
 impl Assembler {
 

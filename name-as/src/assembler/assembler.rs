@@ -2,12 +2,14 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use name_const::elf_def::{MIPS_DATA_START_ADDR, MIPS_TEXT_START_ADDR, STT_FUNC, STT_OBJECT};
-use name_const::helpers::{generate_instruction_hashmap, get_mnemonics};
-use name_const::structs::{Backpatch, InstructionInformation, LineComponent, Section, Symbol, Visibility};
+use name_const::structs::{Section, Symbol, Visibility};
 
 use crate::assembler::assemble_instruction::assemble_instruction;
-use crate::assembler::assembly_helpers::pretty_print_instruction;
-use crate::assembler::expandables::Expandable;
+use crate::assembler::assembly_helpers::{generate_instruction_hashmap, get_mnemonics, pretty_print_instruction};
+
+use crate::constants::expandables::Expandable;
+use crate::constants::pseudo_instructions::PSEUDO_INSTRUCTION_SET;
+use crate::constants::structs::{Backpatch, InstructionInformation, LineComponent, PseudoInstruction};
 
 // This file contains the struct definition and extracted functions used in the assembler_logic file. There was far too much inlined, so I have extracted it.
 
@@ -157,6 +159,8 @@ impl Assembler {
     pub fn expand_line(&self, line: &str) -> String {
         let mut expanded_line = String::new();
 
+        let mut found_pseudo: Option<&PseudoInstruction> = None;
+
         // Replace equivalences
         for token in line.split_whitespace() {
             if let Some(expansion) = self.equivalences.get(token) {
@@ -165,10 +169,18 @@ impl Assembler {
                 expanded_line.push_str(token);
             }
 
+            if let Some(pseudo_instruction_info) = PSEUDO_INSTRUCTION_SET.iter().find(|instr| instr.mnemonic == token) {
+                found_pseudo = Some(pseudo_instruction_info);
+            } 
+
             expanded_line.push(' ');
         }
 
         // Expand multilines
+        match found_pseudo {
+            Some(instr) => expanded_line = instr.expand(expanded_line.as_str()),
+            None => {},
+        }
 
         expanded_line.trim_end().to_string()
     }

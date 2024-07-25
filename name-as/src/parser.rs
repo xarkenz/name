@@ -1,6 +1,6 @@
 use crate::tokens::Token; 
 
-use name_const::structs::LineComponent;
+use crate::constants::structs::LineComponent;
 
 use logos::Logos;
 
