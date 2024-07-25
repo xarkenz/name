@@ -73,24 +73,15 @@ impl Assembler {
                 return;
             },
         };
-
-        for line in file_contents.split('\n') {
-            if line.trim().starts_with('#') {
-                continue;
-            }
-            if line.trim().starts_with(".eqv") {
-                let returned_env = match assemble(line.to_string(), self.current_dir.clone()) {
-                    Ok(res) => res,
-                    Err(e) => {
-                        self.errors.extend(e);
-                        continue;
-                    },
-                };
-
+        
+        let returned_assembler: Result<Assembler, Vec<String>> = assemble(file_contents, filename);
+        match returned_assembler {
+            Ok(returned_env) => {
                 self.expandables.extend(returned_env.expandables);
-            } else {
-                self.errors.push(format!("`.include` files may only contain preprocessor macros (like .eqv, .macro, etc.)"));
-            }
+            },
+            Err(errors) => {
+                self.errors.extend(errors);
+            },
         }
     }
 
