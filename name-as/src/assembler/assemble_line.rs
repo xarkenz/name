@@ -1,5 +1,3 @@
-use std::string;
-
 use name_const::structs::{InstructionInformation, LineComponent, Section};
 use name_const::elf_def::MIPS_ADDRESS_ALIGNMENT;
 
@@ -12,13 +10,23 @@ use crate::parser::parse_components;
 
 const BACKPATCH_PLACEHOLDER: u32 = 0;
 
-pub fn assemble_line(environment: &mut Assembler, line: &str, expanded_line: &mut str){
-    println!("{}: {}", environment.line_number, line);
+/*
 
-    // let mut expanded_line = line.to_string();
-    // for expandable in &environment.expandables {
-    //     expanded_line = expandable.expand(&expanded_line);
-    // }
+I can understand that this assemble function may at first seem to be kind of a behemoth. 
+
+The logic is as follows:
+- Break each line into its components and specify by type what needs to happen for each component
+- If an instruction was present, retrieve its information from the constant table
+- If registers/immediates/identifiers are provided, push them to an arguments vector
+- If symbols are encountered, attempt to resolve them. If unresolvable, save them to the environment's backpatches for fixing later.
+- After all this is said and done, call the assemble_instruction helper with the arguments and symbol table if an instruction was present
+- Instead, if a directive was present, call the appropriate handler.
+- Update tracking variables (line_number, current_address, etc.) appropriately
+
+*/
+
+pub fn assemble_line(environment: &mut Assembler, line: &str, expanded_line: String){
+    println!("{}{}: {}", environment.line_prefix, environment.line_number, line);
 
     let line_components_result = parse_components(expanded_line.to_string(), &environment.mnemonics);
 
@@ -26,14 +34,13 @@ pub fn assemble_line(environment: &mut Assembler, line: &str, expanded_line: &mu
     match line_components_result {
         Ok(components) => line_components = components,
         Err(e) => {
-            environment.errors.push(format!("[*] On line {}:", environment.line_number) + &e);
-            // environment.line_number += 1;
+            environment.errors.push(format!("[*] On line {}{}:", environment.line_prefix, environment.line_number));
+            environment.errors.push(e);
             return;
         },
     }
     
     if Option::is_none(&line_components) {
-        // environment.line_number += 1;
         return;
     }
 
@@ -51,7 +58,7 @@ pub fn assemble_line(environment: &mut Assembler, line: &str, expanded_line: &mu
                         instruction_information = Some(retrieved_instruction_information);
                     },
                     None => {
-                        environment.errors.push(format!("[*] On line {}:", environment.line_number));
+                        environment.errors.push(format!("[*] On line {}{}:", environment.line_prefix, environment.line_number));
                         environment.errors.push(format!(" - Failed to retrieve instruction information for specified mnemonic"));
                         break;
                     },
@@ -74,7 +81,7 @@ pub fn assemble_line(environment: &mut Assembler, line: &str, expanded_line: &mu
                     match instruction_information {
                         Some(instruction_info) => {
                             environment.add_backpatch(instruction_info, &arguments, content);
-                            println!(" - Forward reference detected (line {}).", environment.line_number);
+                            println!(" - Forward reference detected (line {}{}).", environment.line_prefix, environment.line_number);
                         },
                         None => {
                             // If there's no instruction information on this line, the identifier is likely for a preprocessor macro.
@@ -97,7 +104,6 @@ pub fn assemble_line(environment: &mut Assembler, line: &str, expanded_line: &mu
     }
 
     // To save you time on reading closing braces, at this point of execution all the components of an individual line have been processed.
-    // We are still in scope of the outer for loop, iterating line by line
     match instruction_information {
         None => {},
         Some(info) => {
@@ -123,7 +129,7 @@ pub fn assemble_line(environment: &mut Assembler, line: &str, expanded_line: &mu
                     }
                 },
                 Err(e) => {
-                    environment.errors.push(format!("[*] On line {}:", environment.line_number));
+                    environment.errors.push(format!("[*] On line {}{}:", environment.line_prefix, environment.line_number));
                     environment.errors.push(e);
                 }
             }
@@ -138,6 +144,4 @@ pub fn assemble_line(environment: &mut Assembler, line: &str, expanded_line: &mu
     if let Section::Text = environment.current_section {
         environment.current_address += MIPS_ADDRESS_ALIGNMENT;
     }
-
-    // environment.line_number += 1;
 }

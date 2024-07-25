@@ -27,7 +27,7 @@ fn main() {
     // Preprocessor would do its work here
 
     // Allowing assemble to take ownership of the source file contents, because this is the end of its utility in this function.
-    let assembled_result = assemble(file_contents, base_path);
+    let assembled_result = assemble(file_contents, base_path, None);
     match assembled_result {
         Ok(assembler_environment) => {
             let section_dot_data: Vec<u8> = assembler_environment.section_dot_data;

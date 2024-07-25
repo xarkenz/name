@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 use name_const::elf_def::{MIPS_DATA_START_ADDR, MIPS_TEXT_START_ADDR, STT_FUNC, STT_OBJECT};
@@ -17,6 +18,7 @@ pub(crate) struct Assembler {
     pub(crate) section_dot_text: Vec<u8>,
     pub(crate) section_dot_data: Vec<u8>,
     pub(crate) symbol_table: Vec<Symbol>,
+    pub(crate) equivalences: HashMap<String, String>,
     pub(crate) expandables: Vec<Box<dyn Expandable>>,
     pub(crate) errors: Vec<String>,
     pub(crate) backpatches: Vec<Backpatch>,
@@ -26,6 +28,7 @@ pub(crate) struct Assembler {
     pub(crate) text_address: u32,
     pub(crate) data_address: u32,
     pub(crate) line_number: usize,
+    pub(crate) line_prefix: String,
     pub(crate) most_recent_label: String,
 }
 
@@ -39,6 +42,7 @@ impl Assembler {
             section_dot_text: vec![],
             section_dot_data: vec![],
             symbol_table: vec![],
+            equivalences: HashMap::new(),
             expandables: vec![],
             errors: vec![],
             backpatches: vec![],
@@ -48,6 +52,7 @@ impl Assembler {
             text_address: MIPS_TEXT_START_ADDR,
             data_address: MIPS_DATA_START_ADDR,
             line_number: 1,
+            line_prefix: String::from(""),
             most_recent_label: String::from(""),
         }
     }
@@ -146,6 +151,26 @@ impl Assembler {
             }
             
         }
+    }
+
+    // Expand a line. Try replacing all instances of equivalences first, then expand pseudoinstructions.
+    pub fn expand_line(&self, line: &str) -> String {
+        let mut expanded_line = String::new();
+
+        // Replace equivalences
+        for token in line.split_whitespace() {
+            if let Some(expansion) = self.equivalences.get(token) {
+                expanded_line.push_str(expansion);
+            } else {
+                expanded_line.push_str(token);
+            }
+
+            expanded_line.push(' ');
+        }
+
+        // Expand multilines
+
+        expanded_line.trim_end().to_string()
     }
 
 }

@@ -18,7 +18,7 @@ fn full_integration_test() {
 
     let file_contents: String = read_to_string(test_file_path).expect("Failed to read input file (likely does not exist).");
 
-    let assembled_output = assemble(file_contents, base_path);
+    let assembled_output = assemble(file_contents, base_path, None);
 
     match assembled_output {
         Ok(assembler_environment) => {
@@ -37,7 +37,7 @@ fn full_integration_test() {
         },
         Err(errors) => {
             eprintln!();
-            eprintln!("Errors were encountered during assembly: \n");
+            eprintln!("The following errors were encountered during assembly (others slipped by): \n");
             let joined_errors = errors.join("\n");
             eprintln!("{joined_errors}");
 

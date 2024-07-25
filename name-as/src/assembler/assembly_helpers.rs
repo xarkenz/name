@@ -49,8 +49,6 @@ pub fn parse_register_to_u32(register: &String) -> Result<u32, String> {
     }
 }
 
-
-
 /*
 Pretty print an instruction in the format:
 
