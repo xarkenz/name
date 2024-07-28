@@ -6,7 +6,7 @@ use name_const::elf_utils::{read_bytes_to_elf, write_elf_to_file};
 use crate::one_module_linker::one_module_linker;
 
 #[test]
-fn one_module_linker_test() {
+fn hello_world_test() {
     let base_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
     .parent().expect("[*] FATAL: No parent directory found (did you clone the entire repo?)")
     .join("test_files")

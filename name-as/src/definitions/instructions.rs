@@ -58,6 +58,14 @@ pub(crate) const INSTRUCTION_SET: &[InstructionInformation] = &[
         alt_args: None,
     },
     InstructionInformation {
+        mnemonic: "bgtz",
+        instruction_type: InstructionType::IType,
+        opcode: Some(7),
+        funct: None,
+        args: &[ArgumentType::Rs, ArgumentType::BranchLabel],
+        alt_args: None,  
+    },
+    InstructionInformation {
         mnemonic: "blez",
         instruction_type: InstructionType::IType,
         opcode: Some(6),
@@ -98,6 +106,14 @@ pub(crate) const INSTRUCTION_SET: &[InstructionInformation] = &[
         alt_args: Some(&[
             &[ArgumentType::Rd, ArgumentType::Rs],
         ]),
+    },
+    InstructionInformation {
+        mnemonic: "jr",
+        instruction_type: InstructionType::RType,
+        opcode: None,
+        funct: Some(8),
+        args: &[ArgumentType::Rs],
+        alt_args: None,
     },
     InstructionInformation {
         mnemonic: "lb",
