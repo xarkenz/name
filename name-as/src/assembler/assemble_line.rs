@@ -4,7 +4,7 @@ use name_const::elf_def::MIPS_ADDRESS_ALIGNMENT;
 use crate::assembler::assembler::Assembler;
 
 use crate::assembler::assembly_helpers::reverse_format_instruction;
-use crate::definitions::structs::{InstructionInformation, LineComponent, PseudoInstruction};
+use crate::definitions::structs::{BackpatchType, InstructionInformation, LineComponent, PseudoInstruction};
 
 use crate::parser::parse_components;
 
@@ -93,7 +93,7 @@ pub fn assemble_line(environment: &mut Assembler, line: &str, expanded_line: Str
                 if !environment.symbol_exists(&content) {
                     match instruction_information {
                         Some(instruction_info) => {
-                            environment.add_backpatch(instruction_info, &arguments, content);
+                            environment.add_backpatch(instruction_info, &arguments, content, BackpatchType::Standard);
                             println!(" - Forward reference detected (line {}{}).", environment.line_prefix, environment.line_number);
                         },
                         None => {
@@ -133,7 +133,7 @@ pub fn assemble_line(environment: &mut Assembler, line: &str, expanded_line: Str
             // Unpack the pseudoinstruction's expansion
             // Pseudoinstructions have an associated instruction (the `expand` field) which is a fn
             // (info.expand)(&arguments) allows us to get and call that associated fn
-            let resulting_tuples = match (info.expand)(&environment, &arguments) {
+            let resulting_tuples = match (info.expand)(environment, &arguments) {
                 Ok(tuples) => tuples,
                 Err(e) => {
                     environment.errors.push(format!("[*] On line {}{}", environment.line_prefix, environment.line_number));

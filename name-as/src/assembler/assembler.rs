@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use name_const::elf_def::{MIPS_DATA_START_ADDR, MIPS_TEXT_START_ADDR, STT_FUNC, STT_OBJECT};
+use name_const::elf_def::{MIPS_ADDRESS_ALIGNMENT, MIPS_DATA_START_ADDR, MIPS_TEXT_START_ADDR, STT_FUNC, STT_OBJECT};
 use name_const::structs::{Section, Symbol, Visibility};
 
 use crate::assembler::assemble_instruction::assemble_instruction;
 use crate::assembler::assembly_helpers::{generate_instruction_hashmap, generate_pseudo_instruction_hashmap, pretty_print_instruction};
 
 use crate::definitions::constants::BACKPATCH_PLACEHOLDER;
-use crate::definitions::structs::{Backpatch, InstructionInformation, LineComponent, PseudoInstruction};
+use crate::definitions::structs::{Backpatch, BackpatchType, InstructionInformation, LineComponent, PseudoInstruction};
 
 // This file contains the struct definition and extracted functions used in the assembler_logic file. There was far too much inlined, so I have extracted it.
 
@@ -64,17 +64,35 @@ impl Assembler {
     }
 
     // Add a backpatch to the backpatches list. Used if a forward reference was detected to signal that it must be resolved later.
-    pub(crate) fn add_backpatch(&mut self, instruction_info: &'static InstructionInformation, args: &Vec<LineComponent>, ident: String) {
-        self.backpatches.push(
-            Backpatch {
-                instruction_info: instruction_info,
-                arguments: args.clone(),
-                undiscovered_identifier: ident,
-                backpatch_address: self.current_address,
-                byte_offset: self.section_dot_text.len(),
-                line_number: self.line_number,
-            }
-        );
+    pub(crate) fn add_backpatch(&mut self, instruction_info: &'static InstructionInformation, args: &Vec<LineComponent>, ident: String, backpatch_type: BackpatchType) {
+        match backpatch_type {
+            BackpatchType::Standard | BackpatchType::Upper => {
+                self.backpatches.push(
+                    Backpatch {
+                        instruction_info: instruction_info,
+                        backpatch_type: backpatch_type,
+                        arguments: args.clone(),
+                        undiscovered_identifier: ident,
+                        backpatch_address: self.current_address,
+                        byte_offset: self.section_dot_text.len(),
+                        line_number: self.line_number,
+                    }
+                );
+            },
+            BackpatchType::Lower => {
+                self.backpatches.push(
+                    Backpatch {
+                        instruction_info: instruction_info,
+                        backpatch_type: backpatch_type,
+                        arguments: args.clone(),
+                        undiscovered_identifier: ident,
+                        backpatch_address: self.current_address + MIPS_ADDRESS_ALIGNMENT,
+                        byte_offset: self.section_dot_text.len() + MIPS_ADDRESS_ALIGNMENT as usize,
+                        line_number: self.line_number,
+                    }
+                );
+            },
+        }
     }
 
     // Add a label to the symbol table.
