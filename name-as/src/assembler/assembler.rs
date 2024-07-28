@@ -7,8 +7,8 @@ use name_const::structs::{Section, Symbol, Visibility};
 use crate::assembler::assemble_instruction::assemble_instruction;
 use crate::assembler::assembly_helpers::{generate_instruction_hashmap, generate_pseudo_instruction_hashmap, pretty_print_instruction};
 
-use crate::constants::constants::BACKPATCH_PLACEHOLDER;
-use crate::constants::structs::{Backpatch, InstructionInformation, LineComponent, PseudoInstruction};
+use crate::definitions::constants::BACKPATCH_PLACEHOLDER;
+use crate::definitions::structs::{Backpatch, InstructionInformation, LineComponent, PseudoInstruction};
 
 // This file contains the struct definition and extracted functions used in the assembler_logic file. There was far too much inlined, so I have extracted it.
 

@@ -4,7 +4,7 @@ use name_const::elf_def::MIPS_ADDRESS_ALIGNMENT;
 use crate::assembler::assembler::Assembler;
 
 use crate::assembler::assembly_helpers::reverse_format_instruction;
-use crate::constants::structs::{InstructionInformation, LineComponent, PseudoInstruction};
+use crate::definitions::structs::{InstructionInformation, LineComponent, PseudoInstruction};
 
 use crate::parser::parse_components;
 

@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::constants::structs::LineComponent;
+use crate::definitions::structs::LineComponent;
 
 // I wanted .to_string() to work
 impl fmt::Display for LineComponent {

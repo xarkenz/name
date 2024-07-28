@@ -1,7 +1,7 @@
 use name_const::structs::Symbol;
 
 use crate::assembler::assemble_instruction::assemble_instruction;
-use crate::constants::structs::LineComponent;
+use crate::definitions::structs::LineComponent;
 
 #[test]
 // Test ensures an arbitrary r-type instruction is correctly detected and packed by the assembler.

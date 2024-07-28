@@ -13,11 +13,11 @@ pub fn simulate(elf: Elf) -> Result<(), String> {
 
     let mut memory: Memory = Memory::new(text, data);
 
-    dbg!(&memory);
+    // dbg!(&memory);
 
     // Begin fetch/decode/execute cycle
     loop {
-        dbg!(&cpu.pc);
+        // dbg!(&cpu.pc);
         // Fetch
         let fetched_instruction: u32 = fetch(&cpu.pc, &memory)?;
         cpu.pc += MIPS_ADDRESS_ALIGNMENT;
@@ -50,7 +50,7 @@ pub fn simulate(elf: Elf) -> Result<(), String> {
         // The $0 register should never have been permanently changed. Don't let it remain changed.
         cpu.general_purpose_registers[0] = 0;
 
-        dbg!(&cpu);
+        // dbg!(&cpu);
     }
 }
 

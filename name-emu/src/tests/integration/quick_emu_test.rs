@@ -11,9 +11,9 @@ fn emulator_quick_test() {
     let base_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
     .parent().expect("[*] FATAL: No parent directory found (did you clone the entire repo?)")
     .join("test_files")
-    .join("instruction_demonstration");
+    .join("hello_world");
 
-    let input_fn: PathBuf = base_path.join("mips_test");
+    let input_fn: PathBuf = base_path.join("hello_world");
     
     let elf_contents: Vec<u8> = read(input_fn).expect("[*] FATAL: NAME cannot files that don't exist...");
     

@@ -24,4 +24,21 @@ impl Memory {
             data_end,
         }
     }
+
+    pub fn read_byte(&self, address: u32) -> Result<u8, String> {
+        // Ensure offset is within memory bounds
+        if address >= self.data_end {
+            return Err(format!(" - Address 0x{:x} is out of bounds (upper bound check failed)", address));
+        }
+        
+        // Perform address translation
+        let offset = match address.checked_sub(MIPS_DATA_START_ADDR) {
+            Some(offs) => offs as usize,
+            None => return Err(format!(" - Address 0x{:x} is out of bounds (lower bound check failed)", address)),
+        };
+
+        // Read the byte from memory
+        Ok(self.data[offset].clone())
+    }
+
 }

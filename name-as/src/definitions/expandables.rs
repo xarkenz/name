@@ -1,5 +1,5 @@
 use crate::assembler::assembly_helpers::translate_identifier_to_address;
-use crate::constants::structs::{InstructionInformation, LineComponent};
+use crate::definitions::structs::{InstructionInformation, LineComponent};
 use crate::assembler::assembler::Assembler;
 
 use super::constants::BACKPATCH_PLACEHOLDER;
@@ -20,8 +20,10 @@ pub(crate) fn expand_li(environment: &Assembler, args: &Vec<LineComponent>) -> R
         return Err(format!(" - `li` expected 2 arguments, got {}", args.len()));
     }
     
-    let rd = args[0].clone();
-    let imm = args[1].clone();
+    let rd: LineComponent = args[0].clone();
+    let imm: LineComponent = args[1].clone();
+
+    let zero: LineComponent = LineComponent::Register(String::from("$0"));
 
     let ori_info = match environment.instruction_table.get("ori") {
         Some(info) => info,
@@ -29,8 +31,8 @@ pub(crate) fn expand_li(environment: &Assembler, args: &Vec<LineComponent>) -> R
     };
     
     Ok(vec![
-        // ori  $rd, $rd, imm
-        (ori_info, vec![rd.clone(), rd, imm])
+        // ori  $rd, $zero, imm
+        (ori_info, vec![rd, zero, imm])
     ])
 }
 
@@ -55,14 +57,18 @@ pub(crate) fn expand_la(environment: &Assembler, args: &Vec<LineComponent>) -> R
     // This is where things get ludicrous. Backpatching needs to be accounted for here.
     // A more sophisticated version of backpatching is necessary for this exact reason.
 
-    let mut resolved_symbol_value: u32 = BACKPATCH_PLACEHOLDER; 
-    if let LineComponent::Label(identifier) = label {
-        match translate_identifier_to_address(&identifier, &environment.symbol_table) {
-            Some(addr) => resolved_symbol_value = addr,
-            None => {
-                todo!("Implement backpatching across pseudoinstruction expansions.");
-            },
-        }
+    let mut resolved_symbol_value: u32 = BACKPATCH_PLACEHOLDER;
+
+    match label {
+        LineComponent::Identifier(identifier) => {
+            match translate_identifier_to_address(&identifier, &environment.symbol_table) {
+                Some(addr) => resolved_symbol_value = addr,
+                None => {
+                    todo!("Implement backpatching across pseudoinstruction expansions.");
+                },
+            }
+        },
+        _ => return Err(format!("`la` expected a label, got {:?}", label)),
     }
 
     let upper = LineComponent::Immediate((resolved_symbol_value >> 16) as i32);

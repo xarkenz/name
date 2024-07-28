@@ -1,10 +1,10 @@
 use name_const::constants::REGISTERS;
 use name_const::structs::Symbol;
 
-use crate::constants::pseudo_instructions::PSEUDO_INSTRUCTION_SET;
-use crate::constants::structs::{ArgumentType, LineComponent, PseudoInstruction};
-use crate::constants::instructions::INSTRUCTION_SET;
-use crate::constants::structs::InstructionInformation;
+use crate::definitions::pseudo_instructions::PSEUDO_INSTRUCTION_SET;
+use crate::definitions::structs::{ArgumentType, LineComponent, PseudoInstruction};
+use crate::definitions::instructions::INSTRUCTION_SET;
+use crate::definitions::structs::InstructionInformation;
 
 use std::collections::HashMap;
 

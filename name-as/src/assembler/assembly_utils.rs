@@ -1,7 +1,7 @@
 use name_const::structs::Symbol;
 
 use crate::assembler::assembly_helpers::{parse_register_to_u32, translate_identifier_to_address};
-use crate::constants::structs::{ArgumentType, LineComponent};
+use crate::definitions::structs::{ArgumentType, LineComponent};
 
 /*
 

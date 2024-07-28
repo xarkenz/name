@@ -1,6 +1,6 @@
 mod args;
 mod assembler;
-mod constants;
+mod definitions;
 mod helpers;
 mod parser;
 mod tokens;

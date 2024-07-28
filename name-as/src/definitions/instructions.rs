@@ -1,4 +1,4 @@
-use crate::constants::structs::{ArgumentType, InstructionInformation, InstructionType};
+use crate::definitions::structs::{ArgumentType, InstructionInformation, InstructionType};
 
 pub(crate) const INSTRUCTION_SET: &[InstructionInformation] = &[
     InstructionInformation {
