@@ -15,8 +15,12 @@ pub fn parse_components(line: String) -> Result<Option<Vec<LineComponent>>, Stri
     let mut mnemonic_expected: bool = true;
 
     while let Some(token) = lexer.next() {
+        let unwrapped_token = match token {
+            Ok(tok) => tok,
+            Err(_) => return Err(format!(" - NAME did not like that token: {:?}\n - In context: {}", lexer.slice(), line)),
+        };
         let slice = lexer.slice();
-        let component_result = token_to_line_component(token.unwrap(), slice,  mnemonic_expected);
+        let component_result = token_to_line_component(unwrapped_token, slice,  mnemonic_expected);
 
 
         let component: LineComponent;
@@ -91,6 +95,9 @@ fn token_to_line_component(token: Token, slice: &str, mnemonic_expected: bool) -
         },
         Token::DoubleQuote => {
             return Ok(LineComponent::DoubleQuote(slice[1..slice.len()-1].to_string()));
+        }
+        Token::Colon => {
+            return Ok(LineComponent::Colon);
         }
         _ => return Err(format!("pattern \"{slice}\" could not be matched by parser.")),
     }

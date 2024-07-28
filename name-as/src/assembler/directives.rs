@@ -23,6 +23,7 @@ impl Assembler {
         self.current_address += to_push.len() as u32;
         self.section_dot_data.extend(&to_push);
 
+        // TODO: This should really be refactored to implement.
         match self.symbol_table.iter_mut().find(|s| s.identifier == self.most_recent_label) {
             Some(res) => res.size = to_push.len() as u32,
             None => {},
@@ -98,6 +99,8 @@ impl Assembler {
         println!("[+] Module included.\n");
     }
 
+
+    // .text
     pub(crate) fn switch_to_text_section(&mut self) {
         match self.current_section {
             Section::Null => {
@@ -116,6 +119,8 @@ impl Assembler {
         self.current_section = Section::Text;
     }
 
+
+    // .data
     pub(crate) fn switch_to_data_section(&mut self) {
         match self.current_section {
             Section::Null => {
@@ -132,5 +137,81 @@ impl Assembler {
         }
 
         self.current_section = Section::Data;
+    }
+
+    // .word
+    pub(crate) fn new_word(&mut self, arguments: &Vec<LineComponent>) {
+        if arguments.len() == 1 {
+            let value = match arguments[0] {
+                LineComponent::Immediate(imm) => imm,
+                _ => {
+                    self.errors.push(format!(" - `.word` expected a word immediate."));
+                    return;
+                }
+            };
+
+            let to_push = value.to_be_bytes().to_vec();
+
+            self.current_address += to_push.len() as u32;
+            self.section_dot_data.extend(&to_push);
+
+            // TODO: This should really be refactored to implement.
+            match self.symbol_table.iter_mut().find(|s| s.identifier == self.most_recent_label) {
+                Some(res) => res.size = to_push.len() as u32,
+                None => {},
+            }
+
+            dbg!(&self.section_dot_data);
+
+            return;
+        }
+        
+        let repetition: bool = arguments.iter().any(|arg| matches!(arg, LineComponent::Colon));
+
+        if repetition {
+            if arguments.len() != 3 {
+                self.errors.push(format!(" - When using `.word` with repetition, expected usage is `.word <value> : <repeat>; expected 3 args, got {}", arguments.len()));
+            }
+
+            let (value, repeat) = {
+                let val = match arguments[0] {
+                    LineComponent::Immediate(imm) => imm,
+                    _ => {
+                        self.errors.push(format!(" - When using `.word` with repetition, expected usage is `.word <value> : <repeat>; expected value of type Immediate, got {:?}", arguments[0]));
+                        return;
+                    }
+                };
+
+                let rep = match arguments[2] {
+                    LineComponent::Immediate(imm) => imm,
+                    _ => {
+                        self.errors.push(format!(" - When using `.word` with repetition, expected usage is `.word <value> : <repeat>; expected repeat of type Immediate, got {:?}", arguments[0]));
+                        return;
+                    }
+                };
+
+                if rep < 1 {
+                    self.errors.push(format!(" - When using `.word` with repetition, you'd think you wanna repeat a positive number of times greater than zero..."));
+                }
+
+                (val, rep)
+            };
+
+            let words: Vec<i32> = vec![value; repeat as usize];
+            let mut to_push: Vec<u8> = vec![];
+            words.iter().for_each(|value| to_push.extend(value.to_be_bytes().to_vec()));
+
+            self.current_address += to_push.len() as u32;
+            self.section_dot_data.extend(&to_push);
+
+            // TODO: This should really be refactored to implement.
+            match self.symbol_table.iter_mut().find(|s| s.identifier == self.most_recent_label) {
+                Some(res) => res.size = to_push.len() as u32,
+                None => {},
+            }
+
+        } else {
+            todo!("Create word array given those values");
+        }
     }
 }

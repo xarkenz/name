@@ -1,6 +1,7 @@
 use name_const::structs::Symbol;
 
 use crate::assembler::assembly_helpers::{parse_register_to_u32, translate_identifier_to_address};
+use crate::definitions::constants::{MAX_SIGNED_16_BIT, MIN_SIGNED_16_BIT};
 use crate::definitions::structs::{ArgumentType, LineComponent};
 
 /*
@@ -90,17 +91,14 @@ pub fn assemble_i_type(opcode: u32, rs: Option<String>, rt: Option<String>, imme
     // Default any non-provided registers to $zero - should have no bearing.
     let parsed_rs: u32 = parse_register_to_u32(&rs.unwrap_or("$0".to_string()))?;
     let parsed_rt: u32 = parse_register_to_u32(&rt.unwrap_or("$0".to_string()))?;
-    let unchecked_immediate: u32 = immediate.unwrap_or(0) as u32;
+    let unchecked_immediate: i32 = immediate.unwrap_or(0);
 
     // Check range on immediate value
-    let parsed_immediate = unchecked_immediate as u16 as u32;
-    if parsed_immediate != unchecked_immediate {
-        return Err("Immediate out of range. Consider a psuedoinstruction that allows for 32-bit range.".to_string());
-    }
-
-    if parsed_immediate > 0x10000 {
+    if unchecked_immediate < MIN_SIGNED_16_BIT || unchecked_immediate > MAX_SIGNED_16_BIT {
         return Err("Immediate exceeds 16 bits".to_string());
     }
+
+    let parsed_immediate: u32 = unchecked_immediate as u32;
 
     Ok(
         (opcode << 26) |

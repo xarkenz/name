@@ -1,5 +1,8 @@
 #[cfg(test)]
-mod full_assembler_test;
+mod fib_test;
 
 #[cfg(test)]
-mod assemble_instruction_wrapper_test;
+mod hello_world_test;
+
+#[cfg(test)]
+mod instruction_demonstration_test;

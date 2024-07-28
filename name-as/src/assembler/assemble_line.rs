@@ -112,7 +112,8 @@ pub fn assemble_line(environment: &mut Assembler, line: &str, expanded_line: Str
             },
             LineComponent::Register(_) | 
             LineComponent::Immediate(_) | 
-            LineComponent::DoubleQuote(_) => {
+            LineComponent::DoubleQuote(_) | 
+            LineComponent::Colon => {
                 arguments.push(component);
             },
         }

@@ -77,24 +77,37 @@ pub fn generate_pseudo_instruction_hashmap() -> HashMap<&'static str, &'static P
 }
 
 pub fn reverse_format_instruction(info: &InstructionInformation, args: &Vec<LineComponent>) -> String {
+    // Prepare the mnemonic
     let mnemonic = &info.mnemonic;
     
     // Construct the operands string
     let operands: Vec<String> = args.iter().map(|arg| arg.to_string()).collect();
     let operands_str = operands.join(", ");
     
-    // Base instruction string with mnemonic aligned to column 10 or 11
-    let base_instruction = format!("{:>10} {:<9}", mnemonic, operands_str);
+    // Define column positions
+    let mnemonic_column = 9; // Column 10
+    let operands_column = 17; // Column 18
     
-    // Aligning the base instruction string to ensure operands are at column 19 or 20
-    let formatted_instruction = if base_instruction.len() < 19 {
-        format!("{: <19}", base_instruction)
-    } else {
-        base_instruction
-    };
+    // Start building the instruction string
+    let mut instruction = String::new();
 
-    formatted_instruction
+    // Insert mnemonic at the correct column
+    if mnemonic_column > 0 {
+        instruction.push_str(&" ".repeat(mnemonic_column));
+    }
+    instruction.push_str(mnemonic);
+    
+    // Calculate spaces needed to align operands to the correct column
+    let current_length = instruction.len();
+    if operands_column > current_length {
+        instruction.push_str(&" ".repeat(operands_column - current_length));
+    }
+    instruction.push_str(&operands_str);
+    
+    instruction
 }
+
+
 
 
 /*

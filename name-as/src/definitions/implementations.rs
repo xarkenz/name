@@ -13,6 +13,7 @@ impl fmt::Display for LineComponent {
             LineComponent::Label(l) => write!(f, "{}", l),
             LineComponent::Directive(d) => write!(f, "{}", d),
             LineComponent::DoubleQuote(d) => write!(f, "{}", d),
+            LineComponent::Colon => write!(f, ":"),
         }
     }
 }
