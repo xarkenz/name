@@ -88,7 +88,7 @@ impl Assembler {
         let returned_assembler: Result<Assembler, Vec<String>> = assemble(file_contents, filename, Some(line_prefix));
         match returned_assembler {
             Ok(returned_env) => {
-                self.expandables.extend(returned_env.expandables);
+                self.equivalences.extend(returned_env.equivalences);
             },
             Err(errors) => {
                 self.errors.extend(errors);

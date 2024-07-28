@@ -7,7 +7,7 @@ use crate::constants::structs::LineComponent;
 // Test ensures an arbitrary r-type instruction is correctly detected and packed by the assembler.
 fn r_type_assemble() {
     let instruction_table = crate::assembler::assembly_helpers::generate_instruction_hashmap();
-    let add_info = instruction_table.get(&"add".to_string()).unwrap();
+    let add_info = instruction_table.get("add").unwrap();
 
     let arguments: Vec<&'static str> = vec!["$t0", "$t1", "$t2"];
     let wrapped_arguments: Vec<LineComponent> = arguments.into_iter().map(|x| 
@@ -27,7 +27,7 @@ fn r_type_assemble() {
 // Test ensures an arbitrary i-type instruction is detected and packed by assembler.
 fn i_type_assemble() {
     let instruction_table = crate::assembler::assembly_helpers::generate_instruction_hashmap();
-    let ori_info = instruction_table.get(&"ori".to_string()).unwrap();
+    let ori_info = instruction_table.get("ori").unwrap();
 
     let arguments: Vec<LineComponent> = vec![
         LineComponent::Register(String::from("$t1")),
@@ -47,7 +47,7 @@ fn i_type_assemble() {
 fn good_j_type_assemble() {
         let instruction_table = crate::assembler::assembly_helpers::generate_instruction_hashmap();
         // J-Type test
-        let jal_info = instruction_table.get(&"jal".to_string()).unwrap();
+        let jal_info = instruction_table.get("jal").unwrap();
         let arguments: Vec<&'static str> = vec!["test"];
         let wrapped_arguments: Vec<LineComponent> = arguments.into_iter().map(|x| 
                 LineComponent::Identifier(x.to_string())
@@ -67,7 +67,7 @@ fn good_j_type_assemble() {
 fn forward_reference_detection_j_type() {
     let instruction_table = crate::assembler::assembly_helpers::generate_instruction_hashmap();
     // J-Type test
-    let jal_info = instruction_table.get(&"jal".to_string()).unwrap();
+    let jal_info = instruction_table.get("jal").unwrap();
     let arguments: Vec<&'static str> = vec!["test"];
     let wrapped_arguments: Vec<LineComponent> = arguments.into_iter().map(|x| 
             LineComponent::Identifier(x.to_string())

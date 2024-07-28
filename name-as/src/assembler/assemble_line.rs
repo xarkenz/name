@@ -3,13 +3,10 @@ use name_const::elf_def::MIPS_ADDRESS_ALIGNMENT;
 
 use crate::assembler::assembler::Assembler;
 
-use crate::assembler::assemble_instruction::assemble_instruction;
-use crate::assembler::assembly_helpers::pretty_print_instruction;
-use crate::constants::structs::{InstructionInformation, LineComponent};
+use crate::assembler::assembly_helpers::reverse_format_instruction;
+use crate::constants::structs::{InstructionInformation, LineComponent, PseudoInstruction};
 
 use crate::parser::parse_components;
-
-const BACKPATCH_PLACEHOLDER: u32 = 0;
 
 /*
 
@@ -29,8 +26,9 @@ The logic is as follows:
 pub fn assemble_line(environment: &mut Assembler, line: &str, expanded_line: String){
     println!("{}{}: {}", environment.line_prefix, environment.line_number, line);
 
-    let line_components_result = parse_components(expanded_line.to_string(), &environment.mnemonics);
+    let line_components_result = parse_components(expanded_line.to_string());
 
+    // Unpack the line_components_result so we can process the line properly.
     let line_components;
     match line_components_result {
         Ok(components) => line_components = components,
@@ -46,31 +44,45 @@ pub fn assemble_line(environment: &mut Assembler, line: &str, expanded_line: Str
     }
 
     let mut instruction_information: Option<&'static InstructionInformation> = None;
+    let mut pseudo_instruction_information: Option<&'static PseudoInstruction> = None;
     let mut found_directive: Option<String> = None;
     let mut arguments: Vec<LineComponent> = vec!();
 
     for component in line_components.unwrap() {
         match component {
             LineComponent::Mnemonic(mnemonic) => {
-                let retrieved_instruction_option = environment.instruction_table.get(&mnemonic);
-                
-                match retrieved_instruction_option {
-                    Some(retrieved_instruction_information) => {
-                        instruction_information = Some(retrieved_instruction_information);
+                // There are fewer pseudoinstruction mnemonics, and instructions like `li` and `la` are used incredibly often.
+                // Therefore, search should happen for them first.
+                // This is kind of an over-optimization but low-hanging fruit is low-hanging fruit.
+
+                // TODO: This could be extracted into a function @dollarstorepoetry
+                // It could return a tuple (found_instruction, found_pseudoinstruction) where those two are options
+                let retrieved_pseudo_instruction_option = environment.pseudo_instruction_table.get(mnemonic.as_str());
+                match retrieved_pseudo_instruction_option {
+                    Some(pseudo_instruction_info) => {
+                        pseudo_instruction_information = Some(pseudo_instruction_info);
                     },
                     None => {
-                        environment.errors.push(format!("[*] On line {}{}:", environment.line_prefix, environment.line_number));
-                        environment.errors.push(format!(" - Failed to retrieve instruction information for specified mnemonic"));
-                        break;
-                    },
+                        // Do nothing. It's likely that it's an instruction instead.
+                    }
                 }
 
-            },
-            LineComponent::Register(_) => {
-                arguments.push(component);
-            },
-            LineComponent::Immediate(_) => {
-                arguments.push(component);
+                // Could this be refactored out as a guard clause when you make this a function?
+                if pseudo_instruction_information.is_none() {
+                    let retrieved_instruction_option = environment.instruction_table.get(mnemonic.as_str());
+                    
+                    match retrieved_instruction_option {
+                        Some(retrieved_instruction_information) => {
+                            instruction_information = Some(retrieved_instruction_information);
+                        },
+                        None => {
+                            environment.errors.push(format!("[*] On line {}{}:", environment.line_prefix, environment.line_number));
+                            environment.errors.push(format!(" - Instruction \"{}\" not recognized. If this is a valid MIPS instruction, consider opening a pull request at https://cameron-b63/name.", mnemonic));
+                            return;
+                        },
+                    }
+                }
+
             },
             LineComponent::Identifier(content) => {
                 arguments.push(
@@ -85,7 +97,7 @@ pub fn assemble_line(environment: &mut Assembler, line: &str, expanded_line: Str
                             println!(" - Forward reference detected (line {}{}).", environment.line_prefix, environment.line_number);
                         },
                         None => {
-                            // If there's no instruction information on this line, the identifier is likely for a preprocessor macro.
+                            // If there's no instruction information on this line, the identifier is likely associated with a preprocessor macro.
                             // Nothing else needs to be done at this time.
                         },
                     }
@@ -98,42 +110,58 @@ pub fn assemble_line(environment: &mut Assembler, line: &str, expanded_line: Str
             LineComponent::Directive(content) => {
                 found_directive = Some(content.clone());
             },
+            LineComponent::Register(_) | 
+            LineComponent::Immediate(_) | 
             LineComponent::DoubleQuote(_) => {
                 arguments.push(component);
-            }
+            },
         }
     }
 
-    // To save you time on reading closing braces, at this point of execution all the components of an individual line have been processed.
+    // If a known instruction mnemonic was discovered, its contents will be assembled here.
     match instruction_information {
         None => {},
         Some(info) => {
-            let assembled_instruction_result = assemble_instruction(info, &arguments, &environment.symbol_table, &environment.current_address);
+            environment.handle_assemble_instruction(info, &arguments);
+        }
+    }
 
-            match assembled_instruction_result {
-                Ok(assembled_instruction) => {
-                    match assembled_instruction {
-                        Some(packed) => {
-                            environment.section_dot_text.extend_from_slice(
-                                &packed.to_be_bytes()
-                            );
-
-                            pretty_print_instruction(&packed);
-                        },
-                        None => {
-                            environment.section_dot_text.extend_from_slice(
-                                &BACKPATCH_PLACEHOLDER.to_be_bytes()
-                            );
-
-                            println!(" - Placeholder bytes appended to section .text.\n");
-                        }
-                    }
-                },
+    // If a known pseudoinstruction mnemonic was discovered, its expansion will be assembled here.
+    match pseudo_instruction_information {
+        None => {},
+        Some(info) => {
+            // Unpack the pseudoinstruction's expansion
+            // Pseudoinstructions have an associated instruction (the `expand` field) which is a fn
+            // (info.expand)(&arguments) allows us to get and call that associated fn
+            let resulting_tuples = match (info.expand)(&environment, &arguments) {
+                Ok(tuples) => tuples,
                 Err(e) => {
-                    environment.errors.push(format!("[*] On line {}{}:", environment.line_prefix, environment.line_number));
+                    environment.errors.push(format!("[*] On line {}{}", environment.line_prefix, environment.line_number));
                     environment.errors.push(e);
-                }
+                    return;
+                },
+            };
+
+            // Create a new line_number and line_prefix scope since any printing will now be associated with the pseudoinstruction
+            let old_line_prefix = environment.line_prefix.clone();
+
+            // Of form "12->1->"
+            environment.line_prefix = format!("{}{}{}", environment.line_prefix, environment.line_number, "->");
+
+            let old_line_number = environment.line_number.clone();
+            environment.line_number = 1;
+
+            for (instr_info, args) in resulting_tuples {
+                let reverse_formatted_instruction = reverse_format_instruction(instr_info, &args);
+                println!("{}{}: {}", environment.line_prefix, environment.line_number, reverse_formatted_instruction);
+                environment.handle_assemble_instruction(instr_info, &args);
+                environment.line_number += 1;
             }
+
+            // Restore once multi-line scope exited
+            environment.line_prefix = old_line_prefix;
+            environment.line_number = old_line_number;
+
         }
     }
 

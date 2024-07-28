@@ -5,7 +5,7 @@ use crate::constants::structs::LineComponent;
 use logos::Logos;
 
 // This function uses a regex library to simplify parsing.
-pub fn parse_components(line: String, mnemonics: &Vec<String>) -> Result<Option<Vec<LineComponent>>, String> {
+pub fn parse_components(line: String) -> Result<Option<Vec<LineComponent>>, String> {
     let mut components = vec!();
     let mut lexer = Token::lexer(&line);
 
@@ -16,7 +16,7 @@ pub fn parse_components(line: String, mnemonics: &Vec<String>) -> Result<Option<
 
     while let Some(token) = lexer.next() {
         let slice = lexer.slice();
-        let component_result = token_to_line_component(token.unwrap(), slice, &mnemonics, mnemonic_expected);
+        let component_result = token_to_line_component(token.unwrap(), slice,  mnemonic_expected);
 
 
         let component: LineComponent;
@@ -47,7 +47,7 @@ pub fn parse_components(line: String, mnemonics: &Vec<String>) -> Result<Option<
 }
 
 // Required implementation for regex library
-fn token_to_line_component(token: Token, slice: &str, mnemonics: &Vec<String>, mnemonic_expected: bool) -> Result<LineComponent, String> {
+fn token_to_line_component(token: Token, slice: &str, mnemonic_expected: bool) -> Result<LineComponent, String> {
     match token {
         Token::Directive => return Ok(LineComponent::Directive(slice.to_string())),
         Token::Label => {
@@ -55,11 +55,7 @@ fn token_to_line_component(token: Token, slice: &str, mnemonics: &Vec<String>, m
         },
         Token::Identifier => {
             if mnemonic_expected {
-                if mnemonics.contains(&slice.to_string()) {
-                    return Ok(LineComponent::Mnemonic(slice.to_string()));
-                } else {
-                    return Err(format!(" - Instruction \"{}\" not recognized. If this is a valid MIPS instruction, consider opening a pull request at https://cameron-b63/name.", slice.to_string()));
-                }
+                return Ok(LineComponent::Mnemonic(slice.to_string()));
             } else {
                 return Ok(LineComponent::Identifier(slice.to_string()));
             }

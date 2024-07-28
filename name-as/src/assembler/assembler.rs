@@ -5,23 +5,21 @@ use name_const::elf_def::{MIPS_DATA_START_ADDR, MIPS_TEXT_START_ADDR, STT_FUNC, 
 use name_const::structs::{Section, Symbol, Visibility};
 
 use crate::assembler::assemble_instruction::assemble_instruction;
-use crate::assembler::assembly_helpers::{generate_instruction_hashmap, get_mnemonics, pretty_print_instruction};
+use crate::assembler::assembly_helpers::{generate_instruction_hashmap, generate_pseudo_instruction_hashmap, pretty_print_instruction};
 
-use crate::constants::expandables::Expandable;
-use crate::constants::pseudo_instructions::PSEUDO_INSTRUCTION_SET;
+use crate::constants::constants::BACKPATCH_PLACEHOLDER;
 use crate::constants::structs::{Backpatch, InstructionInformation, LineComponent, PseudoInstruction};
 
 // This file contains the struct definition and extracted functions used in the assembler_logic file. There was far too much inlined, so I have extracted it.
 
 #[derive(Debug)]
 pub(crate) struct Assembler {
-    pub(crate) instruction_table: std::collections::HashMap<String, &'static InstructionInformation>,
-    pub(crate) mnemonics: Vec<String>,
+    pub(crate) instruction_table: HashMap<&'static str, &'static InstructionInformation>,
+    pub(crate) pseudo_instruction_table: HashMap<&'static str, &'static PseudoInstruction>,
     pub(crate) section_dot_text: Vec<u8>,
     pub(crate) section_dot_data: Vec<u8>,
     pub(crate) symbol_table: Vec<Symbol>,
     pub(crate) equivalences: HashMap<String, String>,
-    pub(crate) expandables: Vec<Box<dyn Expandable>>,
     pub(crate) errors: Vec<String>,
     pub(crate) backpatches: Vec<Backpatch>,
     pub(crate) current_section: Section,
@@ -40,12 +38,11 @@ impl Assembler {
     pub(crate) fn new() -> Self {
         Assembler {
             instruction_table: generate_instruction_hashmap(),
-            mnemonics: get_mnemonics(),
+            pseudo_instruction_table: generate_pseudo_instruction_hashmap(),
             section_dot_text: vec![],
             section_dot_data: vec![],
             symbol_table: vec![],
             equivalences: HashMap::new(),
-            expandables: vec![],
             errors: vec![],
             backpatches: vec![],
             current_section: Section::Null,
@@ -155,11 +152,9 @@ impl Assembler {
         }
     }
 
-    // Expand a line. Try replacing all instances of equivalences first, then expand pseudoinstructions.
+    // Expand a line. Try replacing all instances of equivalences.
     pub fn expand_line(&self, line: &str) -> String {
         let mut expanded_line = String::new();
-
-        let mut found_pseudo: Option<&PseudoInstruction> = None;
 
         // Replace equivalences
         for token in line.split_whitespace() {
@@ -169,20 +164,40 @@ impl Assembler {
                 expanded_line.push_str(token);
             }
 
-            if let Some(pseudo_instruction_info) = PSEUDO_INSTRUCTION_SET.iter().find(|instr| instr.mnemonic == token) {
-                found_pseudo = Some(pseudo_instruction_info);
-            } 
-
             expanded_line.push(' ');
         }
 
-        // Expand multilines
-        match found_pseudo {
-            Some(instr) => expanded_line = instr.expand(expanded_line.as_str()),
-            None => {},
-        }
-
         expanded_line.trim_end().to_string()
+    }
+
+    // Attempt to assemble a parsed line. If successful, add bytes to section .text - else, extend errors and keep it pushing.
+    pub fn handle_assemble_instruction(&mut self, info: &InstructionInformation, args: &Vec<LineComponent>) {
+        let assembled_instruction_result = assemble_instruction(info, &args, &self.symbol_table, &self.current_address);
+
+        match assembled_instruction_result {
+            Ok(assembled_instruction) => {
+                match assembled_instruction {
+                    Some(packed) => {
+                        self.section_dot_text.extend_from_slice(
+                            &packed.to_be_bytes()
+                        );
+
+                        pretty_print_instruction(&packed);
+                    },
+                    None => {
+                        self.section_dot_text.extend_from_slice(
+                            &BACKPATCH_PLACEHOLDER.to_be_bytes()
+                        );
+
+                        println!(" - Placeholder bytes appended to section .text.\n");
+                    }
+                }
+            },
+            Err(e) => {
+                self.errors.push(format!("[*] On line {}{}:", self.line_prefix, self.line_number));
+                self.errors.push(e);
+            }
+        }
     }
 
 }

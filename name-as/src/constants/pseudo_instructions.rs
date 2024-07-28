@@ -1,13 +1,13 @@
-use super::structs::PseudoInstruction;
+use crate::constants::structs::PseudoInstruction;
+use crate::constants::expandables::*;
 
 pub(crate) const PSEUDO_INSTRUCTION_SET: &[PseudoInstruction] = &[
     PseudoInstruction {
         mnemonic: "li",
-        expansion: "ori     %1, %1, $zero",
+        expand: expand_li,
     },
     PseudoInstruction {
-        // NOPE this actually requires a lot of thought
         mnemonic: "la",
-        expansion: "<FAILURE>"
-    }
+        expand: expand_la,
+    },
 ];

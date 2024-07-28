@@ -1,7 +1,8 @@
 use name_const::constants::REGISTERS;
 use name_const::structs::Symbol;
 
-use crate::constants::structs::{ArgumentType, LineComponent};
+use crate::constants::pseudo_instructions::PSEUDO_INSTRUCTION_SET;
+use crate::constants::structs::{ArgumentType, LineComponent, PseudoInstruction};
 use crate::constants::instructions::INSTRUCTION_SET;
 use crate::constants::structs::InstructionInformation;
 
@@ -55,25 +56,46 @@ pub fn parse_register_to_u32(register: &String) -> Result<u32, String> {
     }
 }
 
-pub fn get_mnemonics() -> Vec<String> {
-    let mut mnemonics: Vec<String> = vec!();
+pub fn generate_instruction_hashmap() -> HashMap<&'static str, &'static InstructionInformation> {
+    let mut hashmap: HashMap<&'static str, &'static InstructionInformation> = HashMap::new();
+
+    for instruction in INSTRUCTION_SET {
+        hashmap.insert(instruction.mnemonic, &instruction);
+    }
+
+    hashmap
+}
+
+pub fn generate_pseudo_instruction_hashmap() -> HashMap<&'static str, &'static PseudoInstruction> {
+    let mut hashmap: HashMap<&'static str, &'static PseudoInstruction> = HashMap::new();
+
+    for pseudo in PSEUDO_INSTRUCTION_SET {
+        hashmap.insert(pseudo.mnemonic, &pseudo);
+    }
+
+    hashmap
+}
+
+pub fn reverse_format_instruction(info: &InstructionInformation, args: &Vec<LineComponent>) -> String {
+    let mnemonic = &info.mnemonic;
     
-    for instruction in INSTRUCTION_SET {
-        mnemonics.push(instruction.get_mnemonic());
-    }
+    // Construct the operands string
+    let operands: Vec<String> = args.iter().map(|arg| arg.to_string()).collect();
+    let operands_str = operands.join(", ");
+    
+    // Base instruction string with mnemonic aligned to column 10 or 11
+    let base_instruction = format!("{:>10} {:<9}", mnemonic, operands_str);
+    
+    // Aligning the base instruction string to ensure operands are at column 19 or 20
+    let formatted_instruction = if base_instruction.len() < 19 {
+        format!("{: <19}", base_instruction)
+    } else {
+        base_instruction
+    };
 
-    return mnemonics;
+    formatted_instruction
 }
 
-pub fn generate_instruction_hashmap() -> HashMap<String, &'static InstructionInformation> {
-    let mut hashmap: HashMap<String, &'static InstructionInformation> = HashMap::new();
-
-    for instruction in INSTRUCTION_SET {
-        hashmap.insert(instruction.mnemonic.to_string(), &instruction);
-    }
-
-    return hashmap;
-}
 
 /*
 Pretty print an instruction in the format:

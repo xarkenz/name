@@ -1,3 +1,5 @@
+use super::expandables::ExpansionFn;
+
 #[derive(Debug, PartialEq)]
 pub struct Backpatch {
     pub instruction_info: &'static InstructionInformation,
@@ -44,10 +46,11 @@ pub enum ArgumentType {
     Immediate,
     Identifier,
     BranchLabel,
+    // Label,
 }
 
 #[derive(Debug)]
 pub(crate) struct PseudoInstruction {
     pub(crate) mnemonic: &'static str,
-    pub(crate) expansion: &'static str,
+    pub(crate) expand: ExpansionFn,
 }
