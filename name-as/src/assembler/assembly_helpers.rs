@@ -8,6 +8,8 @@ use crate::definitions::structs::InstructionInformation;
 
 use std::collections::HashMap;
 
+use super::assembler::Assembler;
+
 // Helper function for assemble_instruction for use when multiple argument configurations are available.
 // Checks argument configuration against what was passed.
 // Returns a boolean value representing whether the expected fields matched or not.
@@ -121,4 +123,42 @@ pub fn pretty_print_instruction(packed: &u32){
     println!(" - 0x{:08x}", packed);
     println!(" - 0b{:032b}", packed);
     println!();
+}
+
+
+pub fn search_mnemonic(mnemonic: String, environment: &mut Assembler) -> (Option<&'static InstructionInformation>, Option<&'static PseudoInstruction>){
+    // There are fewer pseudoinstruction mnemonics, and instructions like `li` and `la` are used incredibly often.
+    // Therefore, search should happen for them first.
+    // This is kind of an over-optimization but low-hanging fruit is low-hanging fruit.
+
+    let mut instruction_information: Option<&'static InstructionInformation> = None;
+    let mut pseudo_instruction_information: Option<&'static PseudoInstruction> = None;
+
+    let retrieved_pseudo_instruction_option: Option<&'static PseudoInstruction> = environment.pseudo_instruction_table.get(mnemonic.as_str()).copied();
+    match retrieved_pseudo_instruction_option {
+        Some(pseudo_instruction_info) => {
+            pseudo_instruction_information = Some(pseudo_instruction_info);
+        },
+        None => {
+            // Do nothing. It's likely that it's an instruction instead.
+        }
+    }
+    
+    // Could this be refactored out as a guard clause when you make this a function?
+    if pseudo_instruction_information.is_none() {
+        let retrieved_instruction_option: Option<&'static InstructionInformation> = environment.instruction_table.get(mnemonic.as_str()).copied();
+        
+        match retrieved_instruction_option {
+            Some(retrieved_instruction_information) => {
+                instruction_information = Some(retrieved_instruction_information);
+            },
+            None => {
+                environment.errors.push(format!("[*] On line {}{}:", environment.line_prefix, environment.line_number));
+                environment.errors.push(format!(" - Instruction \"{}\" not recognized. If this is a valid MIPS instruction, consider opening a pull request at https://cameron-b63/name.", mnemonic));
+                instruction_information = None;
+            },
+        }
+    }
+
+    (instruction_information, pseudo_instruction_information) 
 }

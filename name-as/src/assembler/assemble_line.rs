@@ -3,7 +3,7 @@ use name_const::elf_def::MIPS_ADDRESS_ALIGNMENT;
 
 use crate::assembler::assembler::Assembler;
 
-use crate::assembler::assembly_helpers::reverse_format_instruction;
+use crate::assembler::assembly_helpers::{reverse_format_instruction, search_mnemonic};
 use crate::definitions::structs::{BackpatchType, InstructionInformation, LineComponent, PseudoInstruction};
 
 use crate::parser::parse_components;
@@ -51,38 +51,7 @@ pub fn assemble_line(environment: &mut Assembler, line: &str, expanded_line: Str
     for component in line_components.unwrap() {
         match component {
             LineComponent::Mnemonic(mnemonic) => {
-                // There are fewer pseudoinstruction mnemonics, and instructions like `li` and `la` are used incredibly often.
-                // Therefore, search should happen for them first.
-                // This is kind of an over-optimization but low-hanging fruit is low-hanging fruit.
-
-                // TODO: This could be extracted into a function @dollarstorepoetry
-                // It could return a tuple (found_instruction, found_pseudoinstruction) where those two are options
-                let retrieved_pseudo_instruction_option = environment.pseudo_instruction_table.get(mnemonic.as_str());
-                match retrieved_pseudo_instruction_option {
-                    Some(pseudo_instruction_info) => {
-                        pseudo_instruction_information = Some(pseudo_instruction_info);
-                    },
-                    None => {
-                        // Do nothing. It's likely that it's an instruction instead.
-                    }
-                }
-
-                // Could this be refactored out as a guard clause when you make this a function?
-                if pseudo_instruction_information.is_none() {
-                    let retrieved_instruction_option = environment.instruction_table.get(mnemonic.as_str());
-                    
-                    match retrieved_instruction_option {
-                        Some(retrieved_instruction_information) => {
-                            instruction_information = Some(retrieved_instruction_information);
-                        },
-                        None => {
-                            environment.errors.push(format!("[*] On line {}{}:", environment.line_prefix, environment.line_number));
-                            environment.errors.push(format!(" - Instruction \"{}\" not recognized. If this is a valid MIPS instruction, consider opening a pull request at https://cameron-b63/name.", mnemonic));
-                            return;
-                        },
-                    }
-                }
-
+                (instruction_information, pseudo_instruction_information) = search_mnemonic(mnemonic, environment);
             },
             LineComponent::Identifier(content) => {
                 arguments.push(
