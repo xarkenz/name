@@ -1,5 +1,5 @@
 use crate::decode::InstructionFn;
-use crate::instruction_implementations::*;
+use crate::definitions::instruction_implementations::*;
 use crate::syscalls::*;
 
 /*

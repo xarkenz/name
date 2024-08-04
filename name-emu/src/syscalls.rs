@@ -1,11 +1,13 @@
 use name_const::structs::{Processor, Memory};
 
+use crate::definitions::structs::ExecutionStatus;
+
 const A0: usize = 4;
 
-pub type SyscallFn = fn(&mut Processor, &mut Memory) -> Result<bool, String>;
+pub type SyscallFn = fn(&mut Processor, &mut Memory) -> Result<ExecutionStatus, String>;
 
 // Syscall 4 - SysPrintString
-pub fn sys_print_string(cpu: &mut Processor, memory: &mut Memory) -> Result<bool, String> {
+pub fn sys_print_string(cpu: &mut Processor, memory: &mut Memory) -> Result<ExecutionStatus, String> {
     let mut address = cpu.general_purpose_registers[A0];
     let mut to_print: Vec<u8> = Vec::new();
 
@@ -27,10 +29,10 @@ pub fn sys_print_string(cpu: &mut Processor, memory: &mut Memory) -> Result<bool
 
     print!("{}", output_string);
 
-    Ok(false)
+    Ok(ExecutionStatus::Continue)
 }
 
 // Syscall 10 - SysExit
-pub fn sys_exit(_cpu: &mut Processor, _memory: &mut Memory) -> Result<bool, String> {
-    return Ok(true);
+pub fn sys_exit(_cpu: &mut Processor, _memory: &mut Memory) -> Result<ExecutionStatus, String> {
+    return Ok(ExecutionStatus::Complete);
 }

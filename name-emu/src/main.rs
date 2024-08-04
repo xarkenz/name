@@ -1,7 +1,7 @@
 mod args;
 mod decode;
-mod instruction_implementations;
-mod lookup_tables;
+mod definitions;
+mod simulator_helpers;
 mod simulator;
 mod syscalls;
 

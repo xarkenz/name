@@ -1,8 +1,9 @@
 use name_const::structs::{Memory, Processor};
 
-use crate::lookup_tables::{FUNCT_TABLE, OPCODE_TABLE};
+use crate::definitions::lookup_tables::{FUNCT_TABLE, OPCODE_TABLE};
+use crate::definitions::structs::ExecutionStatus;
 
-pub type InstructionFn = fn(&mut Processor, &mut Memory, u32) -> Result<bool, String>;
+pub type InstructionFn = fn(&mut Processor, &mut Memory, u32) -> Result<ExecutionStatus, String>;
 
 pub fn decode(instruction: &u32) -> Result<InstructionFn, String> {
     let opcode: usize = (instruction >> 26) as usize;

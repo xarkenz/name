@@ -46,7 +46,7 @@ pub(crate) fn expand_la(environment: &mut Assembler, args: &Vec<LineComponent>) 
     let rd = args[0].clone();
     let label = args[1].clone();
 
-    let zero = LineComponent::Register(String::from("$0"));
+    // let zero = LineComponent::Register(String::from("$0"));
 
     let lui_info: &'static InstructionInformation;
     let ori_info: &'static InstructionInformation;
@@ -89,7 +89,7 @@ pub(crate) fn expand_la(environment: &mut Assembler, args: &Vec<LineComponent>) 
 
     if must_backpatch {
         environment.add_backpatch(&lui_info, &vec![rd.clone(), upper.clone()], identifier.clone(), BackpatchType::Upper);
-        environment.add_backpatch(&lui_info, &vec![rd.clone(), zero.clone(), lower.clone()], identifier.clone(), BackpatchType::Lower);
+        environment.add_backpatch(&lui_info, &vec![rd.clone(), rd.clone(), lower.clone()], identifier.clone(), BackpatchType::Lower);
     }
 
     Ok(
@@ -97,7 +97,7 @@ pub(crate) fn expand_la(environment: &mut Assembler, args: &Vec<LineComponent>) 
             // lui  $rd, UPPER
             (lui_info, vec![rd.clone(), upper]),
             // ori  $rd, $rd, LOWER
-            (ori_info, vec![rd.clone(), zero, lower]),
+            (ori_info, vec![rd.clone(), rd.clone(), lower]),
     ])
 }
 

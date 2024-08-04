@@ -144,20 +144,22 @@ pub fn search_mnemonic(mnemonic: String, environment: &mut Assembler) -> (Option
         }
     }
     
-    // Could this be refactored out as a guard clause when you make this a function?
-    if pseudo_instruction_information.is_none() {
-        let retrieved_instruction_option: Option<&'static InstructionInformation> = environment.instruction_table.get(mnemonic.as_str()).copied();
+    // Simple early exit - no match exists for both info types
+    if pseudo_instruction_information.is_some() {
+        return (instruction_information, pseudo_instruction_information);
+    }
+
+    let retrieved_instruction_option: Option<&'static InstructionInformation> = environment.instruction_table.get(mnemonic.as_str()).copied();
         
-        match retrieved_instruction_option {
-            Some(retrieved_instruction_information) => {
-                instruction_information = Some(retrieved_instruction_information);
-            },
-            None => {
-                environment.errors.push(format!("[*] On line {}{}:", environment.line_prefix, environment.line_number));
-                environment.errors.push(format!(" - Instruction \"{}\" not recognized. If this is a valid MIPS instruction, consider opening a pull request at https://cameron-b63/name.", mnemonic));
-                instruction_information = None;
-            },
-        }
+    match retrieved_instruction_option {
+        Some(retrieved_instruction_information) => {
+            instruction_information = Some(retrieved_instruction_information);
+        },
+        None => {
+            environment.errors.push(format!("[*] On line {}{}:", environment.line_prefix, environment.line_number));
+            environment.errors.push(format!(" - Instruction \"{}\" not recognized. If this is a valid MIPS instruction, consider opening a pull request at https://cameron-b63/name.", mnemonic));
+            instruction_information = None;
+        },
     }
 
     (instruction_information, pseudo_instruction_information) 
