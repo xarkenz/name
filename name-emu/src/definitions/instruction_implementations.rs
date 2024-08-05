@@ -61,6 +61,9 @@ pub fn syscall(cpu: &mut Processor, memory: &mut Memory, _instruction: u32) -> R
 pub fn add(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Result<ExecutionStatus, String> {
     let (rd, rs, rt, _) = unpack_r_type(instruction);
     cpu.general_purpose_registers[rd] = cpu.general_purpose_registers[rs] + cpu.general_purpose_registers[rt];
+    
+    // println!("Adding ${}({}) to ${}({}) and storing in ${}, now it's {}", rs, cpu.general_purpose_registers[rs], rt, cpu.general_purpose_registers[rt], rd, cpu.general_purpose_registers[rs] + cpu.general_purpose_registers[rt]);
+    
     Ok(ExecutionStatus::Continue)
 }
 
@@ -166,9 +169,9 @@ pub fn j(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Result<E
 
     if address >= memory.text_end || address < memory.text_start {
         return Err(format!("Attempted to jump to unowned address 0x{:x}", address));
-    } else {
-        cpu.pc = address;
     }
+
+    cpu.pc = address;
 
     Ok(ExecutionStatus::Continue)
 }
@@ -232,17 +235,21 @@ pub fn bgtz(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Resul
     let (rs, _, imm) = unpack_i_type(instruction);
 
     // Sign extend offset
-    let offset: i32 = ((imm & 0xFFFF) as i16 as i32) << 2;
+    let offset: i32 = ((imm) as i16 as i32) << 2;
 
     if cpu.general_purpose_registers[rs] <= 0 {
         return Ok(ExecutionStatus::Continue)
     }
     
-    cpu.general_purpose_registers[AS_TEMP] = (cpu.pc as i32 + offset) as u32;
+    let temp = (cpu.pc as i32 + offset) as u32;
 
-    if cpu.general_purpose_registers[AS_TEMP] >= memory.text_end || cpu.general_purpose_registers[AS_TEMP] < memory.text_start {
-        return Err(format!("Attempted to access unowned address 0x{:x}", cpu.general_purpose_registers[AS_TEMP]));
+    if temp >= memory.text_end || temp < memory.text_start {
+        return Err(format!("Attempted to access unowned address 0x{:x}", temp));
     }
+
+    cpu.pc = temp;
+
+    // println!("Jumping to 0x{:x}", temp);
     
     Ok(ExecutionStatus::Continue)
 }
@@ -250,7 +257,8 @@ pub fn bgtz(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Resul
 // 0x08 - addi
 pub fn addi(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Result<ExecutionStatus, String>{
     let (rs, rt, imm) = unpack_i_type(instruction);
-    cpu.general_purpose_registers[rt] = cpu.general_purpose_registers[rs] + imm;
+    cpu.general_purpose_registers[rt] = (cpu.general_purpose_registers[rs] as i32 + (imm as i16 as i32)) as u32;
+    // println!("Adding {} to {} and storing in ${}, now it's {}", (imm as i16 as i32), cpu.general_purpose_registers[rs], rt, cpu.general_purpose_registers[rt]);
     Ok(ExecutionStatus::Continue)
 }
 
@@ -318,6 +326,8 @@ pub fn lw(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Result<
 
     cpu.general_purpose_registers[rt] = u32::from_be_bytes(memory.data[start_idx..end_idx].try_into().unwrap());
 
+    // println!("Loading {} from 0x{:x} into ${}", cpu.general_purpose_registers[rt], temp, rt);
+
     Ok(ExecutionStatus::Continue)
 }
 
@@ -339,6 +349,8 @@ pub fn sw(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Result<
     let end_idx: usize = (start_idx + 4) as usize;
 
     memory.data.splice(start_idx..end_idx, cpu.general_purpose_registers[rt].to_be_bytes());
+
+    // println!("Storing {} at 0x{:x} from ${}", cpu.general_purpose_registers[rt], temp, rt);
 
     Ok(ExecutionStatus::Continue)
 }

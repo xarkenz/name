@@ -8,7 +8,7 @@ pub type SyscallFn = fn(&mut Processor, &mut Memory) -> Result<ExecutionStatus, 
 
 // Syscall 1 - SysPrintInt
 pub fn sys_print_int(cpu: &mut Processor, _memory: &mut Memory) -> Result<ExecutionStatus, String> {
-    println!("{}", cpu.general_purpose_registers[A0]);
+    print!("{}", cpu.general_purpose_registers[A0]);
     Ok(ExecutionStatus::Continue)
 }
 

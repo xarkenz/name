@@ -1,6 +1,3 @@
-use name_const::structs::Section;
-use name_const::elf_def::MIPS_ADDRESS_ALIGNMENT;
-
 use crate::assembler::assembler::Assembler;
 
 use crate::assembler::assembly_helpers::{reverse_format_instruction, search_mnemonic};
@@ -138,9 +135,5 @@ pub fn assemble_line(environment: &mut Assembler, line: &str, expanded_line: Str
     match found_directive {
         Some(directive) => environment.handle_directive(&directive, &arguments),
         None => {},
-    }
-
-    if let Section::Text = environment.current_section {
-        environment.current_address += MIPS_ADDRESS_ALIGNMENT;
     }
 }

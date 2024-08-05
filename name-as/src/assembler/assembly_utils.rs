@@ -141,7 +141,7 @@ pub fn assign_i_type_arguments(arguments: &Vec<LineComponent>, args_to_use: &[Ar
                     // Translate from address to offset from this instruction's address
                     // Bit shifted twice right for extra range - instruction bytes are already aligned to 4 so bottom 2 bits are extra
                     let offset_unchecked: i32 = (target_addr as i32 - current_address .clone() as i32) >> 2;
-                    imm = Some(offset_unchecked);
+                    imm = Some(offset_unchecked - 1);
                     
                     if offset_unchecked as i16 as i32 != offset_unchecked {
                         return Err(" - Branch target misaligned or out of range.".to_string());

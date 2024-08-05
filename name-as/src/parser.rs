@@ -34,8 +34,8 @@ pub fn parse_components(line: String) -> Result<Option<Vec<LineComponent>>, Stri
             _ => {},
         }
 
-        mnemonic_expected = line_position == 1 && label_encountered;
         line_position += 1;
+        mnemonic_expected = line_position == 1 && label_encountered;
 
         components.push(component);
     }

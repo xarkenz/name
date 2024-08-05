@@ -116,6 +116,8 @@ impl Assembler {
             }
         );
 
+        println!("Inserted symbol {} at 0x{:x}", ident, self.current_address);
+
         self.most_recent_label = ident.clone();
     }
 
@@ -216,6 +218,8 @@ impl Assembler {
                 self.errors.push(e);
             }
         }
+
+        self.current_address += MIPS_ADDRESS_ALIGNMENT;
     }
 
 }

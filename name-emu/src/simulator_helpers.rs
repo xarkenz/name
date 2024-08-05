@@ -44,8 +44,6 @@ pub fn fetch(fetch_address: &u32, memory: &Memory) -> Result<u32, String> {
 
 pub fn single_step(cpu: &mut Processor, memory: &mut Memory) -> Result<ExecutionStatus, String> {
         if cpu.pc > memory.text_end || cpu.pc < memory.text_start {
-            dbg!(&memory.text_start);
-            dbg!(&memory.text_end);
             return Err(format!("Program fell off bottom."));
         }
 
