@@ -3,7 +3,6 @@ mod decode;
 mod definitions;
 mod simulator_helpers;
 mod simulator;
-mod syscalls;
 
 #[cfg(test)]
 mod tests;

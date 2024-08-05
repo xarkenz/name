@@ -112,7 +112,7 @@ pub(crate) const INSTRUCTION_SET: &[InstructionInformation] = &[
         instruction_type: InstructionType::RType,
         opcode: None,
         funct: Some(8),
-        args: &[ArgumentType::Rs],
+        args: &[ArgumentType::Rd],
         alt_args: None,
     },
     InstructionInformation {
@@ -139,7 +139,7 @@ pub(crate) const INSTRUCTION_SET: &[InstructionInformation] = &[
         instruction_type: InstructionType::IType,
         opcode: Some(35),
         funct: None,
-        args: &[ArgumentType::Rs, ArgumentType::Immediate, ArgumentType::Rt],
+        args: &[ArgumentType::Rt, ArgumentType::Immediate, ArgumentType::Rs],
         alt_args: Some(&[
             &[ArgumentType::Rt, ArgumentType::Rs],
             &[ArgumentType::Rt, ArgumentType::Identifier, ArgumentType::Rs],
@@ -273,7 +273,7 @@ pub(crate) const INSTRUCTION_SET: &[InstructionInformation] = &[
         instruction_type: InstructionType::IType,
         opcode: Some(43),
         funct: None,
-        args: &[ArgumentType::Rs, ArgumentType::Immediate, ArgumentType::Rt],
+        args: &[ArgumentType::Rt, ArgumentType::Immediate, ArgumentType::Rs],
         alt_args: Some(&[
             &[ArgumentType::Rt, ArgumentType::Rs],
             &[ArgumentType::Rt, ArgumentType::Identifier, ArgumentType::Rs],

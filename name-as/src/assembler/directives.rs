@@ -17,7 +17,13 @@ impl Assembler {
             return;
         }
 
-        let mut to_push: Vec<u8> = arguments[0].to_string().chars().map(|c| c as u8).collect::<Vec<u8>>();
+        let mut to_push: Vec<u8> = arguments[0].to_string()
+        // Escape sequences
+        .replace(r"\n", "\n")
+        .replace(r"\t", "\t")
+        .replace(r"\\", "\\")
+        .chars().map(|c| c as u8).collect::<Vec<u8>>();
+    
         to_push.push(b'\0');
 
         self.current_address += to_push.len() as u32;
@@ -161,8 +167,6 @@ impl Assembler {
                 None => {},
             }
 
-            dbg!(&self.section_dot_data);
-
             return;
         }
         
@@ -191,7 +195,7 @@ impl Assembler {
                 };
 
                 if rep < 1 {
-                    self.errors.push(format!(" - When using `.word` with repetition, you'd think you wanna repeat a positive number of times greater than zero..."));
+                    self.errors.push(format!(" - When using `.word` with repetition, one would think you'd think you wanna repeat a positive number of times greater than zero..."));
                 }
 
                 (val, rep)

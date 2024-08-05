@@ -15,7 +15,7 @@ fn fib_test() {
 
     let input_fn: PathBuf = base_path.join("fib");
     
-    let elf_contents: Vec<u8> = read(input_fn).expect("[*] FATAL: NAME cannot files that don't exist...");
+    let elf_contents: Vec<u8> = read(input_fn).expect("[*] FATAL: NAME cannot run files that don't exist...");
     
     let executable: Elf = match read_bytes_to_elf(elf_contents){
         Ok(elf) => elf,

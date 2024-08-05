@@ -35,12 +35,25 @@ pub fn srl(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Resul
     Ok(ExecutionStatus::Continue)
 }
 
+// 0x08 - jr
+pub fn jr(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Result<ExecutionStatus, String> {
+    let (rs, _, _, _) = unpack_r_type(instruction);
+
+    if cpu.general_purpose_registers[rs] >= memory.text_end || cpu.general_purpose_registers[rs] < memory.text_start {
+        return Err(format!("Attempted to jump to unowned address 0x{:x}", cpu.general_purpose_registers[rs]));
+    }
+    
+    cpu.pc = cpu.general_purpose_registers[rs];
+
+    Ok(ExecutionStatus::Continue)
+}
+
 // 0x0C - syscall
 pub fn syscall(cpu: &mut Processor, memory: &mut Memory, _instruction: u32) -> Result<ExecutionStatus, String> {
     let syscall_num: usize = cpu.general_purpose_registers[V0] as usize;
     match SYSCALL_TABLE[syscall_num] {
         Some(fun) => fun(cpu, memory),
-        None => return Err(format!("Syscall {} is not implemented.", syscall_num)),
+        None => return Err(format!("Syscall {} is not implemented", syscall_num)),
     }
 }
 
@@ -166,10 +179,10 @@ pub fn jal(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Result
 
     if address >= memory.text_end || address < memory.text_start {
         return Err(format!("Attempted to jump to unowned address 0x{:x}", address));
-    } else {
-        cpu.general_purpose_registers[RA] = cpu.pc;
-        cpu.pc = address;
     }
+    
+    cpu.general_purpose_registers[RA] = cpu.pc;
+    cpu.pc = address;
 
     Ok(ExecutionStatus::Continue)
 }
@@ -202,6 +215,26 @@ pub fn bne(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Result
     let offset: i32 = ((imm & 0xFFFF) as i16 as i32) << 2;
 
     if cpu.general_purpose_registers[rs] == cpu.general_purpose_registers[rt] {
+        return Ok(ExecutionStatus::Continue)
+    }
+    
+    cpu.general_purpose_registers[AS_TEMP] = (cpu.pc as i32 + offset) as u32;
+
+    if cpu.general_purpose_registers[AS_TEMP] >= memory.text_end || cpu.general_purpose_registers[AS_TEMP] < memory.text_start {
+        return Err(format!("Attempted to access unowned address 0x{:x}", cpu.general_purpose_registers[AS_TEMP]));
+    }
+    
+    Ok(ExecutionStatus::Continue)
+}
+
+// 0x07 - bgtz
+pub fn bgtz(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Result<ExecutionStatus, String> {
+    let (rs, _, imm) = unpack_i_type(instruction);
+
+    // Sign extend offset
+    let offset: i32 = ((imm & 0xFFFF) as i16 as i32) << 2;
+
+    if cpu.general_purpose_registers[rs] <= 0 {
         return Ok(ExecutionStatus::Continue)
     }
     
@@ -270,14 +303,42 @@ pub fn lb(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Result<
 pub fn lw(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Result<ExecutionStatus, String> {
     let (rs, rt, imm) = unpack_i_type(instruction);
 
-    cpu.general_purpose_registers[AS_TEMP] = (cpu.general_purpose_registers[rs] as i32 + imm as i32) as u32;
+    let temp = (cpu.general_purpose_registers[rs] as i32 + imm as i32) as u32;
 
-    if cpu.general_purpose_registers[AS_TEMP] >= memory.data_end || cpu.general_purpose_registers[AS_TEMP] < memory.data_start {
-        return Err(format!("Attempted to access unowned address 0x{:x}", cpu.general_purpose_registers[AS_TEMP]));
-    } else {
-        // FIXME implement lw
-        cpu.general_purpose_registers[rt] = memory.data[(cpu.general_purpose_registers[AS_TEMP] - memory.data_start) as usize] as u32;
+    if temp % 4 != 0 {
+        return Err(format!("Incorrect alignment for word access at 0x{:x}", temp));
     }
+
+    if temp+4 >= memory.data_end || temp < memory.data_start {
+        return Err(format!("Attempted to access unowned address 0x{:x} (possible alignment issue)", temp));
+    }
+
+    let start_idx: usize = (temp - memory.data_start) as usize;
+    let end_idx: usize = (start_idx + 4) as usize;
+
+    cpu.general_purpose_registers[rt] = u32::from_be_bytes(memory.data[start_idx..end_idx].try_into().unwrap());
+
+    Ok(ExecutionStatus::Continue)
+}
+
+// 0x2b - sw
+pub fn sw(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Result<ExecutionStatus, String> {
+    let (rs, rt, imm) = unpack_i_type(instruction);
+
+    let temp = (cpu.general_purpose_registers[rs] as i32 + imm as i32) as u32;
+
+    if temp % 4 != 0 {
+        return Err(format!("Incorrect alignment for word access at 0x{:x}", temp));
+    }
+
+    if temp+4 >= memory.data_end || temp < memory.data_start {
+        return Err(format!("Attempted to access unowned address 0x{:x} (possible alignment issue)", temp));
+    }
+
+    let start_idx: usize = (temp - memory.data_start) as usize;
+    let end_idx: usize = (start_idx + 4) as usize;
+
+    memory.data.splice(start_idx..end_idx, cpu.general_purpose_registers[rt].to_be_bytes());
 
     Ok(ExecutionStatus::Continue)
 }

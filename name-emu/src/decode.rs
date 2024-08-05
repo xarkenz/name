@@ -15,12 +15,12 @@ pub fn decode(instruction: &u32) -> Result<InstructionFn, String> {
 
             match FUNCT_TABLE[funct] {
                 Some(fun) => return Ok(fun),
-                None => return Err(format!("Failed to fetch R-type instruction with funct: {funct}")),
+                None => return Err(format!("Failed to fetch R-type instruction with funct 0x{funct:x}")),
             }
         },
         _ => match OPCODE_TABLE[opcode] {
             Some(fun) => return Ok(fun),
-            None => return Err(format!("Failed to decode instruction opcode: {opcode}")),
+            None => return Err(format!("Failed to decode instruction opcode 0x{opcode:x}")),
         }
     }
 }

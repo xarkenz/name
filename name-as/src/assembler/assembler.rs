@@ -148,7 +148,7 @@ impl Assembler {
                             let label = backpatch.undiscovered_identifier.clone();
                             let line = backpatch.line_number.clone();
                             println!(" - Backpatch resolved for label {label} on line {line}:");
-                            pretty_print_instruction(&word);
+                            pretty_print_instruction(&self.current_address, &word);
 
                             let found_index = self.backpatches.iter().position(|bp| bp == backpatch).expect("Literally impossible to get this error.");
 
@@ -200,7 +200,7 @@ impl Assembler {
                             &packed.to_be_bytes()
                         );
 
-                        pretty_print_instruction(&packed);
+                        pretty_print_instruction(&self.current_address, &packed);
                     },
                     None => {
                         self.section_dot_text.extend_from_slice(

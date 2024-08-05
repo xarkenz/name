@@ -98,7 +98,7 @@ pub fn assemble_i_type(opcode: u32, rs: Option<String>, rt: Option<String>, imme
         return Err("Immediate exceeds 16 bits".to_string());
     }
 
-    let parsed_immediate: u32 = unchecked_immediate as u32;
+    let parsed_immediate: u32 = unchecked_immediate as i16 as u16 as u32;
 
     Ok(
         (opcode << 26) |

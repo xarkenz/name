@@ -1,6 +1,6 @@
 use crate::decode::InstructionFn;
 use crate::definitions::instruction_implementations::*;
-use crate::syscalls::*;
+use crate::definitions::syscalls::*;
 
 /*
 
@@ -23,7 +23,7 @@ pub const OPCODE_TABLE: [Option<InstructionFn>; 64] = [
     Some(beq),  // 0x04
     Some(bne),  // 0x05
     None,  // 0x06
-    None,  // 0x07
+    Some(bgtz),  // 0x07
     Some(addi),  // 0x08
     None /*Some(addiu)*/,  // 0x09
     None /*Some(slti)*/,  // 0x0A
@@ -59,7 +59,7 @@ pub const OPCODE_TABLE: [Option<InstructionFn>; 64] = [
     None /*Some(sb)*/,  // 0x28
     None,  // 0x29
     None,  // 0x2A
-    None /*Some(sw)*/,  // 0x2B
+    Some(sw),  // 0x2B
     None,  // 0x2C
     None,  // 0x2D
     None,  // 0x2E
@@ -102,9 +102,9 @@ pub const FUNCT_TABLE: [Option<InstructionFn>; 64] = [
     None, // 0x03
     None, // 0x04
     None, // 0x05
-    None, // 0x06oiuougou
+    None, // 0x06 ok buddy -> oiuougou
     None, // 0x07
-    None, // 0x08
+    Some(jr), // 0x08
     None, // 0x09
     None, // 0x0A
     None, // 0x0B
@@ -177,7 +177,7 @@ pub const FUNCT_TABLE: [Option<InstructionFn>; 64] = [
 
 pub const SYSCALL_TABLE: [Option<SyscallFn>; 64] = [
     None, // 0x00
-    None, // 0x01
+    Some(sys_print_int), // 0x01
     None, // 0x02
     None, // 0x03
     Some(sys_print_string), // 0x04

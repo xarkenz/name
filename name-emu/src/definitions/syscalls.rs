@@ -6,6 +6,12 @@ const A0: usize = 4;
 
 pub type SyscallFn = fn(&mut Processor, &mut Memory) -> Result<ExecutionStatus, String>;
 
+// Syscall 1 - SysPrintInt
+pub fn sys_print_int(cpu: &mut Processor, _memory: &mut Memory) -> Result<ExecutionStatus, String> {
+    println!("{}", cpu.general_purpose_registers[A0]);
+    Ok(ExecutionStatus::Continue)
+}
+
 // Syscall 4 - SysPrintString
 pub fn sys_print_string(cpu: &mut Processor, memory: &mut Memory) -> Result<ExecutionStatus, String> {
     let mut address = cpu.general_purpose_registers[A0];
