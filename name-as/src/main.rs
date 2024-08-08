@@ -31,10 +31,9 @@ fn main() {
     let assembled_result = assemble(file_contents, base_path, None);
     match assembled_result {
         Ok(assembler_environment) => {
-            let section_dot_data: Vec<u8> = assembler_environment.section_dot_data;
             let (section_dot_symtab, section_dot_strtab) = extract_symbol_table_to_sections(assembler_environment.symbol_table);
 
-            let et_rel = create_new_et_rel(assembler_environment.section_dot_text, section_dot_data, section_dot_symtab, section_dot_strtab);
+            let et_rel = create_new_et_rel(assembler_environment.section_dot_text, assembler_environment.section_dot_data, section_dot_symtab, section_dot_strtab, assembler_environment.section_dot_line);
             match write_elf_to_file(&args.output_filename, &et_rel) {
                 Ok(()) => println!("Object file successfuly written to {:?}", args.output_filename),
                 Err(e) => {

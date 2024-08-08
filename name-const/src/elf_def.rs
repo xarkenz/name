@@ -18,13 +18,14 @@
 
 // Section setup for ET_REL files
 // These are the sections which should be present in each ET_REL constructed by the functions in this file.
-pub const NUM_OF_SECTIONS: usize = 6;       // This is e_shnum.
+pub const NUM_OF_SECTIONS: usize = 7;       // This is e_shnum.
 pub const SECTIONS: [&'static str; NUM_OF_SECTIONS] = [
     "",         // Null (reserved) section
     ".text",
     ".data",
     ".symtab",
     ".strtab",
+    ".line",
     ".shstrtab",
 ];
 

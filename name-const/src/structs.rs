@@ -38,3 +38,11 @@ pub struct Memory {
     pub data_start: u32,
     pub data_end: u32,
 }
+
+#[derive(Debug)]
+pub struct LineInfo {
+    pub content: String,
+    pub line_number: u32,
+    pub start_address: u32,
+    pub end_address: u32,
+}

@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+use name_const::structs::{LineInfo, Section};
+
 use crate::assembler::assemble_line::assemble_line;
 use crate::assembler::assembler::Assembler;
 
@@ -24,11 +26,33 @@ pub fn assemble(file_contents: String, current_dir: PathBuf, line_prefix: Option
     }
 
     for line in file_contents.split('\n') {
+        let start_address = match environment.current_section {
+           Section::Text => environment.current_address,
+           Section::Data => environment.text_address,
+           Section::Null => 0, 
+        };
 
         // Pre-process line (expand pseudoinstructions, macros, and .eqv values here)    
         let expanded_line = environment.expand_line(line);
 
         assemble_line(&mut environment, line, expanded_line);
+
+        environment.section_dot_line.extend(
+            LineInfo {
+                content: line.to_string(),
+                line_number: environment.line_number as u32,
+                start_address: match environment.current_section {
+                    Section::Text => start_address,
+                    _ => 0,
+                },
+                end_address: match environment.current_section {
+                    Section::Text => environment.current_address,
+                    Section::Data => environment.text_address,
+                    _ => 0,
+                },
+            }.to_bytes()
+        );
+
         environment.line_number += 1;
     }
 

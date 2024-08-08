@@ -1,6 +1,8 @@
 mod args;
+mod debug_utils;
 mod decode;
 mod definitions;
+mod fetch;
 mod simulator_helpers;
 mod simulator;
 

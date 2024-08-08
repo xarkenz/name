@@ -1,4 +1,4 @@
-use crate::structs::{Memory, Processor};
+use crate::structs::{LineInfo, Memory, Processor};
 use crate::elf_def::{MIPS_DATA_START_ADDR, MIPS_TEXT_START_ADDR};
 
 impl Processor {
@@ -41,4 +41,17 @@ impl Memory {
         Ok(self.data[offset].clone())
     }
 
+}
+
+impl LineInfo {
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut bytes = self.content.as_bytes().to_vec();
+        bytes.push(b'\0');
+
+        bytes.extend_from_slice(&self.line_number.to_be_bytes());
+        bytes.extend_from_slice(&self.start_address.to_be_bytes());
+        bytes.extend_from_slice(&self.end_address.to_be_bytes());
+
+        bytes
+    }
 }

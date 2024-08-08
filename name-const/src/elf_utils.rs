@@ -4,7 +4,7 @@
 use std::{fs, io::Write, path::PathBuf, vec::Vec};
 
 use crate::elf_def::*;
-use crate::structs::{Section, Symbol, Visibility};    // Used for ELF sections
+use crate::structs::{LineInfo, Section, Symbol, Visibility};    // Used for ELF sections
 
 // Macros - had to learn somehow!
 
@@ -50,7 +50,7 @@ fn create_new_et_rel_file_header(passed_e_shoff: u32) -> Elf32Header {
 }
 
 // This function combines all the previous to actually create a new object file.
-pub fn create_new_et_rel(text_section: Vec<u8>, data_section: Vec<u8>, symtab_section: Vec<u8>, strtab_section: Vec<u8>) -> Elf {
+pub fn create_new_et_rel(text_section: Vec<u8>, data_section: Vec<u8>, symtab_section: Vec<u8>, strtab_section: Vec<u8>, line_section: Vec<u8>) -> Elf {
     // The section header string table entry requires some calculations.
     // Here we get the shstrtab as bytes from the constant defined at the top of the file.
     // We also get the size of the shstrtab.
@@ -66,13 +66,15 @@ pub fn create_new_et_rel(text_section: Vec<u8>, data_section: Vec<u8>, symtab_se
     let data_size: u32 = data_section.len() as u32;
     let symtab_size: u32 = symtab_section.len() as u32;
     let strtab_size: u32 = strtab_section.len() as u32;
+    let line_size: u32 = line_section.len() as u32;
 
     // Calculate offsets using sizes
     let text_offset: u32 = E_PHOFF_DEFAULT + (E_PHNUM_DEFAULT * E_PHENTSIZE_DEFAULT) as u32;     // The program header entries are for the two loadable segments, .text and .data
     let data_offset: u32 = text_offset + text_size;
     let symtab_offset: u32 = data_offset + data_size;
     let strtab_offset: u32 = symtab_offset + symtab_size;
-    let shstrtab_offset: u32 = strtab_offset + strtab_size;
+    let line_offset: u32 = strtab_offset + strtab_size;
+    let shstrtab_offset: u32 = line_offset + line_size;
     let sh_offset: u32 = shstrtab_offset + shstrtab_size;
 
     // Construct the ELF file header
@@ -171,8 +173,21 @@ pub fn create_new_et_rel(text_section: Vec<u8>, data_section: Vec<u8>, symtab_se
         sh_entsize: 0,
     };
 
-    let shstrtab_sh: Elf32SectionHeader = Elf32SectionHeader {
+    let line_sh: Elf32SectionHeader = Elf32SectionHeader {
         sh_name: strtab_sh.sh_name + SECTIONS[4].len() as u32 + 1,
+        sh_type: SHT_PROGBITS,
+        sh_flags: 0,
+        sh_addr: 0,
+        sh_offset: line_offset,
+        sh_size: line_size,
+        sh_link: 0,
+        sh_info: 0,
+        sh_addralign: 0,
+        sh_entsize: 0,
+    };
+
+    let shstrtab_sh: Elf32SectionHeader = Elf32SectionHeader {
+        sh_name: line_sh.sh_name + SECTIONS[5].len() as u32 + 1,
         sh_type: SHT_STRTAB,
         sh_flags: SHF_STRINGS,
         sh_addr: 0,
@@ -185,10 +200,10 @@ pub fn create_new_et_rel(text_section: Vec<u8>, data_section: Vec<u8>, symtab_se
     };
 
     // Collect all sections into sections Vec
-    let sections: Vec<Vec<u8>> = vec![text_section, data_section, symtab_section, strtab_section, shstrtab_section];
+    let sections: Vec<Vec<u8>> = vec![text_section, data_section, symtab_section, strtab_section, line_section, shstrtab_section];
 
     // Collect all previously defined section headers into the section header table
-    let complete_section_header_table: Vec<Elf32SectionHeader> = vec![null_sh, text_sh, data_sh, symtab_sh, strtab_sh, shstrtab_sh];
+    let complete_section_header_table: Vec<Elf32SectionHeader> = vec![null_sh, text_sh, data_sh, symtab_sh, strtab_sh, line_sh, shstrtab_sh];
 
     // Final step is to create the final Elf struct
     return Elf{
@@ -390,6 +405,16 @@ fn get_string_from_strtab(strtab: &Vec<u8>, offset: u32) -> Option<&str> {
     std::str::from_utf8(&strtab[start..start + end]).ok()
 }
 
+pub fn extract_lineinfo(elf: &Elf) -> Vec<LineInfo> {
+    let shstrtab = &elf.sections[elf.file_header.e_shstrndx as usize]; 
+    let idx = match find_target_section_index(&elf.section_header_table, shstrtab, ".line") {
+        Some(i) => i,
+        None => unreachable!(),
+    };
+
+    deserialize_line_info(&elf.sections[idx])
+}
+
 pub fn find_global_symbol_address(symbols: &[Elf32Sym], strtab: &Vec<u8>, target: &str) -> Option<u32> {
     const STB_GLOBAL: u8 = 1;
     for symbol in symbols {
@@ -414,4 +439,46 @@ pub fn find_target_section_index(section_header_table: &Vec<Elf32SectionHeader>,
         }
     }
     None
+}
+
+fn deserialize_line_info(data: &Vec<u8>) -> Vec<LineInfo> {
+    let mut result = Vec::new();
+    let mut cursor = &data[..];
+
+    while !cursor.is_empty() {
+        // Find the null terminator (0 byte) to extract the string
+        if let Some(pos) = cursor.iter().position(|&c| c == 0) {
+            let content_bytes = &cursor[..pos];
+            let content = String::from_utf8_lossy(content_bytes).to_string();
+            
+            // Move cursor past the null terminator and string
+            cursor = &cursor[pos + 1..];
+            
+            // Ensure we have at least 12 bytes remaining for three u32 values
+            if cursor.len() < 12 {
+                break;
+            }
+
+            // Read the u32 values
+            let line_number = u32::from_be_bytes(cursor[0..4].try_into().unwrap());
+            let start_address = u32::from_be_bytes(cursor[4..8].try_into().unwrap());
+            let end_address = u32::from_be_bytes(cursor[8..12].try_into().unwrap());
+
+            // Move cursor past the u32 values
+            cursor = &cursor[12..];
+
+            // Add the deserialized LineInfo to the result
+            result.push(LineInfo {
+                content,
+                line_number,
+                start_address,
+                end_address,
+            });
+        } else {
+            // If there's no null terminator found, stop processing
+            break;
+        }
+    }
+
+    result
 }
