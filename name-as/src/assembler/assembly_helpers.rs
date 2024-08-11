@@ -139,6 +139,7 @@ pub fn search_mnemonic(mnemonic: String, environment: &mut Assembler) -> (Option
     match retrieved_pseudo_instruction_option {
         Some(pseudo_instruction_info) => {
             pseudo_instruction_information = Some(pseudo_instruction_info);
+            // return (instruction_information, pseudo_instruction_information);
         },
         None => {
             // Do nothing. It's likely that it's an instruction instead.

@@ -21,8 +21,8 @@
 pub const NUM_OF_SECTIONS: usize = 7;       // This is e_shnum.
 pub const SECTIONS: [&'static str; NUM_OF_SECTIONS] = [
     "",         // Null (reserved) section
-    ".text",
     ".data",
+    ".text",
     ".symtab",
     ".strtab",
     ".line",

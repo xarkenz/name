@@ -19,8 +19,8 @@ pub enum Visibility {
 #[derive(Debug, Clone)]
 pub enum Section {
     Null,
-    Text,
     Data,
+    Text,
 }
 
 #[derive(Debug)]
@@ -31,12 +31,12 @@ pub struct Processor {
 
 #[derive(Debug)]
 pub struct Memory {
-    pub text: Vec<u8>,
     pub data: Vec<u8>,
-    pub text_start: u32,
-    pub text_end: u32,
+    pub text: Vec<u8>,
     pub data_start: u32,
     pub data_end: u32,
+    pub text_start: u32,
+    pub text_end: u32,
 }
 
 #[derive(Debug)]

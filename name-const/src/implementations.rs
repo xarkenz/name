@@ -11,17 +11,17 @@ impl Processor {
 }
 
 impl Memory {
-    pub fn new(text: Vec<u8>, data: Vec<u8>) -> Self {
-        let text_end = MIPS_TEXT_START_ADDR + text.len() as u32;
+    pub fn new(data: Vec<u8>, text: Vec<u8>) -> Self {
         let data_end = MIPS_DATA_START_ADDR + data.len() as u32;
+        let text_end = MIPS_TEXT_START_ADDR + text.len() as u32;
         
         Memory {
-            text,
             data,
-            text_start: MIPS_TEXT_START_ADDR,
-            text_end,
+            text,
             data_start: MIPS_DATA_START_ADDR,
             data_end,
+            text_start: MIPS_TEXT_START_ADDR,
+            text_end,
         }
     }
 
