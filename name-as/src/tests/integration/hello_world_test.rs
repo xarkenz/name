@@ -24,7 +24,7 @@ fn full_integration_test() {
         Ok(assembler_environment) => {
             let (section_dot_symtab, section_dot_strtab) = extract_symbol_table_to_sections(assembler_environment.symbol_table);
 
-            let et_rel = create_new_et_rel(assembler_environment.section_dot_text, assembler_environment.section_dot_data, section_dot_symtab, section_dot_strtab, assembler_environment.section_dot_line);
+            let et_rel = create_new_et_rel(assembler_environment.section_dot_data, assembler_environment.section_dot_text, section_dot_symtab, section_dot_strtab, assembler_environment.section_dot_line);
             match write_elf_to_file(&test_output_filename, &et_rel) {
                 Ok(()) => println!("Object file successfuly written to {:?}.", test_output_filename),
                 Err(e) => {

@@ -50,7 +50,7 @@ fn create_new_et_rel_file_header(passed_e_shoff: u32) -> Elf32Header {
 }
 
 // This function combines all the previous to actually create a new object file.
-pub fn create_new_et_rel(text_section: Vec<u8>, data_section: Vec<u8>, symtab_section: Vec<u8>, strtab_section: Vec<u8>, line_section: Vec<u8>) -> Elf {
+pub fn create_new_et_rel(data_section: Vec<u8>, text_section: Vec<u8>, symtab_section: Vec<u8>, strtab_section: Vec<u8>, line_section: Vec<u8>) -> Elf {
     // The section header string table entry requires some calculations.
     // Here we get the shstrtab as bytes from the constant defined at the top of the file.
     // We also get the size of the shstrtab.
@@ -62,15 +62,15 @@ pub fn create_new_et_rel(text_section: Vec<u8>, data_section: Vec<u8>, symtab_se
     let shstrtab_size: u32 = shstrtab_section.len() as u32;
 
     // Get size of each section to properly calculate offsets in result file
-    let text_size: u32 = text_section.len() as u32;
     let data_size: u32 = data_section.len() as u32;
+    let text_size: u32 = text_section.len() as u32;
     let symtab_size: u32 = symtab_section.len() as u32;
     let strtab_size: u32 = strtab_section.len() as u32;
     let line_size: u32 = line_section.len() as u32;
 
     // Calculate offsets using sizes
     let text_offset: u32 = E_PHOFF_DEFAULT + (E_PHNUM_DEFAULT * E_PHENTSIZE_DEFAULT) as u32;     // The program header entries are for the two loadable segments, .text and .data
-    let data_offset: u32 = text_offset + text_size;
+    let data_offset: u32 = text_offset + text_size /*hrnnng*/;
     let symtab_offset: u32 = data_offset + data_size;
     let strtab_offset: u32 = symtab_offset + symtab_size;
     let line_offset: u32 = strtab_offset + strtab_size;
@@ -81,17 +81,6 @@ pub fn create_new_et_rel(text_section: Vec<u8>, data_section: Vec<u8>, symtab_se
     let elf_file_header: Elf32Header = create_new_et_rel_file_header(sh_offset);
 
     // Populate the program headers - by MIPS convention, section .text should be at 0x00400000 and section .data at 0x10000000
-    let text_ph: Elf32ProgramHeader = Elf32ProgramHeader {
-        p_type: PT_LOAD,
-        p_offset: text_offset,
-        p_vaddr: MIPS_TEXT_START_ADDR,
-        p_paddr: MIPS_TEXT_START_ADDR,
-        p_filesz: text_size,
-        p_memsz: text_size,
-        p_flags: PF_R | PF_X,   // section .text should not be writable
-        p_align: MIPS_ALIGNMENT,
-    };
-
     let data_ph: Elf32ProgramHeader = Elf32ProgramHeader {
         p_type: PT_LOAD,
         p_offset: data_offset,
@@ -103,10 +92,21 @@ pub fn create_new_et_rel(text_section: Vec<u8>, data_section: Vec<u8>, symtab_se
         p_align: MIPS_ALIGNMENT,
     };
 
-    // Construct program header table
-    let complete_program_header_table: Vec<Elf32ProgramHeader> = vec![text_ph, data_ph];
+    let text_ph: Elf32ProgramHeader = Elf32ProgramHeader {
+        p_type: PT_LOAD,
+        p_offset: text_offset,
+        p_vaddr: MIPS_TEXT_START_ADDR,
+        p_paddr: MIPS_TEXT_START_ADDR,
+        p_filesz: text_size,
+        p_memsz: text_size,
+        p_flags: PF_R | PF_X,   // section .text should not be writable
+        p_align: MIPS_ALIGNMENT,
+    };
 
-    // Populate the section headers - indexes are in the same order as the struct (.text, .data, .debug, .line)
+    // Construct program header table
+    let complete_program_header_table: Vec<Elf32ProgramHeader> = vec![data_ph, text_ph];
+
+    // Populate the section headers - indexes are in the same order as the struct (.data, .text, .debug, .line)
     // First field is SHT_NULL and reserved, but must be included.
     let null_sh: Elf32SectionHeader = Elf32SectionHeader {
         sh_name: 0,     // This is a byte index
@@ -121,21 +121,8 @@ pub fn create_new_et_rel(text_section: Vec<u8>, data_section: Vec<u8>, symtab_se
         sh_entsize: 0,
     };
 
-    let text_sh: Elf32SectionHeader = Elf32SectionHeader {
-        sh_name: 1,
-        sh_type: SHT_PROGBITS,
-        sh_flags: SHF_ALLOC | SHF_EXECINSTR,    // Allocated and executable
-        sh_addr: MIPS_TEXT_START_ADDR,          // Implicit virtual address
-        sh_offset: text_offset,
-        sh_size: text_size,
-        sh_link: 0, // Unused
-        sh_info: 0, // Unused
-        sh_addralign: MIPS_ADDRESS_ALIGNMENT,
-        sh_entsize: 0 // Unused in this section
-    };
-
     let data_sh: Elf32SectionHeader = Elf32SectionHeader {
-        sh_name: text_sh.sh_name + SECTIONS[1].len() as u32 + 1,
+        sh_name: 1,
         sh_type: SHT_PROGBITS,
         sh_flags: SHF_ALLOC | SHF_WRITE,    // Allocated and writeable
         sh_addr: MIPS_DATA_START_ADDR,
@@ -147,8 +134,22 @@ pub fn create_new_et_rel(text_section: Vec<u8>, data_section: Vec<u8>, symtab_se
         sh_entsize: 0, // Unused in this section
     };
 
+    let text_sh: Elf32SectionHeader = Elf32SectionHeader {
+        sh_name: data_sh.sh_name + SECTIONS[1].len() as u32 + 1,
+        sh_type: SHT_PROGBITS,
+        sh_flags: SHF_ALLOC | SHF_EXECINSTR,    // Allocated and executable
+        sh_addr: MIPS_TEXT_START_ADDR,          // Implicit virtual address
+        sh_offset: text_offset,
+        sh_size: text_size,
+        sh_link: 0, // Unused
+        sh_info: 0, // Unused
+        sh_addralign: MIPS_ADDRESS_ALIGNMENT,
+        sh_entsize: 0 // Unused in this section
+    };
+
+
     let symtab_sh: Elf32SectionHeader = Elf32SectionHeader {
-        sh_name: data_sh.sh_name + SECTIONS[2].len() as u32 + 1,
+        sh_name: text_sh.sh_name + SECTIONS[2].len() as u32 + 1,
         sh_type: SHT_SYMTAB,
         sh_flags: 0,  // The symtab does not have any flags associated
         sh_addr: 0,
@@ -200,10 +201,10 @@ pub fn create_new_et_rel(text_section: Vec<u8>, data_section: Vec<u8>, symtab_se
     };
 
     // Collect all sections into sections Vec
-    let sections: Vec<Vec<u8>> = vec![text_section, data_section, symtab_section, strtab_section, line_section, shstrtab_section];
+    let sections: Vec<Vec<u8>> = vec![data_section, text_section, symtab_section, strtab_section, line_section, shstrtab_section];
 
     // Collect all previously defined section headers into the section header table
-    let complete_section_header_table: Vec<Elf32SectionHeader> = vec![null_sh, text_sh, data_sh, symtab_sh, strtab_sh, line_sh, shstrtab_sh];
+    let complete_section_header_table: Vec<Elf32SectionHeader> = vec![null_sh, data_sh, text_sh, symtab_sh, strtab_sh, line_sh, shstrtab_sh];
 
     // Final step is to create the final Elf struct
     return Elf{
@@ -261,6 +262,7 @@ pub fn write_elf_to_file(file_name: &PathBuf, et_rel: &Elf) -> Result<(), String
 
     // Write file bytes to output file
     let mut f: fs::File = fs::File::create(file_name).expect("Unable to write file");       // This is really bad and insecure for right now - path MUST be checked before this gets out of alpha
+                                                                                                      // FIXME ^ ?
     f.write_all(&file_bytes).expect("Unable to write data.");
 
     Ok(())
