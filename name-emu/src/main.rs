@@ -1,4 +1,5 @@
 mod args;
+// mod debug;
 mod debug_utils;
 mod decode;
 mod definitions;
@@ -28,7 +29,7 @@ pub fn main() {
         Err(e) => panic!("{}", e),
     };
 
-    let _ = simulator::simulate(executable);
+    let _ = simulator::simulate(executable, args.debug);
     
     println!("Hello, world!");
 }

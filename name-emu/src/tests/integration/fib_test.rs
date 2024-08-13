@@ -24,7 +24,7 @@ fn fib_test() {
 
     // TODO: compliance check executable (format, existence, etc.)
 
-    let simulator_result = simulator::simulate(executable);
+    let simulator_result = simulator::simulate(executable, false);
 
     match simulator_result {
         Ok(_) => {},

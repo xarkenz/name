@@ -7,13 +7,17 @@ use name_const::elf_def::Elf;
 use name_const::elf_utils::extract_lineinfo;
 use name_const::structs::{LineInfo, Memory, Processor};
 
-pub fn simulate(elf: Elf) -> Result<(), String> {
+pub fn simulate(elf: Elf, debug: bool) -> Result<(), String> {
     // Set up simulation environment
     let mut cpu: Processor = Processor::new(elf.file_header.e_entry);
 
     let (text, data) = extract_loadable_sections(&elf);
 
     let lineinfo: Vec<LineInfo> = extract_lineinfo(&elf);
+
+    if debug {
+        println!("haiiii :3 (debugger doesn't work yet)");
+    }
 
     let mut memory: Memory = Memory::new(text, data);
 
