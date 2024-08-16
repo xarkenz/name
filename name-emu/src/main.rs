@@ -1,6 +1,6 @@
 mod args;
-// mod debug;
-mod debug_utils;
+mod debug;
+// mod debug_utils;
 mod decode;
 mod definitions;
 mod fetch;
@@ -31,5 +31,5 @@ pub fn main() {
 
     let _ = simulator::simulate(executable, args.debug);
     
-    println!("Hello, world!");
+    println!("ploink");
 }

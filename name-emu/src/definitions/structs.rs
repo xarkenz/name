@@ -1,5 +1,7 @@
+#[allow(dead_code)]
+// FIXME cba
 pub enum ExecutionStatus {
     Continue,
-    // Break,
     Complete,
+    Break,
 }
