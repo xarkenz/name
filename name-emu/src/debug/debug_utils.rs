@@ -47,6 +47,7 @@ pub fn single_step(lineinfo: &Vec<LineInfo>, cpu: &mut Processor, memory: &mut M
 pub struct Breakpoint {
     pub bp_num: u16, // why do you have 65535 breakpoints. do better
     pub line_num: u32,
+    // pub address: u32,
 }
 
 impl Breakpoint {
@@ -56,6 +57,7 @@ impl Breakpoint {
             line_num,
         }
     }
+    // assembler::add_label is not the solution to male loneliness
 }
 
 
@@ -72,10 +74,10 @@ pub fn debugger(lineinfo: &Vec<LineInfo>, memory: &mut Memory, cpu: &mut Process
         io::stdout().flush().expect("Failed to flush stdout");
 
         let mut user_input = String::new();
-        let stdin = io::stdin();
-        match stdin.read_line(&mut user_input) {
+        // let stdin = io::stdin();
+        match io::stdin().read_line(&mut user_input) {
             Ok(_) => {},
-            Err(e) => println!("Error: {e}"),
+            Err(e) => println!("stdin error: {e}"),
         };
         let user_input: Vec<&str> = user_input.trim().split(" ").collect(); 
 
@@ -88,7 +90,17 @@ pub fn debugger(lineinfo: &Vec<LineInfo>, memory: &mut Memory, cpu: &mut Process
                     match single_step(lineinfo, cpu, memory){
                         Ok(execution_status) => match execution_status {
                             ExecutionStatus::Continue => {},
-                            ExecutionStatus::Break => { break; },
+                            ExecutionStatus::Break => { 
+                                // pain.
+                                let mut l_num: u32 = 3;
+                                if let Some(line) = lineinfo.iter().find(|&line| line.start_address == cpu.pc){
+                                    l_num = line.line_number;
+                                } else {
+                                    println!("Something extremely weird has happened.");
+                                }
+                                println!("Breakpoint at line {} reached.", l_num);
+                                break; 
+                            },
                             ExecutionStatus::Complete => return Ok(()),
                         },
                         Err(e) => return Err(e),
@@ -96,11 +108,17 @@ pub fn debugger(lineinfo: &Vec<LineInfo>, memory: &mut Memory, cpu: &mut Process
                 }
             },
             "l" => {
-                for (idx, line) in lineinfo.iter().enumerate() {
-                    println!("{} {}", idx+1, line.content);
+                for line in lineinfo {
+                    println!("{:>3} #{:08x}  {}", line.line_number, line.start_address, line.content);
                 }
+                /*
+                println!();
+                for (idx, &byte) in memory.text.iter().enumerate() {
+                    println!("{:>3} {:08b}", idx+1, byte);
+                }
+                */
             },
-            "n" => {
+            "s" => {
                 match single_step(lineinfo, cpu, memory){
                     Ok(execution_status) => match execution_status {
                         ExecutionStatus::Continue => {},
@@ -134,7 +152,7 @@ pub fn debugger(lineinfo: &Vec<LineInfo>, memory: &mut Memory, cpu: &mut Process
             "pb" => {
                 println!("BP_NUM: LINE_NUM");
                 for breakpoint in &breakpoints {
-                    println!("{}: {}", breakpoint.bp_num, breakpoint.line_num);
+                    println!("{}: {}", breakpoint.bp_num, breakpoint.line_num);  // format this...?
                 }
             },
             "b" => {
@@ -144,14 +162,21 @@ pub fn debugger(lineinfo: &Vec<LineInfo>, memory: &mut Memory, cpu: &mut Process
                     println!("b expects 1 argument, received {}", user_input.len()-1);
                     continue;
                 }
-                let line_num: u32 = user_input[1].parse().expect("b takes 32-bit unsigned int as input");
+                let line_num: u32 = user_input[1].parse()
+                    .expect("b takes 32-bit unsigned int as input");
+
+                if line_num > lineinfo.len().try_into().unwrap(){
+                    println!("{} exceeds number of lines in program.", line_num);  // something like that
+                }
+
+
+
                 global_bp_num += 1;
                 breakpoints.push(Breakpoint::new(global_bp_num, line_num));
-                // obviously make this work with the code later...
             }
             "del" => {
                 if user_input.len() != 2 {
-                    println!("b expects 1 argument, received {}", user_input.len()-1);
+                    println!("del expects 1 argument, received {}", user_input.len()-1);
                     continue;
                 }
                 let bp_num: u16 = user_input[1].parse().expect("del takes a 16-bit unsigned int as input");
@@ -175,7 +200,7 @@ fn help_menu(){
     println!("help - Display this menu.");
     println!("r - Run the program normally.");
     println!("c - Continue program execution until the next breakpoint.");
-    println!("n - Execute only the next instruction.");
+    println!("s - Execute only the next instruction.");
     println!("l - Print the entire program. (this functionality will be much improved later)");
     // println!("p - Print the value of a register at the current place in program execution.");
     println!("pb - Print all breakpoints.");

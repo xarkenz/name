@@ -19,8 +19,8 @@ pub enum Visibility {
 #[derive(Debug, Clone)]
 pub enum Section {
     Null,
-    Data,
     Text,
+    Data,
 }
 
 #[derive(Debug)]

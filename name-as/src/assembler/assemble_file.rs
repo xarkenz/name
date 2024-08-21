@@ -61,10 +61,10 @@ pub fn assemble(file_contents: String, current_dir: PathBuf, line_prefix: Option
         let line_numbers: Vec<usize> = environment.backpatches.iter().map(|backpatch| backpatch.line_number).collect();
         
         let err_string: String = undefined_symbols.iter()
-        .zip(line_numbers.iter())
-        .map(|(symbol, &line_number)| format!(" - {}: line {}{}", symbol, environment.line_prefix, line_number))
-        .collect::<Vec<String>>()
-        .join("\n");
+            .zip(line_numbers.iter())
+            .map(|(symbol, &line_number)| format!(" - {}: line {}{}", symbol, environment.line_prefix, line_number))
+            .collect::<Vec<String>>()
+            .join("\n");
 
         environment.errors.push(format!("[*] Symbols referenced but undefined:\n{err_string}"));
     }

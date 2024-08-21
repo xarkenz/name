@@ -69,9 +69,9 @@ pub fn create_new_et_rel(data_section: Vec<u8>, text_section: Vec<u8>, symtab_se
     let line_size: u32 = line_section.len() as u32;
 
     // Calculate offsets using sizes
-    let text_offset: u32 = E_PHOFF_DEFAULT + (E_PHNUM_DEFAULT * E_PHENTSIZE_DEFAULT) as u32;     // The program header entries are for the two loadable segments, .text and .data
-    let data_offset: u32 = text_offset + text_size /*hrnnng*/;
-    let symtab_offset: u32 = data_offset + data_size;
+    let data_offset: u32 =  E_PHOFF_DEFAULT + (E_PHNUM_DEFAULT * E_PHENTSIZE_DEFAULT) as u32;
+    let text_offset: u32 = data_offset + data_size;     // The program header entries are for the two loadable segments, .text and .data
+    let symtab_offset: u32 = text_offset + text_size;
     let strtab_offset: u32 = symtab_offset + symtab_size;
     let line_offset: u32 = strtab_offset + strtab_size;
     let shstrtab_offset: u32 = line_offset + line_size;
