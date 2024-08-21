@@ -7,15 +7,15 @@ use name_const::elf_utils::read_bytes_to_elf;
 use crate::simulator;
 
 #[test]
-fn fib_test() {
+fn hello_world_emu_test() {
     let base_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
     .parent().expect("[*] FATAL: No parent directory found (did you clone the entire repo?)")
     .join("test_files")
-    .join("fib");
+    .join("hello_world");
 
-    let input_fn: PathBuf = base_path.join("fib");
+    let input_fn: PathBuf = base_path.join("hello_world");
     
-    let elf_contents: Vec<u8> = read(input_fn).expect("[*] FATAL: NAME cannot run files that don't exist...");
+    let elf_contents: Vec<u8> = read(input_fn).expect("[*] FATAL: NAME cannot files that don't exist...");
     
     let executable: Elf = match read_bytes_to_elf(elf_contents){
         Ok(elf) => elf,

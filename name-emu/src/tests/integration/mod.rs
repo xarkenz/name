@@ -1,8 +1,8 @@
 #[cfg(test)]
-mod fib_test;
+mod fib_emu_test;
 
 #[cfg(test)]
-mod hello_world_test;
+mod hello_world_emu_test;
 
 #[cfg(test)]
-mod instruction_demonstration_test;
+mod instruction_demonstration_emu_test;

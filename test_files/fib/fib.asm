@@ -15,7 +15,7 @@ size: 	.word  12             # size of "array"
       	sw   	$t2, 0($t0)      # F[0] = 1
       	sw   	$t2, 4($t0)      # F[1] = F[0] = 1
       	addi 	$t1, $t5, -2     # Counter for loop, will execute (size-2) times
-		lw      $t5, 0($0)		 # Messed up instruction for testing
+#		lw      $t5, 0($0)		 # Messed up instruction for testing
 
 # Loop for computing numbers.
 compute: 	lw   	$t3, 0($t0)      # Get value from array F[n] 

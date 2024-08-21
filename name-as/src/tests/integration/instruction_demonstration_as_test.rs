@@ -7,7 +7,7 @@ use crate::helpers::extract_symbol_table_to_sections;
 use name_const::elf_utils::{create_new_et_rel, write_elf_to_file};
 
 #[test]
-fn full_integration_test() {
+fn instruction_demonstration_as_test() {
     let base_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
     .parent().expect("[*] FATAL: No parent directory found (did you clone the entire repo?)")
     .join("test_files")
