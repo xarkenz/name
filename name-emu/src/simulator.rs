@@ -22,10 +22,14 @@ pub fn simulate(elf: Elf, debug: bool) -> Result<(), String> {
     } else {
         // Begin fetch/decode/execute cycle to run program normally
         loop {
-            match single_step(&lineinfo, &mut cpu, &mut memory){
+            match single_step(&lineinfo, &mut cpu, &mut memory, &Vec::new()){
                 Ok(execution_status) => match execution_status {
                     ExecutionStatus::Continue => {},
-                    ExecutionStatus::Break => { println!{"not broke?"}; },
+                    ExecutionStatus::Break => {
+                        // just doing this for now cuz. idk
+                        println!("Break instruction located at address {}", cpu.pc);
+                        break Ok(());
+                     },
                     ExecutionStatus::Complete => return Ok(()),
                 },
                 Err(e) => return Err(e),

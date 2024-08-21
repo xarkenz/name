@@ -1,6 +1,6 @@
 use name_const::elf_def::MIPS_ADDRESS_ALIGNMENT;
 use name_const::structs::{LineInfo, Memory, Processor};
-// use name_const::constants::REGISTERS; // use for p command
+use name_const::constants::REGISTERS;
 
 use crate::decode::{decode, InstructionFn};
 
@@ -11,7 +11,10 @@ use crate::simulator_helpers::generate_err;
 use std::io::{self, Write};
 
 
-pub fn single_step(lineinfo: &Vec<LineInfo>, cpu: &mut Processor, memory: &mut Memory) -> Result<ExecutionStatus, String> {
+pub fn single_step(lineinfo: &Vec<LineInfo>, cpu: &mut Processor, memory: &mut Memory, bps: &Vec<Breakpoint>) -> Result<ExecutionStatus, String> {
+    // passing a breakpoints vector into this function is a very messy way of doing this, i'm aware,,,
+    // ideally, a break instruction is physically injected into the code and everything works politely from there without extra shenaniganery.
+    // however, for now, this will have to do
     if cpu.pc > memory.text_end || cpu.pc < memory.text_start {
         return Err(generate_err(lineinfo, cpu.pc-4, "Program fell off bottom."));
     }
@@ -20,6 +23,13 @@ pub fn single_step(lineinfo: &Vec<LineInfo>, cpu: &mut Processor, memory: &mut M
     let fetched_instruction: u32 = fetch(&cpu.pc, &memory)?;
 
     cpu.pc += MIPS_ADDRESS_ALIGNMENT;
+
+    for bp in bps{
+        if cpu.pc == bp.address(lineinfo) { 
+            // println!("Breakpoint at line {} reached. (This ran in single_step())", bp.line_num);
+            return Ok(ExecutionStatus::Break);
+        }
+    }
 
     // Decode
     let decoded_instruction_fn: InstructionFn = match decode(&fetched_instruction) {
@@ -58,6 +68,17 @@ impl Breakpoint {
         }
     }
     // assembler::add_label is not the solution to male loneliness
+    pub fn address(&self, lineinfo: &Vec<LineInfo>) -> u32 {
+        // return the address of the breakpoint in memory
+        // may be better to run this just the one time in new(). we'll see
+        let mut address: u32 = 3;
+        if let Some(line) = lineinfo.iter().find(|&line| line.line_number == self.line_num){
+            address = line.start_address;
+        } else {
+            eprintln!("Breakpoint not found in memory????");
+        }
+        address
+    }
 }
 
 
@@ -77,7 +98,7 @@ pub fn debugger(lineinfo: &Vec<LineInfo>, memory: &mut Memory, cpu: &mut Process
         // let stdin = io::stdin();
         match io::stdin().read_line(&mut user_input) {
             Ok(_) => {},
-            Err(e) => println!("stdin error: {e}"),
+            Err(e) => eprintln!("stdin error: {e}"),
         };
         let user_input: Vec<&str> = user_input.trim().split(" ").collect(); 
 
@@ -87,10 +108,11 @@ pub fn debugger(lineinfo: &Vec<LineInfo>, memory: &mut Memory, cpu: &mut Process
             "q" => return Ok(()),
             "r" => {
                 loop {
-                    match single_step(lineinfo, cpu, memory){
+                    match single_step(lineinfo, cpu, memory, &breakpoints){
                         Ok(execution_status) => match execution_status {
                             ExecutionStatus::Continue => {},
                             ExecutionStatus::Break => { 
+                                /*
                                 // pain.
                                 let mut l_num: u32 = 3;
                                 if let Some(line) = lineinfo.iter().find(|&line| line.start_address == cpu.pc){
@@ -99,6 +121,7 @@ pub fn debugger(lineinfo: &Vec<LineInfo>, memory: &mut Memory, cpu: &mut Process
                                     println!("Something extremely weird has happened.");
                                 }
                                 println!("Breakpoint at line {} reached.", l_num);
+                                */
                                 break; 
                             },
                             ExecutionStatus::Complete => return Ok(()),
@@ -108,9 +131,16 @@ pub fn debugger(lineinfo: &Vec<LineInfo>, memory: &mut Memory, cpu: &mut Process
                 }
             },
             "l" => {
+                /*
+                let mut line_num: u32 = 4;
+                if user_input.len() > 1 {
+                    line_num = user_input[1].parse().expect("l expects a 32-bit unsigned int as an input for the line number.");
+                }
+                */
                 for line in lineinfo {
                     println!("{:>3} #{:08x}  {}", line.line_number, line.start_address, line.content);
                 }
+                
                 /*
                 println!();
                 for (idx, &byte) in memory.text.iter().enumerate() {
@@ -119,7 +149,7 @@ pub fn debugger(lineinfo: &Vec<LineInfo>, memory: &mut Memory, cpu: &mut Process
                 */
             },
             "s" => {
-                match single_step(lineinfo, cpu, memory){
+                match single_step(lineinfo, cpu, memory, &breakpoints){
                     Ok(execution_status) => match execution_status {
                         ExecutionStatus::Continue => {},
                         ExecutionStatus::Break => { println!("broke"); },
@@ -128,45 +158,40 @@ pub fn debugger(lineinfo: &Vec<LineInfo>, memory: &mut Memory, cpu: &mut Process
                     Err(e) => return Err(e),
                 };
             }
-            /*
             "p" => {
                 if user_input.len() != 2 {
                     println!("p expects 1 argument, received {}", user_input.len()-1);
                     continue;
                 }
-                #[allow(unused_assignments)]
-                let mut reg_idx: usize = 33;
+                // #[allow(unused_assignments)]  // oh boy
                 match REGISTERS.iter().position(|&x| x == user_input[1]){
                     Some(register) => {
-                        reg_idx = register;
+                        println!("Value in register {} is {:08x}", register, cpu.general_purpose_registers[register]);
                     },
                     None => {
                         println!("{} is not a valid register.", user_input[1]);
                         continue;
                     }
                 }
-
-                println!("you want the value of register {}. wouldn't you like to know", reg_idx);
             }
-            */
             "pb" => {
                 println!("BP_NUM: LINE_NUM");
                 for breakpoint in &breakpoints {
-                    println!("{}: {}", breakpoint.bp_num, breakpoint.line_num);  // format this...?
+                    println!("{:>6}: {}", breakpoint.bp_num, breakpoint.line_num);  // format this...?
                 }
             },
             "b" => {
                 // i know there's probably better error handling but i don't have time
                 // to read the whole rust book rn soz
                 if user_input.len() != 2 {
-                    println!("b expects 1 argument, received {}", user_input.len()-1);
+                    eprintln!("b expects 1 argument, received {}", user_input.len()-1);
                     continue;
                 }
                 let line_num: u32 = user_input[1].parse()
                     .expect("b takes 32-bit unsigned int as input");
 
                 if line_num > lineinfo.len().try_into().unwrap(){
-                    println!("{} exceeds number of lines in program.", line_num);  // something like that
+                    eprintln!("{} exceeds number of lines in program.", line_num);  // something like that
                 }
 
 
@@ -176,7 +201,7 @@ pub fn debugger(lineinfo: &Vec<LineInfo>, memory: &mut Memory, cpu: &mut Process
             }
             "del" => {
                 if user_input.len() != 2 {
-                    println!("del expects 1 argument, received {}", user_input.len()-1);
+                    eprintln!("del expects 1 argument, received {}", user_input.len()-1);
                     continue;
                 }
                 let bp_num: u16 = user_input[1].parse().expect("del takes a 16-bit unsigned int as input");
@@ -187,7 +212,7 @@ pub fn debugger(lineinfo: &Vec<LineInfo>, memory: &mut Memory, cpu: &mut Process
                     println!("Removed {:?}", removed_element);
                     global_bp_num -= 1;
                 } else {
-                    println!("Breakpoint with bp_num {} not found", bp_num);
+                    eprintln!("Breakpoint with bp_num {} not found", bp_num);
                 }
             }
             _ => println!("Option not recognized. Type \"help\" to view accepted options.")
