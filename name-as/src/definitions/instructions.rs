@@ -145,6 +145,7 @@ pub(crate) const INSTRUCTION_SET: &[InstructionInformation] = &[
             &[ArgumentType::Rt, ArgumentType::Identifier, ArgumentType::Rs],
         ]),
     },
+    /*
     InstructionInformation {
         mnemonic: "mfhi",
         instruction_type: InstructionType::RType,
@@ -161,6 +162,7 @@ pub(crate) const INSTRUCTION_SET: &[InstructionInformation] = &[
         args: &[ArgumentType::Rd],
         alt_args: None,
     },
+    */
     InstructionInformation {
         mnemonic: "nor",
         instruction_type: InstructionType::RType,
@@ -174,7 +176,7 @@ pub(crate) const INSTRUCTION_SET: &[InstructionInformation] = &[
         instruction_type: InstructionType::RType,
         opcode: None,
         funct: Some(0),
-        args: &[ArgumentType::Rd, ArgumentType::Rt, ArgumentType::Immediate],
+        args: &[],
         alt_args: None,
     },
     InstructionInformation {
@@ -198,10 +200,11 @@ pub(crate) const INSTRUCTION_SET: &[InstructionInformation] = &[
         instruction_type: InstructionType::IType,
         opcode: Some(40),
         funct: None,
-        args: &[ArgumentType::Rs, ArgumentType::Immediate, ArgumentType::Rt],
+        args: &[ArgumentType::Rt, ArgumentType::Immediate, ArgumentType::Rs],
         alt_args: Some(&[
             &[ArgumentType::Rt, ArgumentType::Rs],
             &[ArgumentType::Rt, ArgumentType::Identifier, ArgumentType::Rs],
+            &[ArgumentType::Rt, ArgumentType::Identifier],
         ]),
     },
     InstructionInformation {
@@ -277,6 +280,7 @@ pub(crate) const INSTRUCTION_SET: &[InstructionInformation] = &[
         alt_args: Some(&[
             &[ArgumentType::Rt, ArgumentType::Rs],
             &[ArgumentType::Rt, ArgumentType::Identifier, ArgumentType::Rs],
+            &[ArgumentType::Rt, ArgumentType::Identifier],
         ]),
     },
     InstructionInformation {

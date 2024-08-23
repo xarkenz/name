@@ -124,6 +124,7 @@ impl Assembler {
     }
 
     // Resolve all backpatches attached to a label. Used once a forward-reference label has been discovered and defined.
+    // FIXME: Needs to be updated to work properly with the Upper/Lower vairants of the backpatch struct.
     pub(crate) fn resolve_backpatches(&mut self, ident: &String) {
         let label: String = ident.clone();
 
@@ -164,8 +165,10 @@ impl Assembler {
                     }
                 },
                 Err(e) => {
-                    self.errors.push(e);
                     let found_index = self.backpatches.iter().position(|bp| bp == backpatch).expect("Literally impossible to get this error.");
+                    
+                    self.errors.push(format!("[*] While resolving backpatch on line {}:", backpatch.line_number));
+                    self.errors.push(e);
 
                     self.backpatches.remove(found_index);
                 },

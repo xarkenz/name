@@ -93,6 +93,10 @@ fn token_to_line_component(token: Token, slice: &str, mnemonic_expected: bool) -
                 return Err("Failed to parse as decimal.".to_string());
             }
         },
+        Token::SingleQuote => {
+            let escaped_slice: u32 = slice.chars().skip(1).next().unwrap() as u32; // TODO: Implement escape sequence stuff
+            return Ok(LineComponent::Immediate(escaped_slice as i32))
+        }
         Token::DoubleQuote => {
             return Ok(LineComponent::DoubleQuote(slice[1..slice.len()-1].to_string()));
         }

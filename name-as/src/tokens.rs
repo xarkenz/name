@@ -32,6 +32,9 @@ pub enum Token {
     #[regex(r#""([^"\\]*(?:\\.[^"\\]*)*)""#)]
     DoubleQuote,
 
+    #[regex(r##"'(?:\\.|[^\\'])'"##)]
+    SingleQuote,
+
     #[token(":")]
     Colon,
 

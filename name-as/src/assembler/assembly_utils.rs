@@ -1,7 +1,7 @@
 use name_const::structs::Symbol;
 
 use crate::assembler::assembly_helpers::{parse_register_to_u32, translate_identifier_to_address};
-use crate::definitions::constants::MAX_U16;
+use crate::definitions::constants::{MIN_U16, MAX_U16};
 use crate::definitions::structs::{ArgumentType, LineComponent};
 
 /*
@@ -94,7 +94,7 @@ pub fn assemble_i_type(opcode: u32, rs: Option<String>, rt: Option<String>, imme
     let unchecked_immediate: i32 = immediate.unwrap_or(0);
 
     // Check range on immediate value
-    if unchecked_immediate as u32 > MAX_U16 as u32 {
+    if unchecked_immediate > MAX_U16 || unchecked_immediate < MIN_U16 {
         return Err("Immediate exceeds 16 bits".to_string());
     }
 
@@ -120,7 +120,7 @@ pub fn assign_i_type_arguments(arguments: &Vec<LineComponent>, args_to_use: &[Ar
             LineComponent::Register(register) => content = register.clone(),
             LineComponent::Immediate(number) => immediate = number.clone(),
             LineComponent::Identifier(identifier) => content = identifier.clone(),
-            _ => return Err(" - Bad arguments provided".to_string()),
+            _ => return Err(" - Bad arguments provided during i-type assignment".to_string()),
         }
 
         match args_to_use[i] {
@@ -130,7 +130,7 @@ pub fn assign_i_type_arguments(arguments: &Vec<LineComponent>, args_to_use: &[Ar
             ArgumentType::Identifier => {
                 if let Some(addr) = translate_identifier_to_address(&content, symbol_table) {
                     if addr as i16 as u32 != addr {
-                        return Err(" - Supplied identifier out of storable range.".to_string());
+                        return Err(" - Supplied identifier out of storable range (Consider using an intermediate temp register).".to_string());
                     } else {
                         imm = Some(addr as i32);
                     }

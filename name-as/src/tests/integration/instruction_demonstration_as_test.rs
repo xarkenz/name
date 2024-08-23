@@ -41,7 +41,7 @@ fn instruction_demonstration_as_test() {
             let joined_errors = errors.join("\n");
             eprintln!("{joined_errors}");
 
-            println!("\nAssembly was unsuccessful.");
+            println!("\nAssembly was NOT successful.");
         },
     }
 }

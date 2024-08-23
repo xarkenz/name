@@ -13,7 +13,7 @@ pub fn assemble_instruction(info: &InstructionInformation, arguments: &Vec<LineC
 
     if !has_alternate_configurations {
         if !existing_configuration_works{
-            return Err(" - Bad arguments provided.".to_string());
+            return Err(format!(" - Bad arguments provided during operand checks."));
         } else {
             configuration_to_use = info.args;
         }
@@ -21,7 +21,7 @@ pub fn assemble_instruction(info: &InstructionInformation, arguments: &Vec<LineC
         let found_configuration = info.alt_args.unwrap().iter().find(|config| arg_configuration_is_ok(arguments, config));
         match found_configuration {
             Some(configuration) => configuration_to_use = configuration,
-            None => return Err(" - Alternative argument configurations exist, but none matched.".to_string()),
+            None => return Err(" - Bad arguments provided; Alternative argument configurations exist, but none matched.".to_string()),
         }
     } else {
         configuration_to_use = info.args;
