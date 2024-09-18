@@ -105,34 +105,28 @@ fn token_to_line_component(token: Token, slice: &str, mnemonic_expected: bool) -
             }
         }
         Token::DoubleQuote => {
-            // let mut bingbong = slice[1..slice.len()-1];
-            // while bingbong.contains("\\"){
-            //     // let idx = bingbong.find("\\").unwrap();
-            //     // bingbong = bingbong
-            //     bingbong = bingbong.split('\\').next(); //FIX THIS FUCK
-            // }
-            return Ok(LineComponent::DoubleQuote(slice[1..slice.len()-1].to_string()));
+            // return Ok(LineComponent::DoubleQuote(slice[1..slice.len()-1].to_string()));
 
-            // let bingbong = &slice[1..slice.len() - 1];
-            // let mut result = String::new();
-            // let mut chars = bingbong.chars().peekable();
+            let bingbong = &slice[1..slice.len() - 1];
+            let mut result = String::new();
+            let mut chars = bingbong.chars().peekable();
 
-            // while let Some(c) = chars.next() {
-            //     if c == '\\' {
-            //         if let Some(&next_char) = chars.peek() {
-            //             let parsed_char = parse_escape_sequence(next_char);
-            //             result.push(parsed_char);
-            //             chars.next();
-            //         } else {
-            //             result.push(c);
-            //         }
-            //     } else {
-            //         // Regular character, just add it to the result
-            //         result.push(c);
-            //     }
-            // }
+            // this works for now i'll deal with it later
+            while let Some(c) = chars.next() {
+                if c == '\\' {
+                    if let Some(&next_char) = chars.peek() {
+                        let parsed_char = parse_escape_sequence(next_char);
+                        result.push(parsed_char);
+                        chars.next();
+                    } else {
+                        result.push(c);
+                    }
+                } else {
+                    result.push(c);
+                }
+            }
 
-            // return Ok(LineComponent::DoubleQuote(result));
+            return Ok(LineComponent::DoubleQuote(result));
         }
         Token::Colon => {
             return Ok(LineComponent::Colon);
@@ -150,7 +144,7 @@ fn parse_escape_sequence(escaped_char: char) -> char {
         'b' =>  8 as char, // backspace (what.)
         'f' => 12 as char, // form feed (yeah okay)
         '\'' => '\'',  // take this out if it doesn't work or is redundant
-        '\"' => '\"',
+        '\"' => '\"',  // (this might be the only non redundant part actually)
         '\\' => '\\',
         _ => {
             println!("Escape sequence \\{} not implemented.", escaped_char);
