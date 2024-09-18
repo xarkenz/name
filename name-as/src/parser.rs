@@ -94,15 +94,68 @@ fn token_to_line_component(token: Token, slice: &str, mnemonic_expected: bool) -
             }
         },
         Token::SingleQuote => {
-            let escaped_slice: u32 = slice.chars().skip(1).next().unwrap() as u32; // TODO: Implement escape sequence stuff
-            return Ok(LineComponent::Immediate(escaped_slice as i32))
+            let mut new_slice = slice.chars().skip(1);
+            if new_slice.next().unwrap() as u32 == 0x5c { // 0x5c is backslash
+                let escape_sequence_char = new_slice.next().unwrap();
+                let escaped_slice: char = parse_escape_sequence(escape_sequence_char);
+                return Ok(LineComponent::Immediate(escaped_slice as i32))
+            } else {
+                let escaped_slice: u32 = new_slice.next().unwrap() as u32; // TODO: Implement escape sequence stuff
+                return Ok(LineComponent::Immediate(escaped_slice as i32))
+            }
         }
         Token::DoubleQuote => {
+            // let mut bingbong = slice[1..slice.len()-1];
+            // while bingbong.contains("\\"){
+            //     // let idx = bingbong.find("\\").unwrap();
+            //     // bingbong = bingbong
+            //     bingbong = bingbong.split('\\').next(); //FIX THIS FUCK
+            // }
             return Ok(LineComponent::DoubleQuote(slice[1..slice.len()-1].to_string()));
+
+            // let bingbong = &slice[1..slice.len() - 1];
+            // let mut result = String::new();
+            // let mut chars = bingbong.chars().peekable();
+
+            // while let Some(c) = chars.next() {
+            //     if c == '\\' {
+            //         if let Some(&next_char) = chars.peek() {
+            //             let parsed_char = parse_escape_sequence(next_char);
+            //             result.push(parsed_char);
+            //             chars.next();
+            //         } else {
+            //             result.push(c);
+            //         }
+            //     } else {
+            //         // Regular character, just add it to the result
+            //         result.push(c);
+            //     }
+            // }
+
+            // return Ok(LineComponent::DoubleQuote(result));
         }
         Token::Colon => {
             return Ok(LineComponent::Colon);
         }
         _ => return Err(format!("pattern \"{slice}\" could not be matched by parser.")),
     }
+}
+
+// This function just maps a character to its respective escape sequence.
+fn parse_escape_sequence(escaped_char: char) -> char {
+    let escaped_slice_char: char = match escaped_char {
+        't' =>  9 as char, // tab
+        'n' => 10 as char, // newline
+        'r' => 13 as char, // carriage return (who uses this)
+        'b' =>  8 as char, // backspace (what.)
+        'f' => 12 as char, // form feed (yeah okay)
+        '\'' => '\'',  // take this out if it doesn't work or is redundant
+        '\"' => '\"',
+        '\\' => '\\',
+        _ => {
+            println!("Escape sequence \\{} not implemented.", escaped_char);
+            return escaped_char
+        }
+    };
+    return escaped_slice_char
 }

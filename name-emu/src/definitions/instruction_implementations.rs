@@ -85,6 +85,7 @@ pub fn sub(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Resul
 
     if temp.1 {
         // TODO: Implement coprocessor 0 and signal integer overflow
+        
         return Err(format!("Integer underflow occurred in subtraction."));
     } else {
         cpu.general_purpose_registers[rd] = cpu.general_purpose_registers[AS_TEMP];
