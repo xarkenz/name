@@ -4,7 +4,7 @@
     .include    "SysCalls.asm"
     .data
 skipNotSkippedString:
-    .asciiz     "Something was meant to be skipped, but wasn't skipped\n."
+    .asciiz     "Something was meant to be skipped, but wasn't skipped.\n"
 
 testString: 
     .asciiz     "Hello, World!"
@@ -74,7 +74,7 @@ skip6:
 
 demo6:
     la          $a0, demo7
-    jalr        $a0
+    jalr        $ra, $a0
 
 skip7:
     # This label should be skipped

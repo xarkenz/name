@@ -157,7 +157,7 @@ impl Assembler {
                     Ok(Some(
                         // Get previously assembled instruction bytes from section .text
                         u32::from_be_bytes(self.section_dot_text[backpatch.byte_offset..backpatch.byte_offset+4].try_into().unwrap()) 
-                        // OR in the newly found symbol's upper portion
+                        // OR in the newly found symbol's lower portion
                         | (self.symbol_table.iter().find(|symbol| symbol.identifier == label).unwrap().value & 0xFFFF)
                     ))
                 },
@@ -175,14 +175,14 @@ impl Assembler {
                             let label = backpatch.undiscovered_identifier.clone();
                             let line = backpatch.line_number.clone();
                             println!(" - Backpatch resolved for label {label} on line {line}:");
-                            pretty_print_instruction(&self.current_address, &word);
+                            pretty_print_instruction(&backpatch.backpatch_address, &word);
 
                             let found_index = self.backpatches.iter().position(|bp| bp == backpatch).expect("Literally impossible to get this error.");
 
                             self.backpatches.remove(found_index);
                         },
                         None => {
-                            unreachable!("Backpatch unable to be resolved. This indicates a stupidly difficult extension error.");
+                            unreachable!("Backpatch unable to be resolved. This indicates a stupidly difficult extension error that is likely not your fault unless you contribute to the source code.");
                         },
                     }
                 },

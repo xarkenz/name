@@ -1,6 +1,5 @@
 use crate::decode::{unpack_r_type, unpack_i_type, unpack_j_type};
 use crate::definitions::lookup_tables::SYSCALL_TABLE;
-use clap::builder::{Str, StringValueParser};
 use name_const::structs::{Processor, Memory};
 
 use crate::definitions::structs::ExecutionStatus;
@@ -51,11 +50,11 @@ pub fn jr(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Result<
 
 // 0x09 - jalr
 pub fn jalr(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Result<ExecutionStatus, String> {
-    let (rs, _, _, _) = unpack_r_type(instruction);
+    let (rd, rs, _, _) = unpack_r_type(instruction);
     if cpu.general_purpose_registers[rs] >= memory.text_end || cpu.general_purpose_registers[rs] < memory.text_start {
         return Err(format!("Attempted to jump to unowned address 0x{:x}", cpu.general_purpose_registers[rs]));
     }
-    cpu.general_purpose_registers[RA] = cpu.pc;
+    cpu.general_purpose_registers[rd] = cpu.pc;
     cpu.pc = cpu.general_purpose_registers[rs];
 
     Ok(ExecutionStatus::Continue)
@@ -215,11 +214,14 @@ pub fn beq(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Result
         return Ok(ExecutionStatus::Continue)
     }
 
-    cpu.general_purpose_registers[AS_TEMP] = (cpu.pc as i32 + offset) as u32;
+    let temp = (cpu.pc as i32 + offset) as u32;
 
-    if cpu.general_purpose_registers[AS_TEMP] >= memory.text_end || cpu.general_purpose_registers[AS_TEMP] < memory.text_start {
-        return Err(format!("Attempted to access unowned address 0x{:x}", cpu.general_purpose_registers[AS_TEMP]));
+    if temp >= memory.text_end || temp < memory.text_start {
+        return Err(format!("Attempted to access unowned address 0x{:x}", temp));
     }
+
+    // Bro forgot the actual jump logic
+    cpu.pc = temp;
     
     Ok(ExecutionStatus::Continue)
 }
@@ -240,6 +242,9 @@ pub fn bne(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Result
     if temp >= memory.text_end || temp < memory.text_start {
         return Err(format!("Attempted to access unowned address 0x{:x}", temp));
     }
+
+    // Bro once again forgot the actual jump logic
+    cpu.pc = temp;
     
     Ok(ExecutionStatus::Continue)
 }
@@ -259,6 +264,9 @@ pub fn blez(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Resul
     if temp >= memory.text_end || temp < memory.text_start {
         return Err(format!("Attempted to access unowned address 0x{:x}", temp));
     }
+
+    // BRO HAS ONCE AGAIN FORGOTTEN THE ACTUAL JUMP
+    cpu.pc = temp;
 
     Ok(ExecutionStatus::Continue)
 }
@@ -281,8 +289,6 @@ pub fn bgtz(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Resul
     }
 
     cpu.pc = temp;
-
-    // println!("Jumping to 0x{:x}", temp);
     
     Ok(ExecutionStatus::Continue)
 }

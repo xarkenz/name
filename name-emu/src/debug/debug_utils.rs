@@ -112,13 +112,13 @@ pub fn debugger(lineinfo: &Vec<LineInfo>, memory: &mut Memory, cpu: &mut Process
                             ExecutionStatus::Continue => {},
                             ExecutionStatus::Break => {    
                                 // pain.
-                                let mut l_num: u32 = 0;
+                                let l_num: u32;
                                 if let Some(line) = lineinfo.iter().find(|&line| line.start_address == cpu.pc){
                                     l_num = line.line_number;
                                     println!("Breakpoint at line {} reached.", l_num);
                                     break;
                                 } else {
-                                    println!("I don't know how to describe this error. Good luck");
+                                    println!("Illegal state during single-step (lineinfo could not be located for current PC 0x{:x}", cpu.pc);
                                 }
                             },
                             ExecutionStatus::Complete => return Ok(()),
