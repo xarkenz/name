@@ -159,7 +159,7 @@ pub fn search_mnemonic(mnemonic: String, environment: &mut Assembler) -> (Option
         },
         None => {
             environment.errors.push(format!("[*] On line {}{}:", environment.line_prefix, environment.line_number));
-            environment.errors.push(format!(" - Instruction \"{}\" not recognized. If this is a valid MIPS instruction, consider opening a pull request at https://cameron-b63/name.", mnemonic));
+            environment.errors.push(format!(" - Instruction \"{}\" not recognized. If this is a valid MIPS instruction, consider opening a pull request at https://github.com/cameron-b63/name.", mnemonic));
             instruction_information = None;
         },
     }

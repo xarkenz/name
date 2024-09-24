@@ -181,7 +181,7 @@ pub const SYSCALL_TABLE: [Option<SyscallFn>; 64] = [
     None, // 0x02
     None, // 0x03
     Some(sys_print_string), // 0x04
-    None, // 0x05
+    Some(sys_read_int), // 0x05
     None, // 0x06
     None, // 0x07
     None, // 0x08

@@ -2,7 +2,10 @@ use name_const::structs::{Processor, Memory};
 
 use crate::definitions::structs::ExecutionStatus;
 
+use std::io;
+
 const A0: usize = 4;
+const V0: usize = 2;
 
 pub type SyscallFn = fn(&mut Processor, &mut Memory) -> Result<ExecutionStatus, String>;
 
@@ -36,6 +39,26 @@ pub fn sys_print_string(cpu: &mut Processor, memory: &mut Memory) -> Result<Exec
     print!("{}", output_string);
 
     Ok(ExecutionStatus::Continue)
+}
+
+// Syscall 5 - SysReadInt
+pub fn sys_read_int(cpu: &mut Processor, _memory: &mut Memory) -> Result<ExecutionStatus, String>{
+    let mut input_text = String::new();
+    io::stdin()
+        .read_line(&mut input_text)
+        .expect("Failed to read from stdin");
+
+    let trimmed = input_text.trim();
+    match trimmed.parse::<u32>() {
+        Ok(i) => {
+            cpu.general_purpose_registers[V0] = i;
+            Ok(ExecutionStatus::Continue)
+        },
+        Err(..) => {
+            // eprintln!("{} is not an integer.\nRead failed", trimmed);
+            Err(format!("{} is not an integer.\nRead failed", trimmed))
+        },
+    }
 }
 
 // Syscall 10 - SysExit

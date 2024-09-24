@@ -106,10 +106,8 @@ fn token_to_line_component(token: Token, slice: &str, mnemonic_expected: bool) -
         }
         Token::DoubleQuote => {
             // return Ok(LineComponent::DoubleQuote(slice[1..slice.len()-1].to_string()));
-
-            let bingbong = &slice[1..slice.len() - 1];
+            let mut chars = slice[1..slice.len() - 1].chars().peekable();
             let mut result = String::new();
-            let mut chars = bingbong.chars().peekable();
 
             // this works for now i'll deal with it later
             while let Some(c) = chars.next() {
@@ -137,7 +135,7 @@ fn token_to_line_component(token: Token, slice: &str, mnemonic_expected: bool) -
 
 // This function just maps a character to its respective escape sequence.
 fn parse_escape_sequence(escaped_char: char) -> char {
-    let escaped_slice_char: char = match escaped_char {
+    match escaped_char {
         't' =>  9 as char, // tab
         'n' => 10 as char, // newline
         'r' => 13 as char, // carriage return (who uses this)
@@ -147,9 +145,8 @@ fn parse_escape_sequence(escaped_char: char) -> char {
         '\"' => '\"',  // (this might be the only non redundant part actually)
         '\\' => '\\',
         _ => {
-            println!("Escape sequence \\{} not implemented.", escaped_char);
+            eprintln!("Escape sequence \\{} not implemented.", escaped_char);
             return escaped_char
         }
-    };
-    return escaped_slice_char
+    }
 }
