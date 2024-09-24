@@ -6,6 +6,8 @@ Included in this directory are a couple of test files to get you started with NA
 
 - Hello, World!
     - Just a simple test of some very basic instructions.
+- char_test
+    - An expanded hello world that makes sure escape sequences work as intended.
 - Fibonacci sequence (fib.asm)
     - A more sophisticated test.
 - Instruction demonstration (mips_test.asm)

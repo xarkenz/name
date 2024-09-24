@@ -24,13 +24,6 @@ pub fn single_step(lineinfo: &Vec<LineInfo>, cpu: &mut Processor, memory: &mut M
 
     cpu.pc += MIPS_ADDRESS_ALIGNMENT;
 
-    for bp in bps{
-        if cpu.pc == bp.address(lineinfo) { 
-            // println!("Breakpoint at line {} reached. (This ran in single_step())", bp.line_num);
-            return Ok(ExecutionStatus::Break);
-        }
-    }
-
     // Decode
     let decoded_instruction_fn: InstructionFn = match decode(&fetched_instruction) {
         Ok(fun) => fun,
@@ -43,6 +36,14 @@ pub fn single_step(lineinfo: &Vec<LineInfo>, cpu: &mut Processor, memory: &mut M
     // The $0 register should never have been permanently changed. Don't let it remain changed.
     cpu.general_purpose_registers[0] = 0;
 
+    // check breakpoint after instruction on the line is executed
+    for bp in bps{
+        if cpu.pc == bp.address { 
+            // println!("Breakpoint at line {} reached. (This ran in single_step())", bp.line_num);
+            return Ok(ExecutionStatus::Break);
+        }
+    }
+
     // The instruction result contains an enum value representing whether or not "execution should stop now".
     match instruction_result {
         Ok(execution_status) => {
@@ -50,6 +51,7 @@ pub fn single_step(lineinfo: &Vec<LineInfo>, cpu: &mut Processor, memory: &mut M
         },
         Err(e) => return Err(generate_err(lineinfo, cpu.pc-4, format!("{}", e).as_str() )),
     }
+    
 }
 
 // do we really need to put this another file riiiiight now
@@ -57,34 +59,32 @@ pub fn single_step(lineinfo: &Vec<LineInfo>, cpu: &mut Processor, memory: &mut M
 pub struct Breakpoint {
     pub bp_num: u16, // why do you have 65535 breakpoints. do better
     pub line_num: u32,
-    // pub address: u32,
+    pub address: u32,
 }
 
 impl Breakpoint {
-    pub fn new(bp_num: u16, line_num: u32) -> Self {
+    pub fn new(bp_num: u16, line_num: u32, lineinfo: &Vec<LineInfo>) -> Self {
         Breakpoint {
             bp_num,
             line_num,
+            address: {
+                let mut address: u32 = 3;
+                if let Some(line) = lineinfo.iter().find(|&line| line.line_number == line_num){
+                    address = line.start_address;
+                } else {
+                    eprintln!("Breakpoint not found in memory????");
+                }
+                address
+            },
         }
     }
     // assembler::add_label is not the solution to male loneliness
-    pub fn address(&self, lineinfo: &Vec<LineInfo>) -> u32 {
-        // return the address of the breakpoint in memory
-        // may be better to run this just the one time in new(). we'll see
-        let mut address: u32 = 3;
-        if let Some(line) = lineinfo.iter().find(|&line| line.line_number == self.line_num){
-            address = line.start_address;
-        } else {
-            eprintln!("Breakpoint not found in memory????");
-        }
-        address
-    }
 }
 
-
+// This is the name debugger. Have fun...
 pub fn debugger(lineinfo: &Vec<LineInfo>, memory: &mut Memory, cpu: &mut Processor) -> Result<(), String> {
     let mut breakpoints: Vec<Breakpoint> = Vec::new();
-    let mut global_bp_num: u16 = 0;  // probably a better way to do this
+    let mut global_bp_num: u16 = 0;
 
     println!("Welcome to the NAME debugger.");
     println!("For a list of commands, type \"help\".");
@@ -95,7 +95,6 @@ pub fn debugger(lineinfo: &Vec<LineInfo>, memory: &mut Memory, cpu: &mut Process
         io::stdout().flush().expect("Failed to flush stdout");
 
         let mut user_input = String::new();
-        // let stdin = io::stdin();
         match io::stdin().read_line(&mut user_input) {
             Ok(_) => {},
             Err(e) => eprintln!("stdin error: {e}"),
@@ -111,8 +110,29 @@ pub fn debugger(lineinfo: &Vec<LineInfo>, memory: &mut Memory, cpu: &mut Process
                     match single_step(lineinfo, cpu, memory, &breakpoints){
                         Ok(execution_status) => match execution_status {
                             ExecutionStatus::Continue => {},
-                            ExecutionStatus::Break => { 
-                                /*
+                            ExecutionStatus::Break => {    
+                                // pain.
+                                let mut l_num: u32 = 0;
+                                if let Some(line) = lineinfo.iter().find(|&line| line.start_address == cpu.pc){
+                                    l_num = line.line_number;
+                                    println!("Breakpoint at line {} reached.", l_num);
+                                    break;
+                                } else {
+                                    println!("I don't know how to describe this error. Good luck");
+                                }
+                            },
+                            ExecutionStatus::Complete => return Ok(()),
+                        },
+                        Err(e) => return Err(e),
+                    };
+                }
+            },
+            "c" => {
+                loop {
+                    match single_step(lineinfo, cpu, memory, &breakpoints){
+                        Ok(execution_status) => match execution_status {
+                            ExecutionStatus::Continue => {},
+                            ExecutionStatus::Break => {    
                                 // pain.
                                 let mut l_num: u32 = 3;
                                 if let Some(line) = lineinfo.iter().find(|&line| line.start_address == cpu.pc){
@@ -121,7 +141,6 @@ pub fn debugger(lineinfo: &Vec<LineInfo>, memory: &mut Memory, cpu: &mut Process
                                     println!("Something extremely weird has happened.");
                                 }
                                 println!("Breakpoint at line {} reached.", l_num);
-                                */
                                 break; 
                             },
                             ExecutionStatus::Complete => return Ok(()),
@@ -129,24 +148,11 @@ pub fn debugger(lineinfo: &Vec<LineInfo>, memory: &mut Memory, cpu: &mut Process
                         Err(e) => return Err(e),
                     };
                 }
-            },
+            }
             "l" => {
-                /*
-                let mut line_num: u32 = 4;
-                if user_input.len() > 1 {
-                    line_num = user_input[1].parse().expect("l expects a 32-bit unsigned int as an input for the line number.");
-                }
-                */
                 for line in lineinfo {
                     println!("{:>3} #{:08x}  {}", line.line_number, line.start_address, line.content);
                 }
-                
-                /*
-                println!();
-                for (idx, &byte) in memory.text.iter().enumerate() {
-                    println!("{:>3} {:08b}", idx+1, byte);
-                }
-                */
             },
             "s" => {
                 match single_step(lineinfo, cpu, memory, &breakpoints){
@@ -194,10 +200,9 @@ pub fn debugger(lineinfo: &Vec<LineInfo>, memory: &mut Memory, cpu: &mut Process
                     eprintln!("{} exceeds number of lines in program.", line_num);  // something like that
                 }
 
-
-
                 global_bp_num += 1;
-                breakpoints.push(Breakpoint::new(global_bp_num, line_num));
+                breakpoints.push(Breakpoint::new(global_bp_num, line_num, lineinfo));
+                println!("Successfully added breakpoint {} at line {}.", global_bp_num, line_num);
             }
             "del" => {
                 if user_input.len() != 2 {
@@ -227,7 +232,7 @@ fn help_menu(){
     println!("c - Continue program execution until the next breakpoint.");
     println!("s - Execute only the next instruction.");
     println!("l - Print the entire program. (this functionality will be much improved later)");
-    // println!("p - Print the value of a register at the current place in program execution.");
+    println!("p - Print the value of a register at the current place in program execution.");
     println!("pb - Print all breakpoints.");
     println!("b [N] - Insert a breakpoint at line number N.");
     println!("del [N] - Delete breakpoint number N.");
