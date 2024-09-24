@@ -37,12 +37,30 @@ pub fn srl(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Resul
 
 // 0x08 - jr
 pub fn jr(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Result<ExecutionStatus, String> {
-    let (rs, _, _, _) = unpack_r_type(instruction);
+    let (_, rs, _, _) = unpack_r_type(instruction);
 
     if cpu.general_purpose_registers[rs] >= memory.text_end || cpu.general_purpose_registers[rs] < memory.text_start {
         return Err(format!("Attempted to jump to unowned address 0x{:x}", cpu.general_purpose_registers[rs]));
     }
     
+    cpu.pc = cpu.general_purpose_registers[rs];
+
+    Ok(ExecutionStatus::Continue)
+}
+
+// 0x09 - jalr
+pub fn jalr(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Result<ExecutionStatus, String> {
+    let (rd_untested, rs, _, _) = unpack_r_type(instruction);
+
+    let rd = match rd_untested {
+        0 => 31,
+        _ => rd_untested,
+    };
+
+    if cpu.general_purpose_registers[rs] >= memory.text_end || cpu.general_purpose_registers[rs] < memory.text_start {
+        return Err(format!("Attempted to jump to unowned address 0x{:x}", cpu.general_purpose_registers[rs]));
+    }
+    cpu.general_purpose_registers[rd] = cpu.pc;
     cpu.pc = cpu.general_purpose_registers[rs];
 
     Ok(ExecutionStatus::Continue)
@@ -68,12 +86,12 @@ pub fn add(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Resul
 }
 
 // 0x21 - addu
-/* pub fn addu(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Result<ExecutionStatus, String> {
+pub fn addu(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Result<ExecutionStatus, String> {
     let (rd, rs, rt, _) = unpack_r_type(instruction);
     // check that below works
-    cpu.general_purpose_registers[rd] = cpu.general_purpose_registers[rs] + cpu.general_purpose_registers[rt];
+    cpu.general_purpose_registers[rd] = cpu.general_purpose_registers[rs].overflowing_add(cpu.general_purpose_registers[rt]).0;
     Ok(ExecutionStatus::Continue)
-} */
+}
 
 // 0x22 - sub
 pub fn sub(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Result<ExecutionStatus, String> {
@@ -202,11 +220,14 @@ pub fn beq(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Result
         return Ok(ExecutionStatus::Continue)
     }
 
-    cpu.general_purpose_registers[AS_TEMP] = (cpu.pc as i32 + offset) as u32;
+    let temp = (cpu.pc as i32 + offset) as u32;
 
-    if cpu.general_purpose_registers[AS_TEMP] >= memory.text_end || cpu.general_purpose_registers[AS_TEMP] < memory.text_start {
-        return Err(format!("Attempted to access unowned address 0x{:x}", cpu.general_purpose_registers[AS_TEMP]));
+    if temp >= memory.text_end || temp < memory.text_start {
+        return Err(format!("Attempted to access unowned address 0x{:x}", temp));
     }
+
+    // Bro forgot the actual jump logic
+    cpu.pc = temp;
     
     Ok(ExecutionStatus::Continue)
 }
@@ -222,12 +243,37 @@ pub fn bne(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Result
         return Ok(ExecutionStatus::Continue)
     }
     
-    cpu.general_purpose_registers[AS_TEMP] = (cpu.pc as i32 + offset) as u32;
+    let temp = (cpu.pc as i32 + offset) as u32;
 
-    if cpu.general_purpose_registers[AS_TEMP] >= memory.text_end || cpu.general_purpose_registers[AS_TEMP] < memory.text_start {
-        return Err(format!("Attempted to access unowned address 0x{:x}", cpu.general_purpose_registers[AS_TEMP]));
+    if temp >= memory.text_end || temp < memory.text_start {
+        return Err(format!("Attempted to access unowned address 0x{:x}", temp));
     }
+
+    // Bro once again forgot the actual jump logic
+    cpu.pc = temp;
     
+    Ok(ExecutionStatus::Continue)
+}
+
+// 0x06 - blez
+pub fn blez(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Result<ExecutionStatus, String> {
+    let (rs, _, imm) = unpack_i_type(instruction);
+
+    let offset: i32 = ((imm & 0xFFFF) as i16 as i32) << 2;
+
+    if (cpu.general_purpose_registers[rs] as i32) > 0 {
+        return Ok(ExecutionStatus::Continue)
+    }
+
+    let temp = (cpu.pc as i32 + offset) as u32;
+
+    if temp >= memory.text_end || temp < memory.text_start {
+        return Err(format!("Attempted to access unowned address 0x{:x}", temp));
+    }
+
+    // BRO HAS ONCE AGAIN FORGOTTEN THE ACTUAL JUMP
+    cpu.pc = temp;
+
     Ok(ExecutionStatus::Continue)
 }
 
@@ -238,7 +284,7 @@ pub fn bgtz(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Resul
     // Sign extend offset
     let offset: i32 = ((imm) as i16 as i32) << 2;
 
-    if cpu.general_purpose_registers[rs] <= 0 {
+    if cpu.general_purpose_registers[rs] as i32 <= 0 {
         return Ok(ExecutionStatus::Continue)
     }
     
@@ -249,8 +295,6 @@ pub fn bgtz(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Resul
     }
 
     cpu.pc = temp;
-
-    // println!("Jumping to 0x{:x}", temp);
     
     Ok(ExecutionStatus::Continue)
 }
@@ -263,14 +307,14 @@ pub fn addi(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Resu
     Ok(ExecutionStatus::Continue)
 }
 
-/*
+
 // 0x09 - addiu
-pub fn addiu(cpu: &mut Processor, memory: &mut Memory, instruction: u32){
+pub fn addiu(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Result<ExecutionStatus, String>{
     let (rs, rt, imm) = unpack_i_type(instruction);
-    cpu.general_purpose_registers[rt] = cpu.general_purpose_registers[rs] + imm;
+    cpu.general_purpose_registers[rt] = cpu.general_purpose_registers[rs].overflowing_add(imm).0;
     Ok(ExecutionStatus::Continue)
 }
-*/
+
 
 // 0x0C - andi
 pub fn andi(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Result<ExecutionStatus, String> {
@@ -289,6 +333,7 @@ pub fn ori(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Resul
 // 0x0F - lui
 pub fn lui(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Result<ExecutionStatus, String> {
     let (_, rt, imm) = unpack_i_type(instruction);
+    // SUPER DUPER PROBLEM SPOT
     cpu.general_purpose_registers[rt] = imm << 16;
     Ok(ExecutionStatus::Continue)
 }

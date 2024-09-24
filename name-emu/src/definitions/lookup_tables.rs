@@ -22,10 +22,10 @@ pub const OPCODE_TABLE: [Option<InstructionFn>; 64] = [
     Some(jal),  // 0x03
     Some(beq),  // 0x04
     Some(bne),  // 0x05
-    None,  // 0x06
+    Some(blez),  // 0x06
     Some(bgtz),  // 0x07
     Some(addi),  // 0x08
-    None /*Some(addiu)*/,  // 0x09
+    Some(addiu),  // 0x09
     None /*Some(slti)*/,  // 0x0A
     None /*Some(sltiu)*/,  // 0x0B
     Some(andi),  // 0x0C
@@ -102,10 +102,10 @@ pub const FUNCT_TABLE: [Option<InstructionFn>; 64] = [
     None, // 0x03
     None, // 0x04
     None, // 0x05
-    None, // 0x06 ok buddy -> oiuougou
+    None, // 0x06 ok buddy -> oiuougou :3
     None, // 0x07
     Some(jr), // 0x08
-    None, // 0x09
+    Some(jalr), // 0x09
     None, // 0x0A
     None, // 0x0B
     Some(syscall), // 0x0C
@@ -129,7 +129,7 @@ pub const FUNCT_TABLE: [Option<InstructionFn>; 64] = [
     None, // 0x1E
     None, // 0x1F
     Some(add), // 0x20
-    None /*Some(addu)*/, // 0x21
+    Some(addu), // 0x21
     Some(sub), // 0x22
     None /*Some(subu)*/, // 0x23
     Some(and), // 0x24

@@ -140,7 +140,29 @@ impl Assembler {
 
             let backpatch_address: u32 = backpatch.backpatch_address;
             
-            let assembled_result = assemble_instruction(backpatch.instruction_info, &backpatch.arguments, &self.symbol_table, &backpatch_address);
+            let assembled_result: Result<Option<u32>, String>;
+            match backpatch.backpatch_type {
+                BackpatchType::Standard => assembled_result = assemble_instruction(backpatch.instruction_info, &backpatch.arguments, &self.symbol_table, &backpatch_address),
+                BackpatchType::Upper => {
+                    assembled_result =
+                    Ok(Some(
+                        // Get previously assembled instruction bytes from section .text
+                        u32::from_be_bytes(self.section_dot_text[backpatch.byte_offset..backpatch.byte_offset+4].try_into().unwrap()) 
+                        // OR in the newly found symbol's upper portion
+                        | (self.symbol_table.iter().find(|symbol| symbol.identifier == label).unwrap().value >> 16)
+                    ))
+                },
+                BackpatchType::Lower => {
+                    assembled_result =
+                    Ok(Some(
+                        // Get previously assembled instruction bytes from section .text
+                        u32::from_be_bytes(self.section_dot_text[backpatch.byte_offset..backpatch.byte_offset+4].try_into().unwrap()) 
+                        // OR in the newly found symbol's lower portion
+                        | (self.symbol_table.iter().find(|symbol| symbol.identifier == label).unwrap().value & 0xFFFF)
+                    ))
+                },
+            }
+            
             match assembled_result {
                 Ok(assembled_instruction) => {
                     match assembled_instruction {
@@ -153,14 +175,14 @@ impl Assembler {
                             let label = backpatch.undiscovered_identifier.clone();
                             let line = backpatch.line_number.clone();
                             println!(" - Backpatch resolved for label {label} on line {line}:");
-                            pretty_print_instruction(&self.current_address, &word);
+                            pretty_print_instruction(&backpatch.backpatch_address, &word);
 
                             let found_index = self.backpatches.iter().position(|bp| bp == backpatch).expect("Literally impossible to get this error.");
 
                             self.backpatches.remove(found_index);
                         },
                         None => {
-                            unreachable!("Backpatch unable to be resolved. This indicates a stupidly difficult extension error.");
+                            unreachable!("Backpatch unable to be resolved. This indicates a stupidly difficult extension error that is likely not your fault unless you contribute to the source code.");
                         },
                     }
                 },

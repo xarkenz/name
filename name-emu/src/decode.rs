@@ -37,7 +37,7 @@ pub fn unpack_r_type(instruction: u32) -> (usize, usize, usize, usize) {
 pub fn unpack_i_type(instruction: u32) -> (usize, usize, u32) {
     let rs: u32 = (instruction >> 21) & 0x1F;
     let rt: u32 = (instruction >> 16) & 0x1F;
-    let imm: u32 = instruction & 0xFFFF;
+    let imm: u32 = (instruction & 0xFFFF) as i16 as i32 as u32;
 
     (rs as usize, rt as usize, imm)
 }

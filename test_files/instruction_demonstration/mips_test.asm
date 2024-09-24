@@ -4,7 +4,7 @@
     .include    "SysCalls.asm"
     .data
 skipNotSkippedString:
-    .asciiz     "Something was meant to be skipped, but wasn't skipped\n."
+    .asciiz     "Something was meant to be skipped, but wasn't skipped.\n"
 
 testString: 
     .asciiz     "Hello, World!"
@@ -37,7 +37,7 @@ skip2:
 
 demo2:
     li          $t0, -2
-    blez        $t0, demo3   
+    blez        $t0, demo3 
 
 skip3:
     # This label should be skipped.
@@ -120,3 +120,7 @@ demo8:
     syscall
     xor         $t7, $t7, $zero
     xori        $t1, $t1, 0b10101010
+
+exit:
+    li          $v0, SysExit
+    syscall
