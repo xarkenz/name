@@ -66,6 +66,32 @@ pub fn jalr(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Resul
     Ok(ExecutionStatus::Continue)
 }
 
+// 0x0A - slti
+pub fn slti(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Result<ExecutionStatus, String> {
+    let (rt, rs, imm) = unpack_i_type(instruction);
+
+    if(cpu.general_purpose_registers[rs] as i32) < (imm as i32) {
+        cpu.general_purpose_registers[rt] = 1 as u32;
+    } else {
+        cpu.general_purpose_registers[rt] = 0 as u32;
+    }
+
+    Ok(ExecutionStatus::Continue)
+}
+
+// 0x0B - sltiu
+pub fn sltiu(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Result<ExecutionStatus, String> {
+    let (rt, rs, imm) = unpack_i_type(instruction);
+
+    if cpu.general_purpose_registers[rs] < imm {
+        cpu.general_purpose_registers[rt] = 1 as u32;
+    } else {
+        cpu.general_purpose_registers[rt] = 0 as u32;
+    }
+
+    Ok(ExecutionStatus::Continue)
+}
+
 // 0x0C - syscall
 pub fn syscall(cpu: &mut Processor, memory: &mut Memory, _instruction: u32) -> Result<ExecutionStatus, String> {
     let syscall_num: usize = cpu.general_purpose_registers[V0] as usize;
@@ -113,22 +139,15 @@ pub fn sub(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Resul
 }
 
 // 0x23 - subu
-/* pub fn subu(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Result<ExecutionStatus, String> {
+pub fn subu(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Result<ExecutionStatus, String> {
     let (rd, rs, rt, _) = unpack_r_type(instruction);
 
     let temp: (u32, bool) = cpu.general_purpose_registers[rs].overflowing_sub(cpu.general_purpose_registers[rt]);
 
-    cpu.general_purpose_registers[AS_TEMP] = temp.0;
-
-    if temp.1 {
-        // TODO: Implement coprocessor 0 and signal integer overflow
-        return Err(format!("Integer underflow occurred in subtraction."));
-    } else {
-        cpu.general_purpose_registers[rd] = cpu.general_purpose_registers[AS_TEMP];
-    }
+    cpu.general_purpose_registers[rd] = temp.0;
 
     Ok(ExecutionStatus::Continue)
-} */
+}
 
 // 0x24 - and
 pub fn and(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Result<ExecutionStatus, String>{
@@ -160,6 +179,17 @@ pub fn nor(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Resul
 
 // 0x2A - slt
 pub fn slt(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Result<ExecutionStatus, String>{
+    let (rd, rs, rt, _) = unpack_r_type(instruction);
+    if (cpu.general_purpose_registers[rs] as i32) < (cpu.general_purpose_registers[rt] as i32) {
+        cpu.general_purpose_registers[rd] = 1 as u32;
+    } else {
+        cpu.general_purpose_registers[rd] = 0 as u32;
+    }
+    Ok(ExecutionStatus::Continue)
+}
+
+// 0x2A - sltu
+pub fn sltu(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Result<ExecutionStatus, String>{
     let (rd, rs, rt, _) = unpack_r_type(instruction);
     if cpu.general_purpose_registers[rs] < cpu.general_purpose_registers[rt] {
         cpu.general_purpose_registers[rd] = 1; // check if this is kosher or if i need to do 00..001 for some reason
@@ -282,7 +312,7 @@ pub fn bgtz(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Resul
     let (rs, _, imm) = unpack_i_type(instruction);
 
     // Sign extend offset
-    let offset: i32 = ((imm) as i16 as i32) << 2;
+    let offset: i32 = (imm as i16 as i32) << 2;
 
     if cpu.general_purpose_registers[rs] as i32 <= 0 {
         return Ok(ExecutionStatus::Continue)
@@ -303,7 +333,6 @@ pub fn bgtz(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Resul
 pub fn addi(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Result<ExecutionStatus, String>{
     let (rs, rt, imm) = unpack_i_type(instruction);
     cpu.general_purpose_registers[rt] = (cpu.general_purpose_registers[rs] as i32 + (imm as i16 as i32)) as u32;
-    // println!("Adding {} to {} and storing in ${}, now it's {}", (imm as i16 as i32), cpu.general_purpose_registers[rs], rt, cpu.general_purpose_registers[rt]);
     Ok(ExecutionStatus::Continue)
 }
 
@@ -327,6 +356,13 @@ pub fn andi(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Resu
 pub fn ori(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Result<ExecutionStatus, String> {
     let (rs, rt, imm) = unpack_i_type(instruction);
     cpu.general_purpose_registers[rt] = cpu.general_purpose_registers[rs] | imm;
+    Ok(ExecutionStatus::Continue)
+}
+
+// 0x0E - xori
+pub fn xori(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Result<ExecutionStatus, String> {
+    let (rs, rt, imm) = unpack_i_type(instruction);
+    cpu.general_purpose_registers[rt] = cpu.general_purpose_registers[rs] ^ imm;
     Ok(ExecutionStatus::Continue)
 }
 
@@ -372,7 +408,20 @@ pub fn lw(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Result<
 
     cpu.general_purpose_registers[rt] = u32::from_be_bytes(memory.data[start_idx..end_idx].try_into().unwrap());
 
-    // println!("Loading {} from 0x{:x} into ${}", cpu.general_purpose_registers[rt], temp, rt);
+    Ok(ExecutionStatus::Continue)
+}
+
+// 0x28 - sb
+pub fn sb(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Result<ExecutionStatus, String> {
+    let (rs, rt, imm) = unpack_i_type(instruction);
+
+    let temp = (cpu.general_purpose_registers[rs] as i32 + imm as i32) as u32;
+
+    if temp >= memory.data_end || temp < memory.data_start {
+        return Err(format!("Attempted to access unowned address 0x{:x}", temp));
+    }
+
+    memory.data[(temp - memory.data_start) as usize] = cpu.general_purpose_registers[rt] as u8;
 
     Ok(ExecutionStatus::Continue)
 }

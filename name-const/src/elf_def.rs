@@ -1,4 +1,5 @@
 // This file contains relevant structs and methods to produce valid ET_REL and ET_EXEC files.
+// It is based on https://refspecs.linuxfoundation.org/elf/elf.pdf
 
 /*
 

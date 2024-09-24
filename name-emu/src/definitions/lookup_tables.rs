@@ -26,11 +26,11 @@ pub const OPCODE_TABLE: [Option<InstructionFn>; 64] = [
     Some(bgtz),  // 0x07
     Some(addi),  // 0x08
     Some(addiu),  // 0x09
-    None /*Some(slti)*/,  // 0x0A
-    None /*Some(sltiu)*/,  // 0x0B
+    Some(slti),  // 0x0A
+    Some(sltiu),  // 0x0B
     Some(andi),  // 0x0C
     Some(ori),  // 0x0D
-    None,  // 0x0E
+    Some(xori),  // 0x0E
     Some(lui),  // 0x0F
     None,  // 0x10
     None,  // 0x11
@@ -56,7 +56,7 @@ pub const OPCODE_TABLE: [Option<InstructionFn>; 64] = [
     None,  // 0x25
     None,  // 0x26
     None,  // 0x27
-    None /*Some(sb)*/,  // 0x28
+    Some(sb),  // 0x28
     None,  // 0x29
     None,  // 0x2A
     Some(sw),  // 0x2B
@@ -131,7 +131,7 @@ pub const FUNCT_TABLE: [Option<InstructionFn>; 64] = [
     Some(add), // 0x20
     Some(addu), // 0x21
     Some(sub), // 0x22
-    None /*Some(subu)*/, // 0x23
+    Some(subu), // 0x23
     Some(and), // 0x24
     Some(or), // 0x25
     Some(xor), // 0x26
@@ -139,7 +139,7 @@ pub const FUNCT_TABLE: [Option<InstructionFn>; 64] = [
     None, // 0x28
     None, // 0x29
     Some(slt), // 0x2A
-    None, // 0x2B
+    Some(sltu), // 0x2B
     None, // 0x2C
     None, // 0x2D
     None, // 0x2E
