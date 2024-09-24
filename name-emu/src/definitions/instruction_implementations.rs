@@ -37,7 +37,7 @@ pub fn srl(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Resul
 
 // 0x08 - jr
 pub fn jr(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Result<ExecutionStatus, String> {
-    let (rs, _, _, _) = unpack_r_type(instruction);
+    let (_, rs, _, _) = unpack_r_type(instruction);
 
     if cpu.general_purpose_registers[rs] >= memory.text_end || cpu.general_purpose_registers[rs] < memory.text_start {
         return Err(format!("Attempted to jump to unowned address 0x{:x}", cpu.general_purpose_registers[rs]));
@@ -50,7 +50,13 @@ pub fn jr(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Result<
 
 // 0x09 - jalr
 pub fn jalr(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Result<ExecutionStatus, String> {
-    let (rd, rs, _, _) = unpack_r_type(instruction);
+    let (rd_untested, rs, _, _) = unpack_r_type(instruction);
+
+    let rd = match rd_untested {
+        0 => 31,
+        _ => rd_untested,
+    };
+
     if cpu.general_purpose_registers[rs] >= memory.text_end || cpu.general_purpose_registers[rs] < memory.text_start {
         return Err(format!("Attempted to jump to unowned address 0x{:x}", cpu.general_purpose_registers[rs]));
     }
@@ -255,7 +261,7 @@ pub fn blez(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Resul
 
     let offset: i32 = ((imm & 0xFFFF) as i16 as i32) << 2;
 
-    if cpu.general_purpose_registers[rs] > 0 {
+    if (cpu.general_purpose_registers[rs] as i32) > 0 {
         return Ok(ExecutionStatus::Continue)
     }
 
@@ -278,7 +284,7 @@ pub fn bgtz(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Resul
     // Sign extend offset
     let offset: i32 = ((imm) as i16 as i32) << 2;
 
-    if cpu.general_purpose_registers[rs] <= 0 {
+    if cpu.general_purpose_registers[rs] as i32 <= 0 {
         return Ok(ExecutionStatus::Continue)
     }
     
@@ -327,6 +333,7 @@ pub fn ori(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Resul
 // 0x0F - lui
 pub fn lui(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Result<ExecutionStatus, String> {
     let (_, rt, imm) = unpack_i_type(instruction);
+    // SUPER DUPER PROBLEM SPOT
     cpu.general_purpose_registers[rt] = imm << 16;
     Ok(ExecutionStatus::Continue)
 }

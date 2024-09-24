@@ -37,7 +37,7 @@ skip2:
 
 demo2:
     li          $t0, -2
-    blez        $t0, demo3   
+    blez        $t0, demo3 
 
 skip3:
     # This label should be skipped.
@@ -74,7 +74,7 @@ skip6:
 
 demo6:
     la          $a0, demo7
-    jalr        $ra, $a0
+    jalr        $a0
 
 skip7:
     # This label should be skipped
@@ -120,3 +120,7 @@ demo8:
     syscall
     xor         $t7, $t7, $zero
     xori        $t1, $t1, 0b10101010
+
+exit:
+    li          $v0, SysExit
+    syscall

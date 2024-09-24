@@ -103,14 +103,16 @@ pub(crate) const INSTRUCTION_SET: &[InstructionInformation] = &[
         opcode: None,
         funct: Some(9),
         args: &[ArgumentType::Rd, ArgumentType::Rs],
-        alt_args: None,
+        alt_args: Some(&[
+            &[ArgumentType::Rs],
+        ]),
     },
     InstructionInformation {
         mnemonic: "jr",
         instruction_type: InstructionType::RType,
         opcode: None,
         funct: Some(8),
-        args: &[ArgumentType::Rd],
+        args: &[ArgumentType::Rs],
         alt_args: None,
     },
     InstructionInformation {
