@@ -1,5 +1,6 @@
 use crate::decode::{unpack_r_type, unpack_i_type, unpack_j_type};
 use crate::definitions::lookup_tables::SYSCALL_TABLE;
+use clap::builder::{Str, StringValueParser};
 use name_const::structs::{Processor, Memory};
 
 use crate::definitions::structs::ExecutionStatus;
@@ -48,6 +49,18 @@ pub fn jr(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Result<
     Ok(ExecutionStatus::Continue)
 }
 
+// 0x09 - jalr
+pub fn jalr(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Result<ExecutionStatus, String> {
+    let (rs, _, _, _) = unpack_r_type(instruction);
+    if cpu.general_purpose_registers[rs] >= memory.text_end || cpu.general_purpose_registers[rs] < memory.text_start {
+        return Err(format!("Attempted to jump to unowned address 0x{:x}", cpu.general_purpose_registers[rs]));
+    }
+    cpu.general_purpose_registers[RA] = cpu.pc;
+    cpu.pc = cpu.general_purpose_registers[rs];
+
+    Ok(ExecutionStatus::Continue)
+}
+
 // 0x0C - syscall
 pub fn syscall(cpu: &mut Processor, memory: &mut Memory, _instruction: u32) -> Result<ExecutionStatus, String> {
     let syscall_num: usize = cpu.general_purpose_registers[V0] as usize;
@@ -68,12 +81,12 @@ pub fn add(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Resul
 }
 
 // 0x21 - addu
-/* pub fn addu(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Result<ExecutionStatus, String> {
+pub fn addu(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Result<ExecutionStatus, String> {
     let (rd, rs, rt, _) = unpack_r_type(instruction);
     // check that below works
-    cpu.general_purpose_registers[rd] = cpu.general_purpose_registers[rs] + cpu.general_purpose_registers[rt];
+    cpu.general_purpose_registers[rd] = cpu.general_purpose_registers[rs].overflowing_add(cpu.general_purpose_registers[rt]).0;
     Ok(ExecutionStatus::Continue)
-} */
+}
 
 // 0x22 - sub
 pub fn sub(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Result<ExecutionStatus, String> {
@@ -221,12 +234,31 @@ pub fn bne(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Result
         return Ok(ExecutionStatus::Continue)
     }
     
-    cpu.general_purpose_registers[AS_TEMP] = (cpu.pc as i32 + offset) as u32;
+    let temp = (cpu.pc as i32 + offset) as u32;
 
-    if cpu.general_purpose_registers[AS_TEMP] >= memory.text_end || cpu.general_purpose_registers[AS_TEMP] < memory.text_start {
-        return Err(format!("Attempted to access unowned address 0x{:x}", cpu.general_purpose_registers[AS_TEMP]));
+    if temp >= memory.text_end || temp < memory.text_start {
+        return Err(format!("Attempted to access unowned address 0x{:x}", temp));
     }
     
+    Ok(ExecutionStatus::Continue)
+}
+
+// 0x06 - blez
+pub fn blez(cpu: &mut Processor, memory: &mut Memory, instruction: u32) -> Result<ExecutionStatus, String> {
+    let (rs, _, imm) = unpack_i_type(instruction);
+
+    let offset: i32 = ((imm & 0xFFFF) as i16 as i32) << 2;
+
+    if cpu.general_purpose_registers[rs] > 0 {
+        return Ok(ExecutionStatus::Continue)
+    }
+
+    let temp = (cpu.pc as i32 + offset) as u32;
+
+    if temp >= memory.text_end || temp < memory.text_start {
+        return Err(format!("Attempted to access unowned address 0x{:x}", temp));
+    }
+
     Ok(ExecutionStatus::Continue)
 }
 
@@ -262,14 +294,14 @@ pub fn addi(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Resu
     Ok(ExecutionStatus::Continue)
 }
 
-/*
+
 // 0x09 - addiu
-pub fn addiu(cpu: &mut Processor, memory: &mut Memory, instruction: u32){
+pub fn addiu(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Result<ExecutionStatus, String>{
     let (rs, rt, imm) = unpack_i_type(instruction);
-    cpu.general_purpose_registers[rt] = cpu.general_purpose_registers[rs] + imm;
+    cpu.general_purpose_registers[rt] = cpu.general_purpose_registers[rs].overflowing_add(imm).0;
     Ok(ExecutionStatus::Continue)
 }
-*/
+
 
 // 0x0C - andi
 pub fn andi(cpu: &mut Processor, _memory: &mut Memory, instruction: u32) -> Result<ExecutionStatus, String> {
