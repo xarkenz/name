@@ -251,18 +251,19 @@ fn help_menu(){
     println!("q - Exit (quit) debugger.");
 }
 
-fn run_wrapper(lineinfo: &Vec<LineInfo>, cpu: &mut Processor, memory: &mut Memory, bps: Vec<Breakpoint>) -> Result<ExecutionStatus, String>{
-    match single_step(lineinfo, cpu, memory, &bps){
-        Ok(execution_status) => match execution_status {
-            ExecutionStatus::Continue => {},
-            ExecutionStatus::Break => { 
-                match lineinfo.iter().find(|&line| line.start_address == cpu.pc){
-                    Some(line) => { println!("Breakpoint at line {} reached.", line.line_number); }
-                    None => { eprintln!("I don't know how to describe this error. Good luck"); }
-                }
-            },
-            ExecutionStatus::Complete => return Ok(()),
-        },
-        Err(e) => return Err(e),
-    };
-}
+// fn run_wrapper(lineinfo: &Vec<LineInfo>, cpu: &mut Processor, memory: &mut Memory, bps: Vec<Breakpoint>) -> Result<ExecutionStatus, String>{
+//     match single_step(lineinfo, cpu, memory, &bps){
+//         Ok(execution_status) => match execution_status {
+//             ExecutionStatus::Continue => {},
+//             ExecutionStatus::Break => { 
+//                 match lineinfo.iter().find(|&line| line.start_address == cpu.pc){
+//                     Some(line) => { println!("Breakpoint at line {} reached.", line.line_number); }
+//                     None => { eprintln!("I don't know how to describe this error. Good luck"); }
+//                 }
+//                 Ok(ExecutionStat)
+//             },
+//             ExecutionStatus::Complete => return Ok(ExecutionStatus::Complete),
+//         },
+//         Err(e) => return Err(e),
+//     };
+// }
