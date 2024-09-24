@@ -4,7 +4,7 @@
 
 NAME ("Not Another MIPS Emulator") is a MIPS assembly code emulation pipeline designed for educational use. It contains a MIPS assembler, linker, emulator, and VSCode development extension. The first three tools can be used entirely from the command line with `cargo`.
 
-**Note** that while this implementation focuses on MIPS, a fork of this project could feasibly produce an implementation for any other asm.
+**Note** that while this implementation focuses on MIPS, in particular [this](https://s3-eu-west-1.amazonaws.com/downloads-mips/documents/MD00086-2B-MIPS32BIS-AFP-6.06.pdf) TIS, a fork of this project could feasibly produce an implementation for any other asm.
 
 NAME operates using the ELF file format and associated conventions. If unfamiliar, read more [here](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format). 
 
