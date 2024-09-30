@@ -28,7 +28,7 @@ pub(crate) fn expand_li(environment: &mut Assembler, args: &Vec<LineComponent>) 
 
     let ori_info = match environment.instruction_table.get("ori") {
         Some(info) => info,
-        None => return Err(format!(" - Failed to expand `li` psedoinstruction. Its expansion was likely defined incorrectly (go use git blame on https://github.com/cameron-b63/name to find out who's at fault)."))
+        None => return Err(format!(" - Failed to expand `li` pseudoinstruction. Its expansion was likely defined incorrectly (go use git blame on https://github.com/cameron-b63/name to find out who's at fault)."))
     };
     
     Ok(
@@ -101,5 +101,7 @@ pub(crate) fn expand_la(environment: &mut Assembler, args: &Vec<LineComponent>) 
     ])
 }
 
+// pub(crate) fn expand_bnez(environment: &mut Assembler, args: &Vec<LineComponent>) -> Result<Vec<(&'static InstructionInformation, Vec<LineComponent>)>, String> {
 
+// }
 

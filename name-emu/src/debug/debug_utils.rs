@@ -85,6 +85,7 @@ impl Breakpoint {
 pub fn debugger(lineinfo: &Vec<LineInfo>, memory: &mut Memory, cpu: &mut Processor) -> Result<(), String> {
     let mut breakpoints: Vec<Breakpoint> = Vec::new();
     let mut global_bp_num: u16 = 0;
+    let mut global_list_loc: usize = 5;  // for the l command
 
     println!("Welcome to the NAME debugger.");
     println!("For a list of commands, type \"help\".");
@@ -99,11 +100,11 @@ pub fn debugger(lineinfo: &Vec<LineInfo>, memory: &mut Memory, cpu: &mut Process
             Ok(_) => {},
             Err(e) => eprintln!("stdin error: {e}"),
         };
-        let user_input: Vec<&str> = user_input.trim().split(" ").collect(); 
+        let db_args: Vec<&str> = user_input.trim().split(" ").collect(); 
 
         // this could be better mayb
-        match user_input[0] {
-            "help" => { help_menu(); },
+        match db_args[0] {
+            "help" => { help_menu(db_args.iter().map(|&s| s.to_string()).collect()); }, // life would be too easy if there was only one type of string
             "q" => return Ok(()),
             "exit" => return Ok(()),
             "quit" => return Ok(()),
@@ -112,87 +113,88 @@ pub fn debugger(lineinfo: &Vec<LineInfo>, memory: &mut Memory, cpu: &mut Process
                 // idk how to make it do that rn
                 // maybe these can secretly be the same thing and we just keep it here to make it look liek gdb :shrug:
                 loop {
-                    match single_step(lineinfo, cpu, memory, &breakpoints){
-                        Ok(execution_status) => match execution_status {
-                            ExecutionStatus::Continue => {},
-                            ExecutionStatus::Break => {    
-                                match lineinfo.iter().find(|&line| line.start_address == cpu.pc){
-                                    Some(line) => { println!("Breakpoint at line {} reached.", line.line_number); }
-                                    None => { eprintln!("I don't know how to describe this error. Good luck"); }
-                                }
-                                break; 
-                            },
-                            ExecutionStatus::Complete => return Ok(()),
-                        },
-                        Err(e) => return Err(e),
+                    match run_wrapper(lineinfo, cpu, memory, &breakpoints) {
+                        Ok(_ex_stat) => {},
+                        Err(e) => { eprintln!("{e}"); },
                     };
                 }
             },
             "c" => {
                 loop {
-                    match single_step(lineinfo, cpu, memory, &breakpoints){
-                        Ok(execution_status) => match execution_status {
-                            ExecutionStatus::Continue => {},
-                            ExecutionStatus::Break => {    
-                                match lineinfo.iter().find(|&line| line.start_address == cpu.pc){
-                                    Some(line) => { println!("Breakpoint at line {} reached.", line.line_number); }
-                                    None => { eprintln!("I don't know how to describe this error. Good luck"); }
-                                }
-                                break; 
-                            },
-                            ExecutionStatus::Complete => return Ok(()),
-                        },
-                        Err(e) => return Err(e),
+                    match run_wrapper(lineinfo, cpu, memory, &breakpoints) {
+                        Ok(_ex_stat) => {},
+                        Err(e) => { eprintln!("{e}"); },
                     };
-                }
-            }
-            "l" => {
-                for line in lineinfo {
-                    println!("{:>3} #{:08x}  {}", line.line_number, line.start_address, line.content);
                 }
             },
             "s" => {
-                match single_step(lineinfo, cpu, memory, &breakpoints){
-                    Ok(execution_status) => match execution_status {
-                        ExecutionStatus::Continue => {},
-                        ExecutionStatus::Break => { 
-                            match lineinfo.iter().find(|&line| line.start_address == cpu.pc){
-                                Some(line) => { println!("Breakpoint at line {} reached.", line.line_number); }
-                                None => { eprintln!("I don't know how to describe this error. Good luck"); }
-                            }
-                        },
-                        ExecutionStatus::Complete => return Ok(()),
-                    },
-                    Err(e) => return Err(e),
+                match run_wrapper(lineinfo, cpu, memory, &breakpoints) {
+                    Ok(_ex_stat) => {},
+                    Err(e) => { eprintln!("{e}"); },
                 };
-            }
+            },
+            "l" => {
+                if db_args.len() == 1 {
+                    let num_lines = lineinfo.len();
+
+                    let begin = global_list_loc.saturating_sub(5);
+                    let end = std::cmp::min(global_list_loc.saturating_add(3),num_lines-1);
+                    for i in begin..end {
+                        println!("{:>3} #{:08x}  {}", lineinfo[i].line_number, lineinfo[i].start_address, lineinfo[i].content);
+                    }
+
+                    global_list_loc = if global_list_loc <= num_lines {global_list_loc + 8} else {5};
+                } else if db_args.len() == 2 {
+                    if db_args[1] == "all" {
+                        for line in lineinfo {
+                            println!("{:>3} #{:08x}  {}", line.line_number, line.start_address, line.content);
+                        }
+                    } else { 
+                        match db_args[1].parse::<usize>() {
+                            Err(_) => { eprintln!("l expects an unsigned int or \"all\" as an argument"); }
+                            Ok(lnum) => {
+                                println!("{lnum}");
+                                let begin = lnum.saturating_sub(5);
+                                let end = std::cmp::min(lnum.saturating_add(3), lineinfo.len());
+                                println!("{begin} {end}");
+                                // FIXME: very bad for overflow cases...
+                                for i in begin..end {
+                                    println!("{:>3} #{:08x}  {}", lineinfo[i].line_number, lineinfo[i].start_address, lineinfo[i].content);
+                                }
+                            }
+                        };
+                    }
+                } else {
+                    eprintln!("l expects 0 or 1 arguments, received {}", db_args.len()-1);
+                }
+            },
             "p" => {
-                if user_input.len() != 2 {
-                    eprintln!("p expects 1 argument, received {}", user_input.len()-1);
+                if db_args.len() != 2 {
+                    eprintln!("p expects 1 argument, received {}", db_args.len()-1);
                     continue;
                 }
                 // #[allow(unused_assignments)]  // oh boy
-                match REGISTERS.iter().position(|&x| x == user_input[1]){
+                match REGISTERS.iter().position(|&x| x == db_args[1]){
                     Some(register) => {
                         println!("Value in register {} is {:08x}", register, cpu.general_purpose_registers[register]);
                     },
                     None => {
-                        println!("{} is not a valid register.", user_input[1]);
+                        println!("{} is not a valid register.", db_args[1]);
                         continue;
                     }
                 }
-            }
+            },
             "pa" => {
-                if user_input.len() != 1 {
+                if db_args.len() != 1 {
                     // this outputs a lot so make sure the user actually meant to type pa and not pb or p or something
-                    eprintln!("pa expects 0 arguments, received {}", user_input.len()-1); 
+                    eprintln!("pa expects 0 arguments, received {}", db_args.len()-1); 
                     continue;
                 }
                 for register in REGISTERS {
                     let idx: usize = REGISTERS.iter().position(|&x| x == register).unwrap();
                     println!("{:>5}: {:08x}", register, cpu.general_purpose_registers[idx]);
                 }
-            }
+            },
             "pb" => {
                 println!("BP_NUM: LINE_NUM");
                 for breakpoint in &breakpoints {
@@ -202,11 +204,11 @@ pub fn debugger(lineinfo: &Vec<LineInfo>, memory: &mut Memory, cpu: &mut Process
             "b" => {
                 // i know there's probably better error handling but i don't have time
                 // to read the whole rust book rn soz
-                if user_input.len() != 2 {
-                    eprintln!("b expects 1 argument, received {}", user_input.len()-1);
+                if db_args.len() != 2 {
+                    eprintln!("b expects 1 argument, received {}", db_args.len()-1);
                     continue;
                 }
-                let line_num: u32 = user_input[1].parse().expect("b takes 32-bit unsigned int as input");
+                let line_num: u32 = db_args[1].parse().expect("b takes 32-bit unsigned int as input");
 
                 if line_num > lineinfo.len().try_into().unwrap(){
                     eprintln!("{} exceeds number of lines in program.", line_num);  // something like that
@@ -215,13 +217,13 @@ pub fn debugger(lineinfo: &Vec<LineInfo>, memory: &mut Memory, cpu: &mut Process
                 global_bp_num += 1;
                 breakpoints.push(Breakpoint::new(global_bp_num, line_num, lineinfo));
                 println!("Successfully added breakpoint {} at line {}.", global_bp_num, line_num);
-            }
+            },
             "del" => {
-                if user_input.len() != 2 {
-                    eprintln!("del expects 1 argument, received {}", user_input.len()-1);
+                if db_args.len() != 2 {
+                    eprintln!("del expects 1 argument, received {}", db_args.len()-1);
                     continue;
                 }
-                let bp_num: u16 = user_input[1].parse().expect("del takes a 16-bit unsigned int as input");
+                let bp_num: u16 = db_args[1].parse().expect("del takes a 16-bit unsigned int as input");
     
                 // i KNOW this can be better
                 if let Some(index) = breakpoints.iter().position(|brpt| brpt.bp_num == bp_num) {
@@ -231,39 +233,63 @@ pub fn debugger(lineinfo: &Vec<LineInfo>, memory: &mut Memory, cpu: &mut Process
                 } else {
                     eprintln!("Breakpoint with bp_num {} not found", bp_num);
                 }
-            }
-            _ => println!("Option not recognized. Type \"help\" to view accepted options.")
+            },
+            _ => println!("Option not recognized. Type \"help\" to view accepted options."),
         };
     }
 }
 
-fn help_menu(){
-    println!("help - Display this menu.");
-    println!("r - Begin execution of program.");
-    println!("c - Continue program execution until the next breakpoint.");
-    println!("s - Execute only the next instruction.");
-    println!("l - Print the entire program. (this functionality will be much improved later)");
-    println!("p - Print the value of a register at the current place in program execution.");
-    println!("pa - Print value of ALL registers at once.");
-    println!("pb - Print all breakpoints.");
-    println!("b [N] - Insert a breakpoint at line number N.");
-    println!("del [N] - Delete breakpoint number N.");
-    println!("q - Exit (quit) debugger.");
+// equivalent to running a single line of the code. 
+// this function was written to make the debugger itself look a little less ugly
+fn run_wrapper(lineinfo: &Vec<LineInfo>, cpu: &mut Processor, memory: &mut Memory, bps: &Vec<Breakpoint>) -> Result<ExecutionStatus, String>{
+    match single_step(lineinfo, cpu, memory, &bps){
+        Ok(execution_status) => match execution_status {
+            ExecutionStatus::Continue => { Ok(execution_status) },
+            ExecutionStatus::Break => { 
+                match lineinfo.iter().find(|&line| line.start_address == cpu.pc){
+                    Some(line) => { println!("Breakpoint at line {} reached.", line.line_number); }
+                    None => { eprintln!("Illegal state during single-step (lineinfo could not be located for current PC 0x{:x}", cpu.pc); }
+                }
+                Ok(execution_status)
+            },
+            ExecutionStatus::Complete => return Ok(ExecutionStatus::Complete),
+        },
+        Err(e) => return Err(e),
+    }
 }
 
-// fn run_wrapper(lineinfo: &Vec<LineInfo>, cpu: &mut Processor, memory: &mut Memory, bps: Vec<Breakpoint>) -> Result<ExecutionStatus, String>{
-//     match single_step(lineinfo, cpu, memory, &bps){
-//         Ok(execution_status) => match execution_status {
-//             ExecutionStatus::Continue => {},
-//             ExecutionStatus::Break => { 
-//                 match lineinfo.iter().find(|&line| line.start_address == cpu.pc){
-//                     Some(line) => { println!("Breakpoint at line {} reached.", line.line_number); }
-//                     None => { eprintln!("I don't know how to describe this error. Good luck"); }
-//                 }
-//                 Ok(ExecutionStat)
-//             },
-//             ExecutionStatus::Complete => return Ok(ExecutionStatus::Complete),
-//         },
-//         Err(e) => return Err(e),
-//     };
-// }
+fn help_menu(args: Vec<String>){
+    if args.len() == 1 {
+        println!("help - Display this menu.");
+        println!("help [CMD] - Get more information about a specific db command CMD.");
+        println!("r - Begin execution of program.");
+        println!("c - Continue program execution until the next breakpoint.");
+        println!("s - Execute only the next instruction.");
+        println!("l - Print the entire program. (this functionality will be much improved later)");
+        println!("p - Print the value of a register at the current place in program execution (please include the dollar sign).");
+        println!("pa - Print value of ALL registers at once.");
+        println!("pb - Print all breakpoints.");
+        println!("b [N] - Insert a breakpoint at line number N.");
+        println!("del [N] - Delete breakpoint number N.");
+        println!("q - Exit (quit) debugger.");
+    } else if args.len() == 2 {
+        match &args[1] as &str { 
+            "help" => { println!("you're funny"); },
+            "r" => { println!("Begin execution of program."); },
+            "c" => { println!("Continue program execution until the next breakpoint."); },
+            "s" => { println!("Execute only the next instruction."); }
+            "l" => {
+                println!("When provided no arguments: print the first ten lines of the program. Then, print the next 10, and so forth.");
+                println!("When provided a line number (positive integer): print 9 lines around the given line number.");
+                println!("When provided the argument \"all\": print the entire program.");
+            }
+            "p" => { println!("Print the value stored in the provided register."); }
+            "pa" => { println!("Print each register and the value stored therein."); }
+            "pb" => { println!("Print all user-created breakpoints."); }
+            "b" => { println!("Insert a breakpoint at the line number provided. Note that this line will be executed before the break occurs."); }
+            "del" => { println!("Delete the breakpoint with the associated number. (run pb to find out which number the desired breakpoint has)"); }
+            "q" => { println!(":q please work :q please work :q plea"); }
+            _ => { eprintln!("{} is not recognized as a valid command (or I neglected to implement the help menu for it).", args[1]); }
+        };
+    }
+}
