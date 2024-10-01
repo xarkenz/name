@@ -10,6 +10,8 @@ use crate::simulator;
 
 #[test]
 fn fib_db_test() {
+    // please note that this actually isn't a valid test rn
+    // i'll fix it later maybe hopefully question marka
     let base_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
     .parent().expect("[*] FATAL: No parent directory found (did you clone the entire repo?)")
     .join("test_files")

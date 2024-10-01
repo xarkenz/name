@@ -1,4 +1,5 @@
-use name_const::structs::{Processor, Memory};
+use name_const::structs::{Memory, Processor};
+use std::io::{Read, Write};
 
 use crate::definitions::structs::ExecutionStatus;
 
@@ -34,7 +35,8 @@ pub fn sys_print_string(cpu: &mut Processor, memory: &mut Memory) -> Result<Exec
         address += 1;
     }
 
-    let output_string: String = String::from_utf8(to_print).map_err(|e| format!("UTF-8 conversion error: {}", e))?;
+    let output_string: String =
+        String::from_utf8(to_print).map_err(|e| format!("UTF-8 conversion error: {}", e))?;
 
     print!("{}", output_string);
 
@@ -42,7 +44,7 @@ pub fn sys_print_string(cpu: &mut Processor, memory: &mut Memory) -> Result<Exec
 }
 
 // Syscall 5 - SysReadInt
-pub fn sys_read_int(cpu: &mut Processor, _memory: &mut Memory) -> Result<ExecutionStatus, String>{
+pub fn sys_read_int(cpu: &mut Processor, _memory: &mut Memory) -> Result<ExecutionStatus, String> {
     let mut input_text = String::new();
     io::stdin()
         .read_line(&mut input_text)
@@ -53,11 +55,11 @@ pub fn sys_read_int(cpu: &mut Processor, _memory: &mut Memory) -> Result<Executi
         Ok(i) => {
             cpu.general_purpose_registers[V0] = i;
             Ok(ExecutionStatus::Continue)
-        },
+        }
         Err(..) => {
             // eprintln!("{} is not an integer.\nRead failed", trimmed);
             Err(format!("{} is not an integer.\nRead failed", trimmed))
-        },
+        }
     }
 }
 
@@ -72,7 +74,19 @@ pub fn sys_print_char(cpu: &mut Processor, _memory: &mut Memory) -> Result<Execu
         Some(valid_char) => {
             print!("{}", valid_char);
             Ok(ExecutionStatus::Continue)
-        },
-        None => Err("Value in register $a0 could not be evaluated to a char.".to_string())
+        }
+        None => Err("Value in register $a0 could not be evaluated to a char.".to_string()),
     }
+}
+
+// Syscall 11 - SysReadChar
+pub fn sys_read_char(cpu: &mut Processor, _memory: &mut Memory) -> Result<ExecutionStatus, String> {
+    let mut buf = [0; 1];
+    io::stdout().flush().expect("Failed to flush stdout");
+    io::stdin()
+        .read_exact(&mut buf)
+        .expect("Failed to read from stdin");
+
+    cpu.general_purpose_registers[V0] = buf[0] as u32;
+    Ok(ExecutionStatus::Continue)
 }
