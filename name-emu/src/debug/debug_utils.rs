@@ -54,6 +54,25 @@ pub fn single_step(lineinfo: &Vec<LineInfo>, cpu: &mut Processor, memory: &mut M
     
 }
 
+// equivalent to running a single line of the code. 
+// this function was written to make the debugger itself look a little less ugly
+fn run_wrapper(lineinfo: &Vec<LineInfo>, cpu: &mut Processor, memory: &mut Memory, bps: &Vec<Breakpoint>) -> Result<ExecutionStatus, String>{
+    match single_step(lineinfo, cpu, memory, &bps){
+        Ok(execution_status) => match execution_status {
+            ExecutionStatus::Continue => { Ok(execution_status) },
+            ExecutionStatus::Break => { 
+                match lineinfo.iter().find(|&line| line.start_address == cpu.pc){
+                    Some(line) => { println!("Breakpoint at line {} reached.", line.line_number); }
+                    None => { eprintln!("Illegal state during single-step (lineinfo could not be located for current PC 0x{:x}", cpu.pc); }
+                }
+                Ok(execution_status)
+            },
+            ExecutionStatus::Complete => return Ok(ExecutionStatus::Complete),
+        },
+        Err(e) => return Err(e),
+    }
+}
+
 // do we really need to put this another file riiiiight now
 #[derive(Debug)]
 pub struct Breakpoint {
@@ -71,7 +90,7 @@ impl Breakpoint {
                 match lineinfo.iter().find(|&line| line.line_number == line_num){
                     Some(line) => line.start_address,
                     None => { 
-                        eprintln!("Breakpoint not found in memory????"); 
+                        eprintln!("Breakpoint not found in memory."); 
                         0
                     }
                 }
@@ -139,11 +158,12 @@ pub fn debugger(lineinfo: &Vec<LineInfo>, memory: &mut Memory, cpu: &mut Process
 
                     let begin = global_list_loc.saturating_sub(5);
                     let end = std::cmp::min(global_list_loc.saturating_add(3),num_lines-1);
-                    for i in begin..end {
+                    for i in begin..=end {
                         println!("{:>3} #{:08x}  {}", lineinfo[i].line_number, lineinfo[i].start_address, lineinfo[i].content);
                     }
 
-                    global_list_loc = if global_list_loc <= num_lines {global_list_loc + 8} else {5};
+                    // wrap the default line number around if it exceeds the number of lines of the program
+                    global_list_loc = if global_list_loc+8 <= num_lines {global_list_loc + 8} else {5};
                 } else if db_args.len() == 2 {
                     if db_args[1] == "all" {
                         for line in lineinfo {
@@ -153,13 +173,14 @@ pub fn debugger(lineinfo: &Vec<LineInfo>, memory: &mut Memory, cpu: &mut Process
                         match db_args[1].parse::<usize>() {
                             Err(_) => { eprintln!("l expects an unsigned int or \"all\" as an argument"); }
                             Ok(lnum) => {
-                                println!("{lnum}");
-                                let begin = lnum.saturating_sub(5);
-                                let end = std::cmp::min(lnum.saturating_add(3), lineinfo.len());
-                                println!("{begin} {end}");
-                                // FIXME: very bad for overflow cases...
-                                for i in begin..end {
-                                    println!("{:>3} #{:08x}  {}", lineinfo[i].line_number, lineinfo[i].start_address, lineinfo[i].content);
+                                if lnum > lineinfo.len() {
+                                    eprintln!("{} out of bounds of program.", lnum);
+                                } else {
+                                    let begin = lnum.saturating_sub(5);
+                                    let end = std::cmp::min(lnum.saturating_add(3), lineinfo.len());
+                                    for i in begin..end {
+                                        println!("{:>3} #{:08x}  {}", lineinfo[i].line_number, lineinfo[i].start_address, lineinfo[i].content);
+                                    }
                                 }
                             }
                         };
@@ -239,25 +260,6 @@ pub fn debugger(lineinfo: &Vec<LineInfo>, memory: &mut Memory, cpu: &mut Process
     }
 }
 
-// equivalent to running a single line of the code. 
-// this function was written to make the debugger itself look a little less ugly
-fn run_wrapper(lineinfo: &Vec<LineInfo>, cpu: &mut Processor, memory: &mut Memory, bps: &Vec<Breakpoint>) -> Result<ExecutionStatus, String>{
-    match single_step(lineinfo, cpu, memory, &bps){
-        Ok(execution_status) => match execution_status {
-            ExecutionStatus::Continue => { Ok(execution_status) },
-            ExecutionStatus::Break => { 
-                match lineinfo.iter().find(|&line| line.start_address == cpu.pc){
-                    Some(line) => { println!("Breakpoint at line {} reached.", line.line_number); }
-                    None => { eprintln!("Illegal state during single-step (lineinfo could not be located for current PC 0x{:x}", cpu.pc); }
-                }
-                Ok(execution_status)
-            },
-            ExecutionStatus::Complete => return Ok(ExecutionStatus::Complete),
-        },
-        Err(e) => return Err(e),
-    }
-}
-
 fn help_menu(args: Vec<String>){
     if args.len() == 1 {
         println!("help - Display this menu.");
@@ -288,8 +290,8 @@ fn help_menu(args: Vec<String>){
             "pb" => { println!("Print all user-created breakpoints."); }
             "b" => { println!("Insert a breakpoint at the line number provided. Note that this line will be executed before the break occurs."); }
             "del" => { println!("Delete the breakpoint with the associated number. (run pb to find out which number the desired breakpoint has)"); }
-            "q" => { println!(":q please work :q please work :q plea"); }
-            _ => { eprintln!("{} is not recognized as a valid command (or I neglected to implement the help menu for it).", args[1]); }
+            "q" => { println!("please work :wq please work :wq plea"); }
+            _ => { eprintln!("{} is either not recognized as a valid command or the help menu for it was neglected to be implemented.", args[1]); }
         };
     }
 }

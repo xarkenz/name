@@ -69,8 +69,8 @@ pub fn sys_exit(_cpu: &mut Processor, _memory: &mut Memory) -> Result<ExecutionS
 // Syscall 11 - SysPrintChar
 pub fn sys_print_char(cpu: &mut Processor, _memory: &mut Memory) -> Result<ExecutionStatus, String> {
     match char::from_u32(cpu.general_purpose_registers[A0]){
-        Some(coink) => {
-            print!("{}", coink);
+        Some(valid_char) => {
+            print!("{}", valid_char);
             Ok(ExecutionStatus::Continue)
         },
         None => Err("Value in register $a0 could not be evaluated to a char.".to_string())
