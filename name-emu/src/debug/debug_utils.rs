@@ -19,6 +19,8 @@ pub fn single_step(lineinfo: &Vec<LineInfo>, cpu: &mut Processor, memory: &mut M
         return Err(generate_err(lineinfo, cpu.pc-4, "Program fell off bottom."));
     }
 
+    // println!("{}", cpu.pc);
+
     // Fetch
     let fetched_instruction: u32 = fetch(&cpu.pc, &memory)?;
 
@@ -36,7 +38,8 @@ pub fn single_step(lineinfo: &Vec<LineInfo>, cpu: &mut Processor, memory: &mut M
     // The $0 register should never have been permanently changed. Don't let it remain changed.
     cpu.general_purpose_registers[0] = 0;
 
-    // check breakpoint after instruction on the line is executed
+    // check if there's a breakpoint after instruction on the line is executed
+    // TODO change this to before execution
     for bp in bps{
         if cpu.pc == bp.address { 
             // println!("Breakpoint at line {} reached. (This ran in single_step())", bp.line_num);
@@ -56,6 +59,7 @@ pub fn single_step(lineinfo: &Vec<LineInfo>, cpu: &mut Processor, memory: &mut M
 
 // equivalent to running a single line of the code. 
 // this function was written to make the debugger itself look a little less ugly
+// although at this point it may be overdoing it
 fn run_wrapper(lineinfo: &Vec<LineInfo>, cpu: &mut Processor, memory: &mut Memory, bps: &Vec<Breakpoint>) -> Result<ExecutionStatus, String>{
     match single_step(lineinfo, cpu, memory, &bps){
         Ok(execution_status) => match execution_status {
@@ -121,6 +125,8 @@ pub fn debugger(lineinfo: &Vec<LineInfo>, memory: &mut Memory, cpu: &mut Process
         };
         let db_args: Vec<&str> = user_input.trim().split(" ").collect(); 
 
+        // pub type DebugFn: fn(&Vec<LineInfo>, &mut Memory, &mut Processor, &Vec<Breakpoint>) -> Result<(), String>;
+
         // this could be better mayb
         match db_args[0] {
             "help" => { help_menu(db_args.iter().map(|&s| s.to_string()).collect()); }, // life would be too easy if there was only one type of string
@@ -133,23 +139,32 @@ pub fn debugger(lineinfo: &Vec<LineInfo>, memory: &mut Memory, cpu: &mut Process
                 // maybe these can secretly be the same thing and we just keep it here to make it look liek gdb :shrug:
                 loop {
                     match run_wrapper(lineinfo, cpu, memory, &breakpoints) {
-                        Ok(_ex_stat) => {},
-                        Err(e) => { eprintln!("{e}"); },
+                        Ok(ex_stat) => match ex_stat { 
+                            ExecutionStatus::Complete => { return Ok(()) }
+                            _ => {}
+                        },
+                        Err(e) => { return Err(e) },
                     };
                 }
             },
             "c" => {
                 loop {
                     match run_wrapper(lineinfo, cpu, memory, &breakpoints) {
-                        Ok(_ex_stat) => {},
-                        Err(e) => { eprintln!("{e}"); },
+                        Ok(ex_stat) => match ex_stat { 
+                            ExecutionStatus::Complete => { return Ok(()) }
+                            _ => {}
+                        },
+                        Err(e) => { return Err(e) },
                     };
                 }
             },
             "s" => {
                 match run_wrapper(lineinfo, cpu, memory, &breakpoints) {
-                    Ok(_ex_stat) => {},
-                    Err(e) => { eprintln!("{e}"); },
+                    Ok(ex_stat) => match ex_stat { 
+                        ExecutionStatus::Complete => { return Ok(()) }
+                        _ => {}
+                    },
+                    Err(e) => { return Err(e) },
                 };
             },
             "l" => {

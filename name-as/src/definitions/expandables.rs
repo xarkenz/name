@@ -101,6 +101,13 @@ pub(crate) fn expand_la(environment: &mut Assembler, args: &Vec<LineComponent>) 
     ])
 }
 
+// pub(crate) fn expand_mv(environment: &mut Assembler, args: &Vec<LineComponent>) -> Result<Vec<(&'static InstructionInformation, Vec<LineComponent>)>, String> {
+//     if args.len() < 2 {
+//         return Err(format!(" - `mv` expected 2 arguments, got {}", args.len()));
+//     }
+// }
+
+
 // pub(crate) fn expand_bnez(environment: &mut Assembler, args: &Vec<LineComponent>) -> Result<Vec<(&'static InstructionInformation, Vec<LineComponent>)>, String> {
 
 // }

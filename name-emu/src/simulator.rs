@@ -26,7 +26,7 @@ pub fn simulate(elf: Elf, debug: bool) -> Result<(), String> {
                 Ok(execution_status) => match execution_status {
                     ExecutionStatus::Continue => {},
                     ExecutionStatus::Break => {
-                        // just doing this for now cuz. idk
+                        // assuming this behavior will be more well defined upon implementation of the extension
                         println!("Break instruction located at address {}", cpu.pc);
                         break Ok(());
                      },

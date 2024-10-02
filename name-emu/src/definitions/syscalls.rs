@@ -79,7 +79,7 @@ pub fn sys_print_char(cpu: &mut Processor, _memory: &mut Memory) -> Result<Execu
     }
 }
 
-// Syscall 11 - SysReadChar
+// Syscall 12 - SysReadChar
 pub fn sys_read_char(cpu: &mut Processor, _memory: &mut Memory) -> Result<ExecutionStatus, String> {
     let mut buf = [0; 1];
     io::stdout().flush().expect("Failed to flush stdout");
