@@ -6,11 +6,11 @@ NAME ("Not Another MIPS Emulator") is a MIPS assembly code emulation pipeline de
 
 **Note** that while this implementation focuses on MIPS, in particular [this](https://s3-eu-west-1.amazonaws.com/downloads-mips/documents/MD00086-2B-MIPS32BIS-AFP-6.06.pdf) TIS, a fork of this project could feasibly produce an implementation for any other asm.
 
-NAME operates using the ELF file format and associated conventions. If unfamiliar, read more [here](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format). 
+NAME operates using the ELF file format and associated conventions. If unfamiliar, read more [here](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format).
 
 The rationale behind using ELF files is to provide students with observation opportunity less abstract than a typical classroom approach. NAME's primary purpose is to educate, and since a black box approach will not be as helpful at a collegiate level, it follows that the de-abstraction should be accurate to real-world implmentations. ELF files are not only standardized, but also found in the real world - learning how to work with them earlier in the degree plan can help subdue the apprehension most students feel in their first UNIX classes. Students can even use tools such as `readelf -a` and `mips-linux-gnu-objdump -M reg_names=32 -d` to examine the files they themselves produce, stimulating exploration and experimentation.
 
-**Note** that for a `.asm` file to assemble, it must contain a section `.text`. The assembler does not assume that a section `.text` is present. To be as clear as possible: 
+**Note** that for a `.asm` file to assemble, it must contain a section `.text`. The assembler does not assume that a section `.text` is present. To be as clear as possible:
 
 **The `.text` directive is *required* for your files to assemble.**
 
@@ -19,9 +19,9 @@ The rationale behind using ELF files is to provide students with observation opp
 NAME accomplishes a modular approach to assembly code emulation by dividing and conquering four crucial elements:
 
 1. **Assembling** - accomplished by [name-as](name-as), a maintainable assembler that outputs ELF object files
-2. **Linking** - accomplished by [name-ln](name-ln), a sophisticated linker which can manage many modules at once
+2. **Linking** - accomplished by [name-ld](name-ln), a sophisticated linker which can manage many modules at once
 3. **Emulation** - accomplished by [name-emu](name-emu), a performant CPU emulator
-4. **Development** - accomplished by 
+4. **Development** - accomplished by
   - [name-ext](name-ext), a VSCode integration for assembly development complete with a [DAP](https://microsoft.github.io/debug-adapter-protocol//) and [IntelliSense](https://learn.microsoft.com/en-us/visualstudio/ide/using-intellisense) for insight into emulated CPU cores
   - [name-fmt](name-fmt) a VSCode extension for canonical assembly formatting and syntax highlighting
 
@@ -72,7 +72,7 @@ exit:
   syscall
 ```
 
-It's clear that when the assembler encounters the `j exit` instruction, it does not yet know the corresponding address. 
+It's clear that when the assembler encounters the `j exit` instruction, it does not yet know the corresponding address.
 
 NAME tackles this problem using backpatching. The assembler keeps track of any detected forward references (labels referenced with no symbol table entry) and attempts to resolve them once labels are encountered. It does so by saving the byte offset, InstructionInformation, operands, and other associated information for a line once the forward reference is encountered, at which point placeholder bytes `0x00000000` are placed in the `.text` section. Once the correct label is encountered, instructions can be patched by invoking [assemble_instruction](name-as/src/assemble_instruction.rs) on the saved information and arguments, then slicing in the new bytes on the `.text` section. If labels are referenced but never defined in any module, NAME throws an error.
 
@@ -96,7 +96,7 @@ The NAME emulator accepts ELF files of type `ET_EXEC`. Emulation is carried out 
 Fetching is a simple access of `.text` from where `$pc`, the program counter, points to. If the address currently in `$pc` is not accessible by the emulator, an error is thrown. This is an intuitive and straightforward approach, so it's included in [simulator.rs](name-emu/src/simulator.rs).
 
 ### Decode
-Decoding is the first novel approach in the emulation process. First, the instruction passed to the decode function has its opcode extracted. The opcode is put through a lookup table for a function pointer with the signature `Fn(&mut Processor, &mut Memory, u32)`. This function pointer represents the target instruction's implementation. If the opcode is `0`, a separate lookup is performed specific for R-type instructions. This allows instruction addition to be a simple edit of a data structure followed by implementing a microscopic function, improving NAME's extensibility. See [decode.rs](name-emu/src/decode.rs) for implementation details. 
+Decoding is the first novel approach in the emulation process. First, the instruction passed to the decode function has its opcode extracted. The opcode is put through a lookup table for a function pointer with the signature `Fn(&mut Processor, &mut Memory, u32)`. This function pointer represents the target instruction's implementation. If the opcode is `0`, a separate lookup is performed specific for R-type instructions. This allows instruction addition to be a simple edit of a data structure followed by implementing a microscopic function, improving NAME's extensibility. See [decode.rs](name-emu/src/decode.rs) for implementation details.
 
 Each instruction performs its own unpacking (`unpack_r_type`). This reduces lookup operations.
 

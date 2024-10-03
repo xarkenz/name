@@ -5,14 +5,9 @@ node_modules/
 
 .vscode-test/
 
-name-emu/target
-name-as/target
-name-const/target
-name-ln/target
+*/target/*
 
 *.vsix
-
-target/*
 
 package-lock.json
 .eslistrc.json
