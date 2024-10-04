@@ -1,16 +1,9 @@
-mod args;
-mod conformity;
-mod one_module_linker;
-
-#[cfg(test)]
-mod tests;
-
-use args::Cli;
+use name_ld::args::Cli;
+use name_ld::one_module_linker::one_module_linker;
 use std::path::PathBuf;
-use one_module_linker::one_module_linker;
 
-use name_const::elf_utils::{read_bytes_to_elf, write_elf_to_file};
 use name_const::elf_def::Elf;
+use name_const::elf_utils::{read_bytes_to_elf, write_elf_to_file};
 
 use clap::Parser;
 
@@ -25,32 +18,33 @@ fn main() {
     // TODO: implement multiple input files (ehhhhh)
     // uncomment this block when can add multiple input files
     /* let module_input_fns: Vec<PathBuf> = args.input_filenames
-        .iter()
-        .map(|filename| base_path.join(filename))
-        .collect(); */
+    .iter()
+    .map(|filename| base_path.join(filename))
+    .collect(); */
     let single_module_input_fn = base_path.join(args.input_filenames); // this is just one file right now. obviously it's supposed to not be that
     let single_module_output_fn = base_path.join(args.output_filename);
 
     // invoke correct version of linker based on number of arguments supplied
     // uncomment this block when can add multiple input files
     /* let single_file_contents: Vec<u8> = module_input_fns
-        .iter()
-        .map(|filename| std::fs::read(filename).expect("Unable to open object file"))
-        .collect(); */
-    let single_file_contents: Vec<u8> = std::fs::read(single_module_input_fn).expect("Unable to open object file");
+    .iter()
+    .map(|filename| std::fs::read(filename).expect("Unable to open object file"))
+    .collect(); */
+    let single_file_contents: Vec<u8> =
+        std::fs::read(single_module_input_fn).expect("Unable to open object file");
 
     // let single_et_rel: Elf = read_bytes_to_elf(single_file_contents).expect("This shouldn't fail rn");
     let constructed_elf: Elf = match read_bytes_to_elf(single_file_contents) {
         Ok(relocatable) => relocatable,
         Err(e) => panic!("{e}"),
     };
-    
+
     // let linked_single_module = one_module_linker(single_et_rel);
     let executable_contents: Elf = match one_module_linker(constructed_elf) {
         Ok(result) => result,
         Err(e) => {
             panic!("{e}");
-        },
+        }
     };
 
     // output final ET_EXEC ELF (this comment might not be correct anymore. idk)

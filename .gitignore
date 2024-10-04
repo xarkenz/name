@@ -27,5 +27,5 @@ name-ext/node_modules/*
 
 name-fmt/node_modules/
 
-tests/samples/*/*
-!test/samples/*/*.asm
+tests/samples/*
+!test/samples/*.asm
