@@ -6,6 +6,7 @@ node_modules/
 .vscode-test/
 
 */target/*
+target/
 
 *.vsix
 
@@ -26,6 +27,5 @@ name-ext/node_modules/*
 
 name-fmt/node_modules/
 
-test_files/*/*.o
-test_files/*/*
-!test_files/*/*.asm
+tests/samples/*/*
+!test/samples/*/*.asm
