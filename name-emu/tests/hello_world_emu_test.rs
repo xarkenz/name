@@ -1,13 +1,14 @@
 use std::fs::read;
 use std::path::PathBuf;
 
-use name_const::elf_def::Elf;
-use name_const::elf_utils::read_bytes_to_elf;
+use name_core::elf_def::Elf;
+use name_core::elf_utils::read_bytes_to_elf;
 
 use name_emu::simulator;
 
 #[test]
 fn hello_world_emu_test() {
+    println!("hi");
     let base_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .expect("[*] FATAL: No parent directory found (did you clone the entire repo?)")

@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use name_const::structs::{LineInfo, Section};
+use name_core::structs::{LineInfo, Section};
 
 use crate::assembler::assemble_line::assemble_line;
 use crate::assembler::assembler::Assembler;

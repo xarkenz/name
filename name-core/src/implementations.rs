@@ -1,14 +1,5 @@
 use crate::elf_def::{MIPS_DATA_START_ADDR, MIPS_TEXT_START_ADDR};
-use crate::structs::{LineInfo, Memory, Processor};
-
-impl Processor {
-    pub fn new(entry: u32) -> Self {
-        Processor {
-            pc: entry,
-            general_purpose_registers: [0; 32],
-        }
-    }
-}
+use crate::structs::{LineInfo, Memory};
 
 impl Memory {
     pub fn new(data: Vec<u8>, text: Vec<u8>) -> Self {

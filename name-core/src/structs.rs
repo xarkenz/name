@@ -24,12 +24,6 @@ pub enum Section {
 }
 
 #[derive(Debug)]
-pub struct Processor {
-    pub pc: u32,
-    pub general_purpose_registers: [u32; 32],
-}
-
-#[derive(Debug)]
 pub struct Memory {
     pub data: Vec<u8>,
     pub text: Vec<u8>,

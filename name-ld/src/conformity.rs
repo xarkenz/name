@@ -1,4 +1,4 @@
-use name_const::elf_def::*;
+use name_core::elf_def::*;
 
 pub fn relocatable_conformity_check(et_rel: &Elf) -> Result<(), String> {
     let fh = &et_rel.file_header;

@@ -1,7 +1,7 @@
 [workspace]
 members = [
   "name-as",
-  "name-const",
+  "name-core",
   "name-ld",
   "name-emu",
 ]

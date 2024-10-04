@@ -4,7 +4,7 @@ use name_as::args::Cli;
 use name_as::assembler::assemble_file::assemble;
 use name_as::helpers::extract_symbol_table_to_sections;
 
-use name_const::elf_utils::{create_new_et_rel, write_elf_to_file};
+use name_core::elf_utils::{create_new_et_rel, write_elf_to_file};
 
 use clap::Parser;
 

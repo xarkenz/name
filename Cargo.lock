@@ -194,7 +194,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "logos",
- "name_const",
+ "name_core",
 ]
 
 [[package]]
@@ -202,7 +202,7 @@ name = "name-emu"
 version = "0.1.0"
 dependencies = [
  "clap",
- "name_const",
+ "name_core",
 ]
 
 [[package]]
@@ -210,11 +210,11 @@ name = "name-ld"
 version = "0.1.0"
 dependencies = [
  "clap",
- "name_const",
+ "name_core",
 ]
 
 [[package]]
-name = "name_const"
+name = "name_core"
 version = "0.1.0"
 dependencies = [
  "serde",

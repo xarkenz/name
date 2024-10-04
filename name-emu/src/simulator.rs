@@ -2,10 +2,11 @@ use crate::definitions::structs::ExecutionStatus;
 use crate::simulator_helpers::extract_loadable_sections;
 
 use crate::debug::debug_utils::{debugger, single_step};
+use crate::definitions::processor::Processor;
 
-use name_const::elf_def::Elf;
-use name_const::elf_utils::extract_lineinfo;
-use name_const::structs::{LineInfo, Memory, Processor};
+use name_core::elf_def::Elf;
+use name_core::elf_utils::extract_lineinfo;
+use name_core::structs::{LineInfo, Memory};
 
 pub fn simulate(elf: Elf, debug: bool) -> Result<(), String> {
     // Set up simulation environment
