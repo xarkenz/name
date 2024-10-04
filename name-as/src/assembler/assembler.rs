@@ -282,4 +282,3 @@ impl Assembler {
         self.current_address += MIPS_ADDRESS_ALIGNMENT;
     }
 }
-

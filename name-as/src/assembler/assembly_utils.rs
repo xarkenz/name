@@ -270,4 +270,3 @@ mod tests {
         assert!(assembled_shamt_err.is_err());
     }
 }
-

@@ -24,7 +24,8 @@ pub fn one_module_linker(et_rel: Elf) -> Result<Elf, String> {
     let symbol_table = parse_elf_symbols(&et_exec.sections[3]);
     let str_table = &et_exec.sections[4];
 
-    et_exec.file_header.e_entry = match find_global_symbol_address(&symbol_table, str_table, "main") {
+    et_exec.file_header.e_entry = match find_global_symbol_address(&symbol_table, str_table, "main")
+    {
         Some(new_address) => new_address,
         None => MIPS_TEXT_START_ADDR,
     };

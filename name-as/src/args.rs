@@ -8,4 +8,3 @@ pub struct Cli {
     #[arg(short, long)]
     pub verbose: bool,
 }
-

@@ -4,7 +4,7 @@
 use std::{fs, io::Write, path::PathBuf, vec::Vec};
 
 use crate::elf_def::*;
-use crate::structs::{LineInfo, Section, Symbol, Visibility};    // Used for ELF sections
+use crate::structs::{LineInfo, Section, Symbol, Visibility}; // Used for ELF sections
 
 // Macros - had to learn somehow!
 
@@ -16,14 +16,14 @@ macro_rules! ELF32_ST_INFO {
 
 /*
 
- __          _______  _____ _______ ______ 
+ __          _______  _____ _______ ______
  \ \        / /  __ \|_   _|__   __|  ____|
-  \ \  /\  / /| |__) | | |    | |  | |__   
-   \ \/  \/ / |  _  /  | |    | |  |  __|  
-    \  /\  /  | | \ \ _| |_   | |  | |____ 
+  \ \  /\  / /| |__) | | |    | |  | |__
+   \ \/  \/ / |  _  /  | |    | |  |  __|
+    \  /\  /  | | \ \ _| |_   | |  | |____
      \/  \/   |_|  \_\_____|  |_|  |______|
-                                           
-                                           
+
+
 
 */
 
@@ -31,7 +31,7 @@ macro_rules! ELF32_ST_INFO {
 // takes parameters passed_e_entry, the entry point of the program,
 // and passed_e_shoff, the section header offset calculated in a separate method.
 fn create_new_et_rel_file_header(passed_e_shoff: u32) -> Elf32Header {
-    Elf32Header{
+    Elf32Header {
         e_ident: E_IDENT_DEFAULT,
         e_type: E_TYPE_DEFAULT,
         e_machine: E_MACHINE_DEFAULT,
@@ -50,11 +50,17 @@ fn create_new_et_rel_file_header(passed_e_shoff: u32) -> Elf32Header {
 }
 
 // This function combines all the previous to actually create a new object file.
-pub fn create_new_et_rel(data_section: Vec<u8>, text_section: Vec<u8>, symtab_section: Vec<u8>, strtab_section: Vec<u8>, line_section: Vec<u8>) -> Elf {
+pub fn create_new_et_rel(
+    data_section: Vec<u8>,
+    text_section: Vec<u8>,
+    symtab_section: Vec<u8>,
+    strtab_section: Vec<u8>,
+    line_section: Vec<u8>,
+) -> Elf {
     // The section header string table entry requires some calculations.
     // Here we get the shstrtab as bytes from the constant defined at the top of the file.
     // We also get the size of the shstrtab.
-    let mut shstrtab_section: Vec<u8> = vec!();
+    let mut shstrtab_section: Vec<u8> = vec![];
     for item in SECTIONS {
         shstrtab_section.extend_from_slice(item.as_bytes());
         shstrtab_section.extend_from_slice(&[b'\0']);
@@ -69,8 +75,8 @@ pub fn create_new_et_rel(data_section: Vec<u8>, text_section: Vec<u8>, symtab_se
     let line_size: u32 = line_section.len() as u32;
 
     // Calculate offsets using sizes
-    let data_offset: u32 =  E_PHOFF_DEFAULT + (E_PHNUM_DEFAULT * E_PHENTSIZE_DEFAULT) as u32;
-    let text_offset: u32 = data_offset + data_size;     // The program header entries are for the two loadable segments, .text and .data
+    let data_offset: u32 = E_PHOFF_DEFAULT + (E_PHNUM_DEFAULT * E_PHENTSIZE_DEFAULT) as u32;
+    let text_offset: u32 = data_offset + data_size; // The program header entries are for the two loadable segments, .text and .data
     let symtab_offset: u32 = text_offset + text_size;
     let strtab_offset: u32 = symtab_offset + symtab_size;
     let line_offset: u32 = strtab_offset + strtab_size;
@@ -88,7 +94,7 @@ pub fn create_new_et_rel(data_section: Vec<u8>, text_section: Vec<u8>, symtab_se
         p_paddr: MIPS_DATA_START_ADDR,
         p_filesz: data_size,
         p_memsz: data_size,
-        p_flags: PF_R | PF_W,   // section .data should not be executable
+        p_flags: PF_R | PF_W, // section .data should not be executable
         p_align: MIPS_ALIGNMENT,
     };
 
@@ -99,7 +105,7 @@ pub fn create_new_et_rel(data_section: Vec<u8>, text_section: Vec<u8>, symtab_se
         p_paddr: MIPS_TEXT_START_ADDR,
         p_filesz: text_size,
         p_memsz: text_size,
-        p_flags: PF_R | PF_X,   // section .text should not be writable
+        p_flags: PF_R | PF_X, // section .text should not be writable
         p_align: MIPS_ALIGNMENT,
     };
 
@@ -109,7 +115,7 @@ pub fn create_new_et_rel(data_section: Vec<u8>, text_section: Vec<u8>, symtab_se
     // Populate the section headers - indexes are in the same order as the struct (.data, .text, .debug, .line)
     // First field is SHT_NULL and reserved, but must be included.
     let null_sh: Elf32SectionHeader = Elf32SectionHeader {
-        sh_name: 0,     // This is a byte index
+        sh_name: 0, // This is a byte index
         sh_type: SHT_NULL,
         sh_flags: 0,
         sh_addr: 0,
@@ -124,7 +130,7 @@ pub fn create_new_et_rel(data_section: Vec<u8>, text_section: Vec<u8>, symtab_se
     let data_sh: Elf32SectionHeader = Elf32SectionHeader {
         sh_name: 1,
         sh_type: SHT_PROGBITS,
-        sh_flags: SHF_ALLOC | SHF_WRITE,    // Allocated and writeable
+        sh_flags: SHF_ALLOC | SHF_WRITE, // Allocated and writeable
         sh_addr: MIPS_DATA_START_ADDR,
         sh_offset: data_offset,
         sh_size: data_size,
@@ -137,25 +143,24 @@ pub fn create_new_et_rel(data_section: Vec<u8>, text_section: Vec<u8>, symtab_se
     let text_sh: Elf32SectionHeader = Elf32SectionHeader {
         sh_name: data_sh.sh_name + SECTIONS[1].len() as u32 + 1,
         sh_type: SHT_PROGBITS,
-        sh_flags: SHF_ALLOC | SHF_EXECINSTR,    // Allocated and executable
-        sh_addr: MIPS_TEXT_START_ADDR,          // Implicit virtual address
+        sh_flags: SHF_ALLOC | SHF_EXECINSTR, // Allocated and executable
+        sh_addr: MIPS_TEXT_START_ADDR,       // Implicit virtual address
         sh_offset: text_offset,
         sh_size: text_size,
         sh_link: 0, // Unused
         sh_info: 0, // Unused
         sh_addralign: MIPS_ADDRESS_ALIGNMENT,
-        sh_entsize: 0 // Unused in this section
+        sh_entsize: 0, // Unused in this section
     };
-
 
     let symtab_sh: Elf32SectionHeader = Elf32SectionHeader {
         sh_name: text_sh.sh_name + SECTIONS[2].len() as u32 + 1,
         sh_type: SHT_SYMTAB,
-        sh_flags: 0,  // The symtab does not have any flags associated
+        sh_flags: 0, // The symtab does not have any flags associated
         sh_addr: 0,
         sh_offset: symtab_offset,
         sh_size: symtab_size,
-        sh_link: 4,             // Link to appropriate string table
+        sh_link: 4, // Link to appropriate string table
         sh_info: 0,
         sh_addralign: 0,
         sh_entsize: SH_ENTSIZE_SYMTAB,
@@ -201,18 +206,33 @@ pub fn create_new_et_rel(data_section: Vec<u8>, text_section: Vec<u8>, symtab_se
     };
 
     // Collect all sections into sections Vec
-    let sections: Vec<Vec<u8>> = vec![data_section, text_section, symtab_section, strtab_section, line_section, shstrtab_section];
+    let sections: Vec<Vec<u8>> = vec![
+        data_section,
+        text_section,
+        symtab_section,
+        strtab_section,
+        line_section,
+        shstrtab_section,
+    ];
 
     // Collect all previously defined section headers into the section header table
-    let complete_section_header_table: Vec<Elf32SectionHeader> = vec![null_sh, data_sh, text_sh, symtab_sh, strtab_sh, line_sh, shstrtab_sh];
+    let complete_section_header_table: Vec<Elf32SectionHeader> = vec![
+        null_sh,
+        data_sh,
+        text_sh,
+        symtab_sh,
+        strtab_sh,
+        line_sh,
+        shstrtab_sh,
+    ];
 
     // Final step is to create the final Elf struct
-    return Elf{
+    return Elf {
         file_header: elf_file_header,
         program_header_table: complete_program_header_table,
         sections: sections,
         section_header_table: complete_section_header_table,
-    }
+    };
 }
 
 // Used in et_rel construction process to create .symbtab and .strtab
@@ -261,8 +281,8 @@ pub fn write_elf_to_file(file_name: &PathBuf, et_rel: &Elf) -> Result<(), String
     }
 
     // Write file bytes to output file
-    let mut f: fs::File = fs::File::create(file_name).expect("Unable to write file");       // This is really bad and insecure for right now - path MUST be checked before this gets out of alpha
-                                                                                                      // FIXME ^ ?
+    let mut f: fs::File = fs::File::create(file_name).expect("Unable to write file"); // This is really bad and insecure for right now - path MUST be checked before this gets out of alpha
+                                                                                      // FIXME ^ ?
     f.write_all(&file_bytes).expect("Unable to write data.");
 
     Ok(())
@@ -270,21 +290,21 @@ pub fn write_elf_to_file(file_name: &PathBuf, et_rel: &Elf) -> Result<(), String
 
 /*
 
-  _____  ______          _____  
- |  __ \|  ____|   /\   |  __ \ 
+  _____  ______          _____
+ |  __ \|  ____|   /\   |  __ \
  | |__) | |__     /  \  | |  | |
  |  _  /|  __|   / /\ \ | |  | |
  | | \ \| |____ / ____ \| |__| |
- |_|  \_\______/_/    \_\_____/ 
-                                
-                                
+ |_|  \_\______/_/    \_\_____/
+
+
 
 */
 
 // read input byte vector in as ELF.
 pub fn read_bytes_to_elf(file_contents: Vec<u8>) -> Result<Elf, String> {
     if file_contents.len() < E_EHSIZE_DEFAULT as usize {
-        return Err(format!("Incomplete ELF file provided. Please include complete file header. Only {} bytes provided", file_contents.len()))
+        return Err(format!("Incomplete ELF file provided. Please include complete file header. Only {} bytes provided", file_contents.len()));
     }
 
     let elf_header: Elf32Header = match parse_elf_header(&file_contents[0..52]) {
@@ -294,25 +314,30 @@ pub fn read_bytes_to_elf(file_contents: Vec<u8>) -> Result<Elf, String> {
 
     let num_of_ph_sections: u16 = elf_header.e_phnum;
 
-    let program_header_table_end: usize = (E_EHSIZE_DEFAULT + (E_PHENTSIZE_DEFAULT * num_of_ph_sections)) as usize;
+    let program_header_table_end: usize =
+        (E_EHSIZE_DEFAULT + (E_PHENTSIZE_DEFAULT * num_of_ph_sections)) as usize;
     if file_contents.len() < program_header_table_end {
         return Err(format!("Incomplete ELF file provided. Please include program header entries for {num_of_ph_sections} section(s)."));
     }
 
-    let program_header_table_bytes = &file_contents[E_EHSIZE_DEFAULT as usize..program_header_table_end];
+    let program_header_table_bytes =
+        &file_contents[E_EHSIZE_DEFAULT as usize..program_header_table_end];
     let program_header_table: Vec<Elf32ProgramHeader> = parse_ph_table(program_header_table_bytes);
-    
-    let section_header_table_bytes = &file_contents[(elf_header.e_shoff as usize)..file_contents.len()];
-    let section_header_table: Vec<Elf32SectionHeader> = parse_sh_table_bytes(section_header_table_bytes);
 
-    let mut sections: Vec<Vec<u8>> = vec!();
+    let section_header_table_bytes =
+        &file_contents[(elf_header.e_shoff as usize)..file_contents.len()];
+    let section_header_table: Vec<Elf32SectionHeader> =
+        parse_sh_table_bytes(section_header_table_bytes);
+
+    let mut sections: Vec<Vec<u8>> = vec![];
     for sh in &section_header_table {
         sections.push(
-            file_contents[(sh.sh_offset) as usize..(sh.sh_offset+sh.sh_size as u32) as usize].to_owned()
+            file_contents[(sh.sh_offset) as usize..(sh.sh_offset + sh.sh_size as u32) as usize]
+                .to_owned(),
         );
     }
 
-    Ok(Elf{
+    Ok(Elf {
         file_header: elf_header,
         program_header_table: program_header_table,
         sections: sections,
@@ -320,7 +345,7 @@ pub fn read_bytes_to_elf(file_contents: Vec<u8>) -> Result<Elf, String> {
     })
 }
 
-fn parse_elf_header(expected_bytes: &[u8]) -> Result<Elf32Header, String> {    
+fn parse_elf_header(expected_bytes: &[u8]) -> Result<Elf32Header, String> {
     Ok(Elf32Header {
         e_ident: match &expected_bytes[0..16].try_into().unwrap() {
             &E_IDENT_DEFAULT => E_IDENT_DEFAULT,
@@ -358,7 +383,9 @@ fn parse_elf_header(expected_bytes: &[u8]) -> Result<Elf32Header, String> {
 }
 
 fn parse_ph_table(program_header_table_bytes: &[u8]) -> Vec<Elf32ProgramHeader> {
-    program_header_table_bytes.chunks(E_PHENTSIZE_DEFAULT as usize).map(|entry| Elf32ProgramHeader {
+    program_header_table_bytes
+        .chunks(E_PHENTSIZE_DEFAULT as usize)
+        .map(|entry| Elf32ProgramHeader {
             p_type: u32::from_be_bytes(entry[0..4].try_into().unwrap()),
             p_offset: u32::from_be_bytes(entry[4..8].try_into().unwrap()),
             p_vaddr: u32::from_be_bytes(entry[8..12].try_into().unwrap()),
@@ -367,11 +394,14 @@ fn parse_ph_table(program_header_table_bytes: &[u8]) -> Vec<Elf32ProgramHeader> 
             p_memsz: u32::from_be_bytes(entry[20..24].try_into().unwrap()),
             p_flags: u32::from_be_bytes(entry[24..28].try_into().unwrap()),
             p_align: u32::from_be_bytes(entry[28..32].try_into().unwrap()),
-        }).collect()
+        })
+        .collect()
 }
 
 fn parse_sh_table_bytes(section_header_table_bytes: &[u8]) -> Vec<Elf32SectionHeader> {
-    section_header_table_bytes.chunks(E_SHENTSIZE_DEFAULT as usize).map(|entry| Elf32SectionHeader {
+    section_header_table_bytes
+        .chunks(E_SHENTSIZE_DEFAULT as usize)
+        .map(|entry| Elf32SectionHeader {
             sh_name: u32::from_be_bytes(entry[0..4].try_into().unwrap()),
             sh_type: u32::from_be_bytes(entry[4..8].try_into().unwrap()),
             sh_flags: u32::from_be_bytes(entry[8..12].try_into().unwrap()),
@@ -382,20 +412,22 @@ fn parse_sh_table_bytes(section_header_table_bytes: &[u8]) -> Vec<Elf32SectionHe
             sh_info: u32::from_be_bytes(entry[28..32].try_into().unwrap()),
             sh_addralign: u32::from_be_bytes(entry[32..36].try_into().unwrap()),
             sh_entsize: u32::from_be_bytes(entry[36..40].try_into().unwrap()),
-        }).collect()
+        })
+        .collect()
 }
 
 pub fn parse_elf_symbols(symbol_table: &Vec<u8>) -> Vec<Elf32Sym> {
-    symbol_table.chunks(16).map(|entry| {
-        Elf32Sym {
+    symbol_table
+        .chunks(16)
+        .map(|entry| Elf32Sym {
             st_name: u32::from_be_bytes(entry[0..4].try_into().unwrap()),
             st_value: u32::from_be_bytes(entry[4..8].try_into().unwrap()),
             st_size: u32::from_be_bytes(entry[8..12].try_into().unwrap()),
             st_info: entry[12],
             st_other: entry[13],
             st_shndx: u16::from_be_bytes(entry[14..16].try_into().unwrap()),
-        }
-    }).collect()
+        })
+        .collect()
 }
 
 fn get_string_from_strtab(strtab: &Vec<u8>, offset: u32) -> Option<&str> {
@@ -408,7 +440,7 @@ fn get_string_from_strtab(strtab: &Vec<u8>, offset: u32) -> Option<&str> {
 }
 
 pub fn extract_lineinfo(elf: &Elf) -> Vec<LineInfo> {
-    let shstrtab = &elf.sections[elf.file_header.e_shstrndx as usize]; 
+    let shstrtab = &elf.sections[elf.file_header.e_shstrndx as usize];
     let idx = match find_target_section_index(&elf.section_header_table, shstrtab, ".line") {
         Some(i) => i,
         None => unreachable!(),
@@ -417,7 +449,11 @@ pub fn extract_lineinfo(elf: &Elf) -> Vec<LineInfo> {
     deserialize_line_info(&elf.sections[idx])
 }
 
-pub fn find_global_symbol_address(symbols: &[Elf32Sym], strtab: &Vec<u8>, target: &str) -> Option<u32> {
+pub fn find_global_symbol_address(
+    symbols: &[Elf32Sym],
+    strtab: &Vec<u8>,
+    target: &str,
+) -> Option<u32> {
     const STB_GLOBAL: u8 = 1;
     for symbol in symbols {
         let binding = symbol.st_info >> 4;
@@ -432,11 +468,15 @@ pub fn find_global_symbol_address(symbols: &[Elf32Sym], strtab: &Vec<u8>, target
     None
 }
 
-pub fn find_target_section_index(section_header_table: &Vec<Elf32SectionHeader>, strtab: &Vec<u8>, target: &str) -> Option<usize> {
+pub fn find_target_section_index(
+    section_header_table: &Vec<Elf32SectionHeader>,
+    strtab: &Vec<u8>,
+    target: &str,
+) -> Option<usize> {
     for (i, section) in section_header_table.iter().enumerate() {
         if let Some(name) = get_string_from_strtab(strtab, section.sh_name) {
             if name == target {
-                return Some(i)
+                return Some(i);
             }
         }
     }
@@ -452,10 +492,10 @@ fn deserialize_line_info(data: &Vec<u8>) -> Vec<LineInfo> {
         if let Some(pos) = cursor.iter().position(|&c| c == 0) {
             let content_bytes = &cursor[..pos];
             let content = String::from_utf8_lossy(content_bytes).to_string();
-            
+
             // Move cursor past the null terminator and string
             cursor = &cursor[pos + 1..];
-            
+
             // Ensure we have at least 12 bytes remaining for three u32 values
             if cursor.len() < 12 {
                 break;

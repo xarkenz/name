@@ -37,7 +37,7 @@ pub struct InstructionInformation {
     pub opcode: Option<u32>,
     pub funct: Option<u32>,
     pub args: &'static [ArgumentType],
-    pub alt_args: Option< &'static [&'static [ArgumentType]] >,
+    pub alt_args: Option<&'static [&'static [ArgumentType]]>,
 }
 
 #[derive(Debug, PartialEq)]

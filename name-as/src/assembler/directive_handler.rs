@@ -10,7 +10,7 @@ impl Assembler {
             }
             ".data" => {
                 self.switch_to_data_section();
-            },
+            }
             ".eqv" => {
                 self.new_eqv(arguments);
             }
@@ -19,12 +19,13 @@ impl Assembler {
             }
             ".text" => {
                 self.switch_to_text_section();
-            },
+            }
             ".word" => {
                 self.new_word(arguments);
             }
             _ => {
-                self.errors.push(format!("[*] On line {}:", self.line_number));
+                self.errors
+                    .push(format!("[*] On line {}:", self.line_number));
                 self.errors.push(format!(" - Unrecognized directive."));
             }
         }

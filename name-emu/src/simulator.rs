@@ -1,7 +1,7 @@
 use crate::definitions::structs::ExecutionStatus;
 use crate::simulator_helpers::extract_loadable_sections;
 
-use crate::debug::debug_utils::{single_step, debugger};
+use crate::debug::debug_utils::{debugger, single_step};
 
 use name_const::elf_def::Elf;
 use name_const::elf_utils::extract_lineinfo;
@@ -22,14 +22,14 @@ pub fn simulate(elf: Elf, debug: bool) -> Result<(), String> {
     } else {
         // Begin fetch/decode/execute cycle to run program normally
         loop {
-            match single_step(&lineinfo, &mut cpu, &mut memory, &Vec::new()){
+            match single_step(&lineinfo, &mut cpu, &mut memory, &Vec::new()) {
                 Ok(execution_status) => match execution_status {
-                    ExecutionStatus::Continue => {},
+                    ExecutionStatus::Continue => {}
                     ExecutionStatus::Break => {
                         // assuming this behavior will be more well defined upon implementation of the extension
                         println!("Break instruction located at address {}", cpu.pc);
                         break Ok(());
-                     },
+                    }
                     ExecutionStatus::Complete => return Ok(()),
                 },
                 Err(e) => return Err(e),

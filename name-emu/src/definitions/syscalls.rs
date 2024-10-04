@@ -17,7 +17,10 @@ pub fn sys_print_int(cpu: &mut Processor, _memory: &mut Memory) -> Result<Execut
 }
 
 // Syscall 4 - SysPrintString
-pub fn sys_print_string(cpu: &mut Processor, memory: &mut Memory) -> Result<ExecutionStatus, String> {
+pub fn sys_print_string(
+    cpu: &mut Processor,
+    memory: &mut Memory,
+) -> Result<ExecutionStatus, String> {
     let mut address = cpu.general_purpose_registers[A0];
     let mut to_print: Vec<u8> = Vec::new();
 
@@ -69,8 +72,11 @@ pub fn sys_exit(_cpu: &mut Processor, _memory: &mut Memory) -> Result<ExecutionS
 }
 
 // Syscall 11 - SysPrintChar
-pub fn sys_print_char(cpu: &mut Processor, _memory: &mut Memory) -> Result<ExecutionStatus, String> {
-    match char::from_u32(cpu.general_purpose_registers[A0]){
+pub fn sys_print_char(
+    cpu: &mut Processor,
+    _memory: &mut Memory,
+) -> Result<ExecutionStatus, String> {
+    match char::from_u32(cpu.general_purpose_registers[A0]) {
         Some(valid_char) => {
             print!("{}", valid_char);
             Ok(ExecutionStatus::Continue)

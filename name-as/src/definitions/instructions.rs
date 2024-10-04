@@ -24,7 +24,7 @@ pub(crate) const INSTRUCTION_SET: &[InstructionInformation] = &[
         funct: None,
         args: &[ArgumentType::Rt, ArgumentType::Rs, ArgumentType::Immediate],
         alt_args: None,
-    },    
+    },
     InstructionInformation {
         mnemonic: "addu",
         instruction_type: InstructionType::RType,
@@ -54,7 +54,11 @@ pub(crate) const INSTRUCTION_SET: &[InstructionInformation] = &[
         instruction_type: InstructionType::IType,
         opcode: Some(4),
         funct: None,
-        args: &[ArgumentType::Rs, ArgumentType::Rt, ArgumentType::BranchLabel],
+        args: &[
+            ArgumentType::Rs,
+            ArgumentType::Rt,
+            ArgumentType::BranchLabel,
+        ],
         alt_args: None,
     },
     InstructionInformation {
@@ -63,7 +67,7 @@ pub(crate) const INSTRUCTION_SET: &[InstructionInformation] = &[
         opcode: Some(7),
         funct: None,
         args: &[ArgumentType::Rs, ArgumentType::BranchLabel],
-        alt_args: None,  
+        alt_args: None,
     },
     InstructionInformation {
         mnemonic: "blez",
@@ -78,7 +82,11 @@ pub(crate) const INSTRUCTION_SET: &[InstructionInformation] = &[
         instruction_type: InstructionType::IType,
         opcode: Some(5),
         funct: None,
-        args: &[ArgumentType::Rs, ArgumentType::Rt, ArgumentType::BranchLabel],
+        args: &[
+            ArgumentType::Rs,
+            ArgumentType::Rt,
+            ArgumentType::BranchLabel,
+        ],
         alt_args: None,
     },
     InstructionInformation {
@@ -103,9 +111,7 @@ pub(crate) const INSTRUCTION_SET: &[InstructionInformation] = &[
         opcode: None,
         funct: Some(9),
         args: &[ArgumentType::Rd, ArgumentType::Rs],
-        alt_args: Some(&[
-            &[ArgumentType::Rs],
-        ]),
+        alt_args: Some(&[&[ArgumentType::Rs]]),
     },
     InstructionInformation {
         mnemonic: "jr",
@@ -230,7 +236,7 @@ pub(crate) const INSTRUCTION_SET: &[InstructionInformation] = &[
         funct: None,
         args: &[ArgumentType::Rt, ArgumentType::Rs, ArgumentType::Immediate],
         alt_args: None,
-    },    
+    },
     InstructionInformation {
         mnemonic: "sltiu",
         instruction_type: InstructionType::IType,
