@@ -34,3 +34,5 @@ name-fmt/node_modules/
 test_files/*/*.o
 test_files/*/*
 !test_files/*/*.asm
+personal_to_do_list.txt
+test_files/bubblesort/*

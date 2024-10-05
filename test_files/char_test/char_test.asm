@@ -19,7 +19,8 @@ OurBelovedString: .asciiz     "hello\nworlde\ti am swagalicious\\\'\""
     li $v0, SysReadChar
     syscall
 
-    ori $a0, $v0, 0
+    # ori $a0, $v0, 0
+    mv $a0, $v0
     li $v0, SysPrintChar
     syscall
 
