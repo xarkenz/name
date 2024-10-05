@@ -1,9 +1,9 @@
-use name_const::elf_def::Elf32Sym;
-use name_const::elf_utils::convert_symbol_to_elf32sym;
+use name_core::elf_def::Elf32Sym;
+use name_core::elf_utils::convert_symbol_to_elf32sym;
 
 // Extract the symbol table to .symtab and .strtab sections. Needed to properly write to ELF files.
 pub fn extract_symbol_table_to_sections(
-    symbol_table: Vec<name_const::structs::Symbol>,
+    symbol_table: Vec<name_core::structs::Symbol>,
 ) -> (Vec<u8>, Vec<u8>) {
     let mut symtab: Vec<u8> = Elf32Sym {
         st_name: 0,

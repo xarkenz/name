@@ -1,7 +1,7 @@
-use name_const::structs::Memory;
+use name_core::{instruction::RawInstruction, structs::Memory};
 
 // Fetch the next instruction and check that it's in acceptable memory space
-pub fn fetch(fetch_address: &u32, memory: &Memory) -> Result<u32, String> {
+pub fn fetch(fetch_address: &u32, memory: &Memory) -> Result<RawInstruction, String> {
     if fetch_address > &memory.text_end {
         return Err("Program fell off bottom.".to_string());
     } else if fetch_address < &memory.text_start {
@@ -16,5 +16,5 @@ pub fn fetch(fetch_address: &u32, memory: &Memory) -> Result<u32, String> {
             Err(e) => return Err(e.to_string()),
         });
 
-    Ok(fetched_instruction)
+    Ok(RawInstruction::new(fetched_instruction))
 }

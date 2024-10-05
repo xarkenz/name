@@ -1,8 +1,8 @@
 use name_emu::args::Cli;
 use name_emu::simulator;
 
-use name_const::elf_def::Elf;
-use name_const::elf_utils::read_bytes_to_elf;
+use name_core::elf_def::Elf;
+use name_core::elf_utils::read_bytes_to_elf;
 
 use clap::Parser;
 

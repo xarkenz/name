@@ -10,4 +10,4 @@ license-file.workspace = true
 [dependencies]
 clap = { version = "4.5.8", features = ["derive"] }
 logos = "0.14.0"
-name_const = { version = "0.1.0", path = "../name-const" }
+name_core = { version = "0.1.0", path = "../name-core" }

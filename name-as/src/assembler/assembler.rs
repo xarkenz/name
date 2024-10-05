@@ -1,26 +1,24 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use name_const::elf_def::{
+use name_core::elf_def::{
     MIPS_ADDRESS_ALIGNMENT, MIPS_DATA_START_ADDR, MIPS_TEXT_START_ADDR, STT_FUNC, STT_OBJECT,
 };
-use name_const::structs::{Section, Symbol, Visibility};
+use name_core::instruction_information::InstructionInformation;
+use name_core::structs::{Section, Symbol, Visibility};
 
 use crate::assembler::assemble_instruction::assemble_instruction;
 use crate::assembler::assembly_helpers::{
-    generate_instruction_hashmap, generate_pseudo_instruction_hashmap, pretty_print_instruction,
+    generate_pseudo_instruction_hashmap, pretty_print_instruction,
 };
 
 use crate::definitions::constants::BACKPATCH_PLACEHOLDER;
-use crate::definitions::structs::{
-    Backpatch, BackpatchType, InstructionInformation, LineComponent, PseudoInstruction,
-};
+use crate::definitions::structs::{Backpatch, BackpatchType, LineComponent, PseudoInstruction};
 
 // This file contains the struct definition and extracted functions used in the assembler_logic file. There was far too much inlined, so I have extracted it.
 
 #[derive(Debug)]
 pub struct Assembler {
-    pub(crate) instruction_table: HashMap<&'static str, &'static InstructionInformation>,
     pub(crate) pseudo_instruction_table: HashMap<&'static str, &'static PseudoInstruction>,
     pub section_dot_text: Vec<u8>,
     pub section_dot_data: Vec<u8>,
@@ -43,7 +41,6 @@ impl Assembler {
     // Initialize the assembler environment - default constructor.
     pub(crate) fn new() -> Self {
         Assembler {
-            instruction_table: generate_instruction_hashmap(),
             pseudo_instruction_table: generate_pseudo_instruction_hashmap(),
             section_dot_text: vec![],
             section_dot_data: vec![],

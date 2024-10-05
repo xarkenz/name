@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
-use name_const::elf_def::Elf;
-use name_const::elf_utils::{read_bytes_to_elf, write_elf_to_file};
+use name_core::elf_def::Elf;
+use name_core::elf_utils::{read_bytes_to_elf, write_elf_to_file};
 
 use name_ld::one_module_linker::one_module_linker;
 

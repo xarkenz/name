@@ -1,6 +1,9 @@
+pub mod arguments;
 pub mod constants;
 pub mod elf_def;
 pub mod elf_utils;
 pub mod implementations;
+pub mod instruction;
+pub mod instruction_information;
 pub mod structs;
 pub mod traits;

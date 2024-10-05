@@ -1,6 +1,7 @@
-use name_const::structs::{Memory, Processor};
+use name_core::structs::Memory;
 use std::io::{Read, Write};
 
+use crate::definitions::processor::Processor;
 use crate::definitions::structs::ExecutionStatus;
 
 use std::io;

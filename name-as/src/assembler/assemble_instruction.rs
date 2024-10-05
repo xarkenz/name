@@ -2,10 +2,9 @@ use crate::assembler::assembly_helpers::{
     arg_configuration_is_ok, translate_identifier_to_address,
 };
 use crate::assembler::assembly_utils::*;
-use crate::definitions::structs::{
-    ArgumentType, InstructionInformation, InstructionType, LineComponent,
-};
-use name_const::structs::Symbol;
+use crate::definitions::structs::LineComponent;
+use name_core::instruction_information::{ArgumentType, InstructionInformation, InstructionType};
+use name_core::structs::Symbol;
 
 // Big logic for instruction assembly - this is the main driver code for actual packing of instructions once parsed.
 pub fn assemble_instruction(
@@ -42,7 +41,7 @@ pub fn assemble_instruction(
 
     match info.instruction_type {
         InstructionType::RType => {
-            let funct: u32 = info.funct.expect("Improper implmentation of instructions (funct field undefined for R-type instr)\nIf you are a student reading this, understand this error comes entirely from a fundamental failure in the codebase of this vscode extension.");
+            let funct: u32 = info.op_funct.funct().expect("Improper implmentation of instructions (funct field undefined for R-type instr)\nIf you are a student reading this, understand this error comes entirely from a fundamental failure in the codebase of this vscode extension.");
 
             let (rd, rs, rt, shamt) = match assign_r_type_arguments(arguments, configuration_to_use)
             {
@@ -60,7 +59,7 @@ pub fn assemble_instruction(
             }
         }
         InstructionType::IType => {
-            let opcode: u32 = info.opcode.expect("Improper implmentation of instructions (opcode undefined for I-type instr)\nIf you are a student reading this, understand this error comes entirely from the codebase of this vscode extension.");
+            let opcode: u32 = info.op_funct.opcode().expect("Improper implmentation of instructions (opcode undefined for I-type instr)\nIf you are a student reading this, understand this error comes entirely from the codebase of this vscode extension.");
 
             let (rs, rt, imm) = match assign_i_type_arguments(
                 arguments,
@@ -86,7 +85,7 @@ pub fn assemble_instruction(
             }
         }
         InstructionType::JType => {
-            let opcode: u32 = info.opcode.expect("Improper implmentation of instructions (opcode undefined for J-type instr)\nIf you are a student reading this, understand this error comes entirely from the codebase of this vscode extension.");
+            let opcode: u32 = info.op_funct.opcode().expect("Improper implmentation of instructions (opcode undefined for J-type instr)\nIf you are a student reading this, understand this error comes entirely from the codebase of this vscode extension.");
 
             let identifier = match assign_j_type_arguments(arguments, configuration_to_use) {
                 Ok(identifier) => identifier,

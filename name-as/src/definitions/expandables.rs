@@ -1,6 +1,7 @@
 use crate::assembler::assembler::Assembler;
 use crate::assembler::assembly_helpers::translate_identifier_to_address;
-use crate::definitions::structs::{InstructionInformation, LineComponent};
+use crate::definitions::{constants::INSTRUCTION_TABLE, structs::LineComponent};
+use name_core::instruction_information::InstructionInformation;
 
 use super::constants::BACKPATCH_PLACEHOLDER;
 use super::structs::BackpatchType;
@@ -21,7 +22,7 @@ pub(crate) type ExpansionFn =
     ) -> Result<Vec<(&'static InstructionInformation, Vec<LineComponent>)>, String>;
 
 pub(crate) fn expand_li(
-    environment: &mut Assembler,
+    _environment: &mut Assembler,
     args: &Vec<LineComponent>,
 ) -> Result<Vec<(&'static InstructionInformation, Vec<LineComponent>)>, String> {
     if args.len() < 2 {
@@ -33,7 +34,7 @@ pub(crate) fn expand_li(
 
     let zero: LineComponent = LineComponent::Register(String::from("$0"));
 
-    let ori_info = match environment.instruction_table.get("ori") {
+    let ori_info: &'static InstructionInformation = match INSTRUCTION_TABLE.get("ori") {
         Some(info) => info,
         None => return Err(format!(" - Failed to expand `li` pseudoinstruction. Its expansion was likely defined incorrectly (go use git blame on https://github.com/cameron-b63/name to find out who's at fault)."))
     };
@@ -57,21 +58,14 @@ pub(crate) fn expand_la(
 
     // let zero = LineComponent::Register(String::from("$0"));
 
-    let lui_info: &'static InstructionInformation;
-    let ori_info: &'static InstructionInformation;
-
-    {
-        // Immutable borrows are contained within this block
-        lui_info = match environment.instruction_table.get("lui") {
+    let lui_info =  match INSTRUCTION_TABLE.get("lui") {
             Some(info) => info,
             None => return Err(format!(" - Failed to expand `la` pseudoinstruction. Its expansion was likely defined incorrectly (go use git blame on https://github.com/cameron-b63/name to find out who's at fault).")),
         };
-
-        ori_info = match environment.instruction_table.get("ori") {
+    let ori_info = match INSTRUCTION_TABLE.get("ori") {
             Some(info) => info,
             None => return Err(format!(" - Failed to expand `la` pseudoinstruction. Its expansion was likely defined incorrectly (go use git blame on https://github.com/cameron-b63/name to find out who's at fault).")),
         };
-    }
 
     // This is where things get ludicrous. Backpatching needs to be accounted for here.
     // A more sophisticated version of backpatching is necessary for this exact reason.
@@ -98,7 +92,7 @@ pub(crate) fn expand_la(
 
     if must_backpatch {
         environment.add_backpatch(
-            &lui_info,
+            lui_info,
             &vec![rd.clone(), upper.clone()],
             identifier.clone(),
             BackpatchType::Upper,

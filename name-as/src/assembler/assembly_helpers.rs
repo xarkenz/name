@@ -1,10 +1,13 @@
-use name_const::constants::REGISTERS;
-use name_const::structs::Symbol;
+use name_core::constants::REGISTERS;
+use name_core::instruction_information::InstructionInformation;
+use name_core::structs::Symbol;
 
-use crate::definitions::instructions::INSTRUCTION_SET;
-use crate::definitions::pseudo_instructions::PSEUDO_INSTRUCTION_SET;
-use crate::definitions::structs::InstructionInformation;
-use crate::definitions::structs::{ArgumentType, LineComponent, PseudoInstruction};
+use crate::definitions::{
+    constants::INSTRUCTION_TABLE,
+    pseudo_instructions::PSEUDO_INSTRUCTION_SET,
+    structs::{LineComponent, PseudoInstruction},
+};
+use name_core::instruction_information::ArgumentType;
 
 use std::collections::HashMap;
 
@@ -67,16 +70,6 @@ pub fn parse_register_to_u32(register: &String) -> Result<u32, String> {
     } else {
         return Err("Register parse failed".to_string());
     }
-}
-
-pub fn generate_instruction_hashmap() -> HashMap<&'static str, &'static InstructionInformation> {
-    let mut hashmap: HashMap<&'static str, &'static InstructionInformation> = HashMap::new();
-
-    for instruction in INSTRUCTION_SET {
-        hashmap.insert(instruction.mnemonic, &instruction);
-    }
-
-    hashmap
 }
 
 pub fn generate_pseudo_instruction_hashmap() -> HashMap<&'static str, &'static PseudoInstruction> {
@@ -170,10 +163,8 @@ pub fn search_mnemonic(
         return (instruction_information, pseudo_instruction_information);
     }
 
-    let retrieved_instruction_option: Option<&'static InstructionInformation> = environment
-        .instruction_table
-        .get(mnemonic.as_str())
-        .copied();
+    let retrieved_instruction_option: Option<&InstructionInformation> =
+        INSTRUCTION_TABLE.get(mnemonic.as_str()).map(|x| &**x);
 
     match retrieved_instruction_option {
         Some(retrieved_instruction_information) => {

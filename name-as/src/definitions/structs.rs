@@ -1,4 +1,5 @@
 use super::expandables::ExpansionFn;
+use name_core::instruction_information::InstructionInformation;
 
 #[derive(Debug, PartialEq)]
 pub struct Backpatch {
@@ -28,34 +29,6 @@ pub enum LineComponent {
     Directive(String),
     DoubleQuote(String),
     Colon,
-}
-
-#[derive(Debug, PartialEq)]
-pub struct InstructionInformation {
-    pub mnemonic: &'static str,
-    pub instruction_type: InstructionType,
-    pub opcode: Option<u32>,
-    pub funct: Option<u32>,
-    pub args: &'static [ArgumentType],
-    pub alt_args: Option<&'static [&'static [ArgumentType]]>,
-}
-
-#[derive(Debug, PartialEq)]
-pub enum InstructionType {
-    RType,
-    IType,
-    JType,
-}
-
-#[derive(Debug, PartialEq)]
-pub enum ArgumentType {
-    Rd,
-    Rs,
-    Rt,
-    Immediate,
-    Identifier,
-    BranchLabel,
-    // Label,
 }
 
 #[derive(Debug)]

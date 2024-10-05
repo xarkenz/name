@@ -1,8 +1,11 @@
-use name_const::constants::REGISTERS;
-use name_const::elf_def::MIPS_ADDRESS_ALIGNMENT;
-use name_const::structs::{LineInfo, Memory, Processor};
+use name_core::{
+    constants::REGISTERS,
+    elf_def::MIPS_ADDRESS_ALIGNMENT,
+    instruction::Instruction,
+    structs::{LineInfo, Memory},
+};
 
-use crate::decode::{decode, InstructionFn};
+use crate::definitions::processor::Processor;
 
 use crate::definitions::structs::ExecutionStatus;
 use crate::fetch::fetch;
@@ -30,24 +33,20 @@ pub fn single_step(
     // println!("{}", cpu.pc);
 
     // Fetch
-    let fetched_instruction: u32 = fetch(&cpu.pc, &memory)?;
+    let fetched_instruction = fetch(&cpu.pc, &memory)?;
 
     cpu.pc += MIPS_ADDRESS_ALIGNMENT;
 
     // Decode
-    let decoded_instruction_fn: InstructionFn = match decode(&fetched_instruction) {
-        Ok(fun) => fun,
-        Err(e) => {
-            return Err(generate_err(
-                lineinfo,
-                cpu.pc - 4,
-                format!("Failed instruction fetch: {}.", e).as_str(),
-            ))
-        }
-    };
+    let instruction =
+        Instruction::from_raw_instruction(fetched_instruction).ok_or(generate_err(
+            lineinfo,
+            cpu.pc - 4,
+            format!("Failed instruction fetch").as_str(),
+        ))?;
 
     // Execute
-    let instruction_result = decoded_instruction_fn(cpu, memory, fetched_instruction);
+    let instruction_result = cpu.process_instruction(memory, instruction);
 
     // The $0 register should never have been permanently changed. Don't let it remain changed.
     cpu.general_purpose_registers[0] = 0;

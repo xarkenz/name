@@ -1,7 +1,7 @@
-use name_const::elf_utils::find_target_section_index;
+use name_core::elf_utils::find_target_section_index;
 
-use name_const::elf_def::Elf;
-use name_const::structs::LineInfo;
+use name_core::elf_def::Elf;
+use name_core::structs::LineInfo;
 
 // Extract section .text and section .data from the ELF
 pub fn extract_loadable_sections(elf: &Elf) -> (Vec<u8>, Vec<u8>) {

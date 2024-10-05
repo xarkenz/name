@@ -6,7 +6,7 @@ use crate::assembler::assembler::Assembler;
 
 use crate::definitions::structs::LineComponent;
 
-use name_const::structs::Section;
+use name_core::structs::Section;
 
 impl Assembler {
     // .asciiz
