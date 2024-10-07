@@ -89,7 +89,7 @@ impl Processor {
     ) -> Result<ExecutionStatus, String> {
         match instr.special_opcode {
             SpecialOp::Special1(special1) => match special1 {
-                Special1Op::Sll => todo!(),
+                Special1Op::Sll => self.sll(instr),
                 Special1Op::Movci => todo!(),
                 Special1Op::Srl => self.srl(instr),
                 Special1Op::Sra => todo!(),
@@ -176,6 +176,13 @@ impl Processor {
             Instruction::Spec(spec) => self.process_special(memory, spec),
             Instruction::Regimm(regimm) => self.process_regimm(memory, regimm),
         }
+    }
+
+    // 0x00 - sll
+    pub fn sll(&mut self, rargs: Special) -> Result<ExecutionStatus, String> {
+        self.general_purpose_registers[rargs.rd as usize] =
+            self.general_purpose_registers[rargs.rt as usize] << rargs.shamt;
+        Ok(ExecutionStatus::Continue)
     }
 
     // 0x02 - srl
