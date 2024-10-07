@@ -1,6 +1,6 @@
 # Hello, world!
     .include    "SysCalls.asm"
-    
+
     .data
 
 OurBelovedString:

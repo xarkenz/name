@@ -1,10 +1,10 @@
-use crate::instruction::OpFunct;
+use crate::operation::Operation;
 
 #[derive(Debug, PartialEq)]
 pub struct InstructionInformation {
     pub mnemonic: &'static str,
     pub instruction_type: InstructionType,
-    pub op_funct: OpFunct,
+    pub operation: Operation,
     pub args: &'static [ArgumentType],
     pub alt_args: Option<&'static [&'static [ArgumentType]]>,
 }

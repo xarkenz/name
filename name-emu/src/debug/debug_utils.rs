@@ -38,12 +38,13 @@ pub fn single_step(
     cpu.pc += MIPS_ADDRESS_ALIGNMENT;
 
     // Decode
-    let instruction =
-        Instruction::from_raw_instruction(fetched_instruction).ok_or(generate_err(
+    let instruction = Instruction::try_from(fetched_instruction).map_err(|e| {
+        generate_err(
             lineinfo,
             cpu.pc - 4,
-            format!("Failed instruction fetch").as_str(),
-        ))?;
+            format!("Failed instruction fetch {:?}", e).as_str(),
+        )
+    })?;
 
     // Execute
     let instruction_result = cpu.process_instruction(memory, instruction);

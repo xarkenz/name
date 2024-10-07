@@ -41,7 +41,7 @@ pub fn assemble_instruction(
 
     match info.instruction_type {
         InstructionType::RType => {
-            let funct: u32 = info.op_funct.funct().expect("Improper implmentation of instructions (funct field undefined for R-type instr)\nIf you are a student reading this, understand this error comes entirely from a fundamental failure in the codebase of this vscode extension.");
+            let funct: u32 = info.operation.special1().expect("Improper implmentation of instructions (funct field undefined for R-type instr)\nIf you are a student reading this, understand this error comes entirely from a fundamental failure in the codebase of this vscode extension.") as u32;
 
             let (rd, rs, rt, shamt) = match assign_r_type_arguments(arguments, configuration_to_use)
             {
@@ -59,7 +59,7 @@ pub fn assemble_instruction(
             }
         }
         InstructionType::IType => {
-            let opcode: u32 = info.op_funct.opcode().expect("Improper implmentation of instructions (opcode undefined for I-type instr)\nIf you are a student reading this, understand this error comes entirely from the codebase of this vscode extension.");
+            let opcode: u32 = info.operation.immediate().expect("Improper implmentation of instructions (opcode undefined for I-type instr)\nIf you are a student reading this, understand this error comes entirely from the codebase of this vscode extension.") as u32;
 
             let (rs, rt, imm) = match assign_i_type_arguments(
                 arguments,
@@ -85,7 +85,7 @@ pub fn assemble_instruction(
             }
         }
         InstructionType::JType => {
-            let opcode: u32 = info.op_funct.opcode().expect("Improper implmentation of instructions (opcode undefined for J-type instr)\nIf you are a student reading this, understand this error comes entirely from the codebase of this vscode extension.");
+            let opcode: u32 = info.operation.immediate().expect("Improper implmentation of instructions (opcode undefined for J-type instr)\nIf you are a student reading this, understand this error comes entirely from the codebase of this vscode extension.") as u32;
 
             let identifier = match assign_j_type_arguments(arguments, configuration_to_use) {
                 Ok(identifier) => identifier,

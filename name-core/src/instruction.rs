@@ -1,22 +1,50 @@
-use crate::arguments::{IArgs, JArgs, RArgs};
+use crate::operation::{ImmediateOp, Operation, OperationError, RegimmOp, Special1Op, Special2Op};
 
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum OpFunct {
-    OpCode(u32),
-    Funct(u32),
+use std::mem;
+
+#[derive(Debug, Clone, Copy)]
+#[repr(usize)]
+pub enum Register {
+    Zero,
+    At,
+    V0,
+    V1,
+    A0,
+    A1,
+    A2,
+    A3,
+    T0,
+    T1,
+    T2,
+    T3,
+    T4,
+    T5,
+    T6,
+    T7,
+    S0,
+    S1,
+    S2,
+    S3,
+    S4,
+    S5,
+    S6,
+    S7,
+    T8,
+    T9,
+    K0,
+    K1,
+    Gp,
+    Sp,
+    Fp,
+    Ra,
 }
 
-impl OpFunct {
-    pub fn opcode(self) -> Result<u32, &'static str> {
-        match self {
-            OpFunct::OpCode(x) => Ok(x),
-            OpFunct::Funct(_) => Err("Expected opcode got funct"),
-        }
-    }
-    pub fn funct(self) -> Result<u32, &'static str> {
-        match self {
-            OpFunct::Funct(x) => Ok(x),
-            OpFunct::OpCode(_) => Err("Expected funct got opcode"),
+impl TryFrom<u32> for Register {
+    type Error = InstructionError;
+    fn try_from(raw: u32) -> Result<Register, InstructionError> {
+        match raw as usize {
+            reg @ 0..32 => Ok(unsafe { mem::transmute(reg) }),
+            _ => Err(InstructionError::InvalidRegister),
         }
     }
 }
@@ -31,219 +59,227 @@ impl RawInstruction {
         RawInstruction { raw }
     }
 
-    pub fn opt_funct(self) -> OpFunct {
-        let opcode = self.raw >> 26;
-        if opcode == 0 {
-            let funct = self.raw & 0x3F;
-            OpFunct::Funct(funct)
+    pub fn opcode(self) -> u32 {
+        self.raw >> 26
+    }
+
+    pub fn is_immediate(self) -> bool {
+        match self.opcode() {
+            0x00 | 0x01 | 0x1C => false,
+            0x00..0x3F => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_special1(self) -> bool {
+        self.opcode() == 0x00
+    }
+
+    pub fn is_special2(self) -> bool {
+        self.opcode() == 0x1C
+    }
+
+    pub fn is_special(self) -> bool {
+        self.is_special1() || self.is_special2()
+    }
+
+    pub fn is_regimm(self) -> bool {
+        self.opcode() == 0x01
+    }
+
+    pub fn operation(self) -> Result<Operation, InstructionError> {
+        self.get_special_op()
+            .map(|spec| match spec {
+                SpecialOp::Special1(spec1) => Operation::Special1(spec1),
+                SpecialOp::Special2(spec2) => Operation::Special2(spec2),
+            })
+            .or(self.get_regimm_op().map(|op| Operation::Regimm(op)))
+            .or(self.get_immediate_op().map(|op| Operation::Immediate(op)))
+    }
+
+    pub fn get_immediate_op(self) -> Result<ImmediateOp, InstructionError> {
+        ImmediateOp::try_from(self.opcode()).map_err(|e| InstructionError::Operation(e))
+    }
+
+    pub fn get_special_op(self) -> Result<SpecialOp, InstructionError> {
+        if self.is_special1() {
+            Ok(SpecialOp::Special1(
+                Special1Op::try_from(self.raw & 0x3F)
+                    .map_err(|e| InstructionError::Operation(e))?,
+            ))
+        } else if self.is_special2() {
+            Ok(SpecialOp::Special2(
+                Special2Op::try_from(self.raw & 0x3F)
+                    .map_err(|e| InstructionError::Operation(e))?,
+            ))
         } else {
-            OpFunct::OpCode(opcode)
+            Err(InstructionError::NoSuchField)
+        }
+    }
+
+    pub fn get_regimm_op(self) -> Result<RegimmOp, InstructionError> {
+        if self.is_regimm() {
+            RegimmOp::try_from(self.raw >> 16 & 0x1F).map_err(|e| InstructionError::Operation(e))
+        } else {
+            Err(InstructionError::NoSuchField)
+        }
+    }
+
+    pub fn get_rs(self) -> Result<Register, InstructionError> {
+        Register::try_from(self.raw >> 21 & 0x1F)
+    }
+
+    pub fn get_rt(self) -> Result<Register, InstructionError> {
+        if self.is_regimm() {
+            Err(InstructionError::NoSuchField)
+        } else {
+            Register::try_from(self.raw >> 16 & 0x1F)
+        }
+    }
+
+    pub fn get_shamt(self) -> Result<u32, InstructionError> {
+        if self.is_special() {
+            Ok(self.raw >> 6 & 0x1F)
+        } else {
+            Err(InstructionError::NoSuchField)
+        }
+    }
+
+    pub fn get_rd(self) -> Result<Register, InstructionError> {
+        if self.is_regimm() | self.is_immediate() {
+            Err(InstructionError::NoSuchField)
+        } else {
+            Register::try_from(self.raw >> 11 & 0x1F)
+        }
+    }
+
+    pub fn get_immediate(self) -> Result<u32, InstructionError> {
+        if self.is_special() {
+            Err(InstructionError::NoSuchField)
+        } else {
+            Ok(self.raw & 0xFFFF)
+        }
+    }
+
+    pub fn get_26_bit_address(self) -> Result<u32, InstructionError> {
+        match self.get_immediate_op()? {
+            ImmediateOp::J | ImmediateOp::Jal | ImmediateOp::Jalx => Ok(self.raw & 0x3FFFFFF),
+            _ => Err(InstructionError::NoSuchField),
         }
     }
 }
 
 #[derive(Debug, Clone)]
-pub enum Instruction {
-    Add(RArgs),
-    Addi(IArgs),
-    Addiu(IArgs),
-    Addu(RArgs),
-    And(RArgs),
-    Andi(IArgs),
-    Beq(IArgs),
-    Bgtz(IArgs),
-    Blez(IArgs),
-    Bne(IArgs),
-    J(JArgs),
-    Jal(JArgs),
-    Jalr(RArgs),
-    Jr(RArgs),
-    Lb(IArgs),
-    Lui(IArgs),
-    Lw(IArgs),
-    Nor(RArgs),
-    Nop(RArgs),
-    Or(RArgs),
-    Ori(IArgs),
-    Sb(IArgs),
-    Sll(RArgs),
-    Slt(RArgs),
-    Slti(IArgs),
-    Sw(IArgs),
-    Sltiu(IArgs),
-    Sltu(RArgs),
-    Srl(RArgs),
-    Sub(RArgs),
-    Subu(RArgs),
-    Syscall(RArgs),
-    Xor(RArgs),
-    Xori(IArgs),
+pub enum InstructionError {
+    Operation(OperationError),
+    InvalidRegister,
+    NoSuchField,
 }
 
-impl Instruction {
-    pub fn from_raw_instruction(raw_instr: RawInstruction) -> Option<Instruction> {
-        match raw_instr.opt_funct() {
-            OpFunct::Funct(func) => {
-                /*
+#[derive(Debug, Clone)]
+pub struct Immediate {
+    pub opcode: ImmediateOp,
+    pub rs: Register,
+    pub rt: Register,
+    pub imm: u32,
+}
 
-                  ______ _    _ _   _  _____ _______
-                 |  ____| |  | | \ | |/ ____|__   __|
-                 | |__  | |  | |  \| | |       | |
-                 |  __| | |  | | . ` | |       | |
-                 | |    | |__| | |\  | |____   | |
-                 |_|     \____/|_| \_|\_____|  |_|
+impl TryFrom<RawInstruction> for Immediate {
+    type Error = InstructionError;
+    fn try_from(raw: RawInstruction) -> Result<Immediate, InstructionError> {
+        Ok(Immediate {
+            opcode: raw.get_immediate_op()?,
+            rs: raw.get_rs()?,
+            rt: raw.get_rt()?,
+            imm: raw.get_immediate()?,
+        })
+    }
+}
 
+#[derive(Debug, Clone)]
+pub enum SpecialOp {
+    Special1(Special1Op),
+    Special2(Special2Op),
+}
 
+#[derive(Debug, Clone)]
+pub struct Special {
+    pub special_opcode: SpecialOp,
+    pub rs: Register,
+    pub rt: Register,
+    pub rd: Register,
+    pub shamt: u32,
+}
 
-                */
-                let rargs = RArgs::unpack(raw_instr);
-                match func {
-                    0x00 => Some(Instruction::Sll(rargs)),
-                    0x01 => None,
-                    0x02 => Some(Instruction::Srl(rargs)),
-                    0x03 => None,
-                    0x04 => None,
-                    0x05 => None,
-                    0x06 => None,
-                    0x07 => None,
-                    0x08 => Some(Instruction::Jr(rargs)),
-                    0x09 => Some(Instruction::Jalr(rargs)),
-                    0x0A => None,
-                    0x0B => None,
-                    0x0C => Some(Instruction::Syscall(rargs)),
-                    0x0D => None,
-                    0x0E => None,
-                    0x0F => None,
-                    0x10 => None,
-                    0x11 => None,
-                    0x12 => None,
-                    0x13 => None,
-                    0x14 => None,
-                    0x15 => None,
-                    0x16 => None,
-                    0x17 => None,
-                    0x18 => None,
-                    0x19 => None,
-                    0x1A => None,
-                    0x1B => None,
-                    0x1C => None,
-                    0x1D => None,
-                    0x1E => None,
-                    0x1F => None,
-                    0x20 => Some(Instruction::Add(rargs)),
-                    0x21 => Some(Instruction::Addu(rargs)),
-                    0x22 => Some(Instruction::Sub(rargs)),
-                    0x23 => Some(Instruction::Subu(rargs)),
-                    0x24 => Some(Instruction::And(rargs)),
-                    0x25 => Some(Instruction::Or(rargs)),
-                    0x26 => Some(Instruction::Xor(rargs)),
-                    0x27 => Some(Instruction::Nor(rargs)),
-                    0x28 => None,
-                    0x29 => None,
-                    0x2A => Some(Instruction::Slt(rargs)),
-                    0x2B => Some(Instruction::Sltu(rargs)),
-                    0x2C => None,
-                    0x2D => None,
-                    0x2E => None,
-                    0x2F => None,
-                    0x30 => None,
-                    0x31 => None,
-                    0x32 => None,
-                    0x33 => None,
-                    0x34 => None,
-                    0x35 => None,
-                    0x36 => None,
-                    0x37 => None,
-                    0x38 => None,
-                    0x39 => None,
-                    0x3A => None,
-                    0x3B => None,
-                    0x3C => None,
-                    0x3D => None,
-                    0x3E => None,
-                    0x3F => None,
-                    _ => None,
+impl TryFrom<RawInstruction> for Special {
+    type Error = InstructionError;
+    fn try_from(raw: RawInstruction) -> Result<Special, InstructionError> {
+        Ok(Special {
+            special_opcode: raw.get_special_op()?,
+            rs: raw.get_rs()?,
+            rt: raw.get_rt()?,
+            rd: raw.get_rd()?,
+            shamt: raw.get_shamt()?,
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Regimm {
+    pub regimm_op: RegimmOp,
+    pub rs: Register,
+    pub offset: u32,
+}
+
+impl TryFrom<RawInstruction> for Regimm {
+    type Error = InstructionError;
+    fn try_from(raw: RawInstruction) -> Result<Regimm, InstructionError> {
+        Ok(Regimm {
+            regimm_op: raw.get_regimm_op()?,
+            rs: raw.get_rs()?,
+            offset: raw.get_immediate()?,
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Jump {
+    pub opcode: ImmediateOp,
+    pub address: u32,
+}
+
+impl TryFrom<RawInstruction> for Jump {
+    type Error = InstructionError;
+    fn try_from(raw: RawInstruction) -> Result<Jump, InstructionError> {
+        Ok(Jump {
+            opcode: raw.get_immediate_op()?,
+            address: raw.get_26_bit_address()?,
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum Instruction {
+    Imm(Immediate),
+    Spec(Special),
+    Regimm(Regimm),
+    J(Jump),
+}
+
+impl TryFrom<RawInstruction> for Instruction {
+    type Error = InstructionError;
+    fn try_from(raw: RawInstruction) -> Result<Instruction, InstructionError> {
+        match raw.operation()? {
+            Operation::Immediate(imm) => match imm {
+                ImmediateOp::J | ImmediateOp::Jal | ImmediateOp::Jalx => {
+                    Ok(Instruction::J(Jump::try_from(raw)?))
                 }
-            }
-            /*
-
-               ____  _____   _____ ____  _____  ______
-              / __ \|  __ \ / ____/ __ \|  __ \|  ____|
-             | |  | | |__) | |   | |  | | |  | | |__
-             | |  | |  ___/| |   | |  | | |  | |  __|
-             | |__| | |    | |___| |__| | |__| | |____
-              \____/|_|     \_____\____/|_____/|______|
-
-
-
-            */
-            OpFunct::OpCode(op) => match op {
-                0x00 => None,
-                0x01 => None,
-                0x02 => Some(Instruction::J(JArgs::unpack(raw_instr))),
-                0x03 => Some(Instruction::Jal(JArgs::unpack(raw_instr))),
-                0x04 => Some(Instruction::Beq(IArgs::unpack(raw_instr))),
-                0x05 => Some(Instruction::Bne(IArgs::unpack(raw_instr))),
-                0x06 => Some(Instruction::Blez(IArgs::unpack(raw_instr))),
-                0x07 => Some(Instruction::Bgtz(IArgs::unpack(raw_instr))),
-                0x08 => Some(Instruction::Addi(IArgs::unpack(raw_instr))),
-                0x09 => Some(Instruction::Addiu(IArgs::unpack(raw_instr))),
-                0x0A => Some(Instruction::Slti(IArgs::unpack(raw_instr))),
-                0x0B => Some(Instruction::Sltiu(IArgs::unpack(raw_instr))),
-                0x0C => Some(Instruction::Andi(IArgs::unpack(raw_instr))),
-                0x0D => Some(Instruction::Ori(IArgs::unpack(raw_instr))),
-                0x0E => Some(Instruction::Xori(IArgs::unpack(raw_instr))),
-                0x0F => Some(Instruction::Lui(IArgs::unpack(raw_instr))),
-                0x10 => None,
-                0x11 => None,
-                0x12 => None,
-                0x13 => None,
-                0x14 => None,
-                0x15 => None,
-                0x16 => None,
-                0x17 => None,
-                0x18 => None,
-                0x19 => None,
-                0x1A => None,
-                0x1B => None,
-                0x1C => None,
-                0x1D => None,
-                0x1E => None,
-                0x1F => None,
-                0x20 => Some(Instruction::Lb(IArgs::unpack(raw_instr))),
-                0x21 => None,
-                0x22 => None,
-                0x23 => Some(Instruction::Lw(IArgs::unpack(raw_instr))),
-                0x24 => None,
-                0x25 => None,
-                0x26 => None,
-                0x27 => None,
-                0x28 => Some(Instruction::Sb(IArgs::unpack(raw_instr))),
-                0x29 => None,
-                0x2A => None,
-                0x2B => Some(Instruction::Sw(IArgs::unpack(raw_instr))),
-                0x2C => None,
-                0x2D => None,
-                0x2E => None,
-                0x2F => None,
-                0x30 => None,
-                0x31 => None,
-                0x32 => None,
-                0x33 => None,
-                0x34 => None,
-                0x35 => None,
-                0x36 => None,
-                0x37 => None,
-                0x38 => None,
-                0x39 => None,
-                0x3A => None,
-                0x3B => None,
-                0x3C => None,
-                0x3D => None,
-                0x3E => None,
-                0x3F => None,
-                _ => None,
+                _ => Ok(Instruction::Imm(Immediate::try_from(raw)?)),
             },
+            Operation::Special2(_) | Operation::Special1(_) => {
+                Ok(Instruction::Spec(Special::try_from(raw)?))
+            }
+            Operation::Regimm(_) => Ok(Instruction::Regimm(Regimm::try_from(raw)?)),
         }
     }
 }
