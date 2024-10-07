@@ -10,3 +10,5 @@ license-file.workspace = true
 [dependencies]
 serde = { version = "1.0.188", features = ["derive"] }
 toml = "0.7.6"
+strum = "0.26"
+strum_macros = "0.26"

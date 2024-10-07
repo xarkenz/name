@@ -1,4 +1,4 @@
-use std::mem;
+use strum_macros::FromRepr;
 
 #[derive(Debug, Clone)]
 pub enum OperationError {
@@ -45,7 +45,7 @@ impl Operation {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, FromRepr, Clone, Copy)]
 #[repr(u32)]
 pub enum ImmediateOp {
     // 0x00 = OperationError::WrongInstructionClass,
@@ -118,35 +118,15 @@ pub enum ImmediateOp {
 impl TryFrom<u32> for ImmediateOp {
     type Error = OperationError;
     fn try_from(raw: u32) -> Result<ImmediateOp, OperationError> {
-        match raw {
-            0x00 => Err(OperationError::WrongInstructionClass),
-            0x01 => Err(OperationError::WrongInstructionClass),
-            0x10 => Err(OperationError::ReservedInstruction),
-            0x11 => Err(OperationError::ReservedInstruction),
-            0x12 => Err(OperationError::ReservedInstruction),
-            0x13 => Err(OperationError::ReservedInstruction),
-            0x18 => Err(OperationError::ReservedInstruction),
-            0x19 => Err(OperationError::ReservedInstruction),
-            0x1A => Err(OperationError::ReservedInstruction),
-            0x1B => Err(OperationError::ReservedInstruction),
-            0x1C => Err(OperationError::WrongInstructionClass),
-            0x1E => Err(OperationError::ReservedInstruction),
-            0x1F => Err(OperationError::ReservedInstruction),
-            0x27 => Err(OperationError::ReservedInstruction),
-            0x2C => Err(OperationError::ReservedInstruction),
-            0x2D => Err(OperationError::ReservedInstruction),
-            0x34 => Err(OperationError::ReservedInstruction),
-            0x37 => Err(OperationError::ReservedInstruction),
-            0x3B => Err(OperationError::ReservedInstruction),
-            0x3C => Err(OperationError::ReservedInstruction),
-            0x3F => Err(OperationError::ReservedInstruction),
-            0x40.. => Err(OperationError::InvalidInstruction),
-            immop => Ok(unsafe { mem::transmute(immop) }),
-        }
+        ImmediateOp::from_repr(raw).ok_or(match raw {
+            0x00 | 0x01 | 0x1C => OperationError::WrongInstructionClass,
+            0x00..0x40 => OperationError::ReservedInstruction,
+            0x40.. => OperationError::InvalidInstruction,
+        })
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, FromRepr)]
 #[repr(u32)]
 pub enum Special1Op {
     Sll = 0x00,
@@ -218,38 +198,14 @@ pub enum Special1Op {
 impl TryFrom<u32> for Special1Op {
     type Error = OperationError;
     fn try_from(raw: u32) -> Result<Special1Op, OperationError> {
-        match raw {
-            0x14 => Err(OperationError::ReservedInstruction),
-            0x15 => Err(OperationError::ReservedInstruction),
-            0x16 => Err(OperationError::ReservedInstruction),
-            0x17 => Err(OperationError::ReservedInstruction),
-            0x1c => Err(OperationError::ReservedInstruction),
-            0x1D => Err(OperationError::ReservedInstruction),
-            0x1E => Err(OperationError::ReservedInstruction),
-            0x1F => Err(OperationError::ReservedInstruction),
-            0x28 => Err(OperationError::ReservedInstruction),
-            0x29 => Err(OperationError::ReservedInstruction),
-            0x2C => Err(OperationError::ReservedInstruction),
-            0x2D => Err(OperationError::ReservedInstruction),
-            0x2E => Err(OperationError::ReservedInstruction),
-            0x2F => Err(OperationError::ReservedInstruction),
-            0x35 => Err(OperationError::ReservedInstruction),
-            0x37 => Err(OperationError::ReservedInstruction),
-            0x38 => Err(OperationError::ReservedInstruction),
-            0x39 => Err(OperationError::ReservedInstruction),
-            0x3A => Err(OperationError::ReservedInstruction),
-            0x3B => Err(OperationError::ReservedInstruction),
-            0x3C => Err(OperationError::ReservedInstruction),
-            0x3D => Err(OperationError::ReservedInstruction),
-            0x3E => Err(OperationError::ReservedInstruction),
-            0x3F => Err(OperationError::ReservedInstruction),
-            0x40.. => Err(OperationError::InvalidInstruction),
-            spec1op => Ok(unsafe { mem::transmute(spec1op) }),
-        }
+        Special1Op::from_repr(raw).ok_or(match raw {
+            0x00..0x40 => OperationError::ReservedInstruction,
+            0x40.. => OperationError::InvalidInstruction,
+        })
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, FromRepr)]
 #[repr(u32)]
 pub enum RegimmOp {
     Bltz = 0x00,
@@ -289,31 +245,14 @@ pub enum RegimmOp {
 impl TryFrom<u32> for RegimmOp {
     type Error = OperationError;
     fn try_from(raw: u32) -> Result<RegimmOp, OperationError> {
-        match raw {
-            0x04 => Err(OperationError::ReservedInstruction),
-            0x05 => Err(OperationError::ReservedInstruction),
-            0x06 => Err(OperationError::ReservedInstruction),
-            0x07 => Err(OperationError::ReservedInstruction),
-            0x0D => Err(OperationError::ReservedInstruction),
-            0x0F => Err(OperationError::ReservedInstruction),
-            0x24 => Err(OperationError::ReservedInstruction),
-            0x25 => Err(OperationError::ReservedInstruction),
-            0x26 => Err(OperationError::ReservedInstruction),
-            0x27 => Err(OperationError::ReservedInstruction),
-            0x28 => Err(OperationError::ReservedInstruction),
-            0x29 => Err(OperationError::ReservedInstruction),
-            0x2A => Err(OperationError::ReservedInstruction),
-            0x2B => Err(OperationError::ReservedInstruction),
-            0x2C => Err(OperationError::ReservedInstruction),
-            0x2D => Err(OperationError::ReservedInstruction),
-            0x2E => Err(OperationError::ReservedInstruction),
-            0x30 => Err(OperationError::InvalidInstruction),
-            regimmop => Ok(unsafe { mem::transmute(regimmop) }),
-        }
+        RegimmOp::from_repr(raw).ok_or(match raw {
+            0x00..0x40 => OperationError::ReservedInstruction,
+            0x40.. => OperationError::InvalidInstruction,
+        })
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, FromRepr)]
 #[repr(u32)]
 pub enum Special2Op {
     Madd = 0x00,
@@ -385,65 +324,9 @@ pub enum Special2Op {
 impl TryFrom<u32> for Special2Op {
     type Error = OperationError;
     fn try_from(raw: u32) -> Result<Special2Op, OperationError> {
-        match raw {
-            0x03 => Err(OperationError::ReservedInstruction),
-            0x06 => Err(OperationError::ReservedInstruction),
-            0x07 => Err(OperationError::ReservedInstruction),
-            0x08 => Err(OperationError::ReservedInstruction),
-            0x09 => Err(OperationError::ReservedInstruction),
-            0x0A => Err(OperationError::ReservedInstruction),
-            0x0B => Err(OperationError::ReservedInstruction),
-            0x0C => Err(OperationError::ReservedInstruction),
-            0x0D => Err(OperationError::ReservedInstruction),
-            0x0E => Err(OperationError::ReservedInstruction),
-            0x0F => Err(OperationError::ReservedInstruction),
-            0x10 => Err(OperationError::ReservedInstruction),
-            0x11 => Err(OperationError::ReservedInstruction),
-            0x12 => Err(OperationError::ReservedInstruction),
-            0x13 => Err(OperationError::ReservedInstruction),
-            0x14 => Err(OperationError::ReservedInstruction),
-            0x15 => Err(OperationError::ReservedInstruction),
-            0x16 => Err(OperationError::ReservedInstruction),
-            0x17 => Err(OperationError::ReservedInstruction),
-            0x18 => Err(OperationError::ReservedInstruction),
-            0x19 => Err(OperationError::ReservedInstruction),
-            0x1A => Err(OperationError::ReservedInstruction),
-            0x1B => Err(OperationError::ReservedInstruction),
-            0x1c => Err(OperationError::ReservedInstruction),
-            0x1D => Err(OperationError::ReservedInstruction),
-            0x1E => Err(OperationError::ReservedInstruction),
-            0x1F => Err(OperationError::ReservedInstruction),
-            0x22 => Err(OperationError::ReservedInstruction),
-            0x23 => Err(OperationError::ReservedInstruction),
-            0x24 => Err(OperationError::ReservedInstruction),
-            0x25 => Err(OperationError::ReservedInstruction),
-            0x26 => Err(OperationError::ReservedInstruction),
-            0x27 => Err(OperationError::ReservedInstruction),
-            0x28 => Err(OperationError::ReservedInstruction),
-            0x29 => Err(OperationError::ReservedInstruction),
-            0x2A => Err(OperationError::ReservedInstruction),
-            0x2B => Err(OperationError::ReservedInstruction),
-            0x2C => Err(OperationError::ReservedInstruction),
-            0x2D => Err(OperationError::ReservedInstruction),
-            0x2E => Err(OperationError::ReservedInstruction),
-            0x2F => Err(OperationError::ReservedInstruction),
-            0x30 => Err(OperationError::ReservedInstruction),
-            0x31 => Err(OperationError::ReservedInstruction),
-            0x32 => Err(OperationError::ReservedInstruction),
-            0x33 => Err(OperationError::ReservedInstruction),
-            0x34 => Err(OperationError::ReservedInstruction),
-            0x35 => Err(OperationError::ReservedInstruction),
-            0x36 => Err(OperationError::ReservedInstruction),
-            0x37 => Err(OperationError::ReservedInstruction),
-            0x38 => Err(OperationError::ReservedInstruction),
-            0x39 => Err(OperationError::ReservedInstruction),
-            0x3A => Err(OperationError::ReservedInstruction),
-            0x3B => Err(OperationError::ReservedInstruction),
-            0x3C => Err(OperationError::ReservedInstruction),
-            0x3D => Err(OperationError::ReservedInstruction),
-            0x3E => Err(OperationError::ReservedInstruction),
-            0x40.. => Err(OperationError::InvalidInstruction),
-            specop2 => Ok(unsafe { mem::transmute(specop2) }),
-        }
+        Special2Op::from_repr(raw).ok_or(match raw {
+            0x00..0x40 => OperationError::ReservedInstruction,
+            0x40.. => OperationError::InvalidInstruction,
+        })
     }
 }
