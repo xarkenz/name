@@ -8,6 +8,65 @@ pub struct Symbol {
     pub section: Section,
 }
 
+#[derive(Debug)]
+pub struct Processor {
+    pub pc: u32,
+    pub general_purpose_registers: [u32; 32],
+}
+
+impl Processor {
+    pub fn new(entry: u32) -> Self {
+        Processor {
+            pc: entry,
+            general_purpose_registers: [0; 32],
+        }
+    }
+}
+
+// FIXME cba
+pub enum ExecutionStatus {
+    Continue,
+    Complete,
+    Break,
+}
+
+#[derive(Debug, Clone, Copy)]
+#[repr(usize)]
+pub enum Register {
+    Zero,
+    At,
+    V0,
+    V1,
+    A0,
+    A1,
+    A2,
+    A3,
+    T0,
+    T1,
+    T2,
+    T3,
+    T4,
+    T5,
+    T6,
+    T7,
+    S0,
+    S1,
+    S2,
+    S3,
+    S4,
+    S5,
+    S6,
+    S7,
+    T8,
+    T9,
+    K0,
+    K1,
+    Gp,
+    Sp,
+    Fp,
+    Ra,
+}
+
 #[derive(Debug, Default)]
 pub enum Visibility {
     #[default]

@@ -3,7 +3,7 @@ use crate::assembler::assembler::Assembler;
 use crate::assembler::assembly_helpers::{reverse_format_instruction, search_mnemonic};
 use crate::definitions::structs::{BackpatchType, LineComponent, PseudoInstruction};
 
-use name_core::instruction_information::InstructionInformation;
+use name_core::instruction::information::InstructionInformation;
 
 use crate::parser::parse_components;
 

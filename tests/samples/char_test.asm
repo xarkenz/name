@@ -30,5 +30,10 @@ OurBelovedString: .asciiz     "hello\nworlde\ti am swagalicious\\\'\""
     la  $a0, OurBelovedString
     li  $v0, SysPrintString
     syscall
+
+    lw $a0, OurBelovedString
+    li $v0, SysPrintInt
+    syscall
+
     li  $v0, SysExit
     syscall

@@ -1,13 +1,23 @@
+use std::{collections::HashMap, sync::LazyLock};
+
 use name_core::{
     constants::REGISTERS,
     elf_def::MIPS_ADDRESS_ALIGNMENT,
-    instruction::Instruction,
-    structs::{LineInfo, Memory},
+    instruction::{
+        information::{InstructionInformation, INSTRUCTION_SET},
+        Instruction,
+    },
+    structs::{ExecutionStatus, LineInfo, Memory, Processor},
 };
 
-use crate::definitions::processor::Processor;
+static INSTRUCTION_LOOKUP: LazyLock<HashMap<u32, &'static InstructionInformation>> =
+    LazyLock::new(|| {
+        INSTRUCTION_SET
+            .iter()
+            .map(|instr| (instr.lookup_code(), instr))
+            .collect()
+    });
 
-use crate::definitions::structs::ExecutionStatus;
 use crate::fetch::fetch;
 use crate::simulator_helpers::generate_err;
 
@@ -33,21 +43,22 @@ pub fn single_step(
     // println!("{}", cpu.pc);
 
     // Fetch
-    let fetched_instruction = fetch(&cpu.pc, &memory)?;
+    let raw_instruction = fetch(&cpu.pc, &memory)?;
+    dbg!(INSTRUCTION_LOOKUP.len());
+    dbg!(raw_instruction.get_lookup());
+    let instr_info = INSTRUCTION_LOOKUP
+        .get(&raw_instruction.get_lookup())
+        .ok_or(generate_err(
+            lineinfo,
+            cpu.pc - 4,
+            format!("Failed instruction fetch").as_str(),
+        ))?;
 
     cpu.pc += MIPS_ADDRESS_ALIGNMENT;
 
-    // Decode
-    let instruction = Instruction::try_from(fetched_instruction).map_err(|e| {
-        generate_err(
-            lineinfo,
-            cpu.pc - 4,
-            format!("Failed instruction fetch {:?}", e).as_str(),
-        )
-    })?;
-
     // Execute
-    let instruction_result = cpu.process_instruction(memory, instruction);
+    let instruction_result =
+        (instr_info.implementation)(cpu, memory, Instruction::from(raw_instruction));
 
     // The $0 register should never have been permanently changed. Don't let it remain changed.
     cpu.general_purpose_registers[0] = 0;

@@ -1,5 +1,4 @@
 use name_core::constants::REGISTERS;
-use name_core::instruction_information::InstructionInformation;
 use name_core::structs::Symbol;
 
 use crate::definitions::{
@@ -7,7 +6,7 @@ use crate::definitions::{
     pseudo_instructions::PSEUDO_INSTRUCTION_SET,
     structs::{LineComponent, PseudoInstruction},
 };
-use name_core::instruction_information::ArgumentType;
+use name_core::instruction::information::{ArgumentType, InstructionInformation};
 
 use std::collections::HashMap;
 

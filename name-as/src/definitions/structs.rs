@@ -1,5 +1,5 @@
 use super::expandables::ExpansionFn;
-use name_core::instruction_information::InstructionInformation;
+use name_core::instruction::information::InstructionInformation;
 
 #[derive(Debug, PartialEq)]
 pub struct Backpatch {

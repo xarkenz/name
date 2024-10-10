@@ -1,7 +1,7 @@
 use crate::assembler::assembler::Assembler;
 use crate::assembler::assembly_helpers::translate_identifier_to_address;
 use crate::definitions::{constants::INSTRUCTION_TABLE, structs::LineComponent};
-use name_core::instruction_information::InstructionInformation;
+use name_core::instruction::information::InstructionInformation;
 
 use super::constants::BACKPATCH_PLACEHOLDER;
 use super::structs::BackpatchType;

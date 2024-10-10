@@ -3,7 +3,7 @@ use name_core::structs::Symbol;
 use crate::assembler::assembly_helpers::{parse_register_to_u32, translate_identifier_to_address};
 use crate::definitions::constants::{MAX_U16, MIN_U16};
 use crate::definitions::structs::LineComponent;
-use name_core::instruction_information::ArgumentType;
+use name_core::instruction::information::ArgumentType;
 
 /*
 

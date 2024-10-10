@@ -1,5 +1,4 @@
-use name_core::constants::INSTRUCTION_SET;
-use name_core::instruction_information::InstructionInformation;
+use name_core::instruction::information::{InstructionInformation, INSTRUCTION_SET};
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
