@@ -1,4 +1,4 @@
-use crate::instruction::instruction::Instruction;
+use crate::instruction::{IArgs, JArgs, RArgs};
 use crate::{
     structs::{
         ExecutionStatus, Memory, Processor,
@@ -24,11 +24,8 @@ use crate::{
 pub fn sll(
     cpu: &mut Processor,
     _memory: &mut Memory,
-    instruction: Instruction,
+    args: RArgs,
 ) -> Result<ExecutionStatus, String> {
-    let args = instruction
-        .rtype()
-        .ok_or("Incorrect Arguments passed".to_string())?;
     cpu.general_purpose_registers[args.rd as usize] =
         cpu.general_purpose_registers[args.rt as usize] << args.shamt;
     Ok(ExecutionStatus::Continue)
@@ -38,11 +35,8 @@ pub fn sll(
 pub fn srl(
     cpu: &mut Processor,
     _memory: &mut Memory,
-    instruction: Instruction,
+    args: RArgs,
 ) -> Result<ExecutionStatus, String> {
-    let args = instruction
-        .rtype()
-        .ok_or("Incorrect Arguments passed".to_string())?;
     cpu.general_purpose_registers[args.rd as usize] =
         cpu.general_purpose_registers[args.rt as usize] >> args.shamt;
     Ok(ExecutionStatus::Continue)
@@ -52,12 +46,8 @@ pub fn srl(
 pub fn jr(
     cpu: &mut Processor,
     memory: &mut Memory,
-    instruction: Instruction,
+    args: RArgs,
 ) -> Result<ExecutionStatus, String> {
-    let args = instruction
-        .rtype()
-        .ok_or("Incorrect Arguments passed".to_string())?;
-
     if cpu.general_purpose_registers[args.rs as usize] >= memory.text_end
         || cpu.general_purpose_registers[args.rs as usize] < memory.text_start
     {
@@ -76,12 +66,8 @@ pub fn jr(
 pub fn jalr(
     cpu: &mut Processor,
     memory: &mut Memory,
-    instruction: Instruction,
+    args: RArgs,
 ) -> Result<ExecutionStatus, String> {
-    let args = instruction
-        .rtype()
-        .ok_or("Incorrect Arguments passed".to_string())?;
-
     let rd = match args.rd {
         0 => 31,
         x => x,
@@ -105,12 +91,8 @@ pub fn jalr(
 pub fn slti(
     cpu: &mut Processor,
     _memory: &mut Memory,
-    instruction: Instruction,
+    args: IArgs,
 ) -> Result<ExecutionStatus, String> {
-    let args = instruction
-        .itype()
-        .ok_or("Incorrect Arguments passed".to_string())?;
-
     if (cpu.general_purpose_registers[args.rs as usize] as i32) < (args.imm as i32) {
         cpu.general_purpose_registers[args.rt as usize] = 1 as u32;
     } else {
@@ -124,12 +106,8 @@ pub fn slti(
 pub fn sltiu(
     cpu: &mut Processor,
     _memory: &mut Memory,
-    instruction: Instruction,
+    args: IArgs,
 ) -> Result<ExecutionStatus, String> {
-    let args = instruction
-        .itype()
-        .ok_or("Incorrect Arguments passed".to_string())?;
-
     if cpu.general_purpose_registers[args.rs as usize] < args.imm {
         cpu.general_purpose_registers[args.rt as usize] = 1 as u32;
     } else {
@@ -143,7 +121,7 @@ pub fn sltiu(
 pub fn syscall(
     cpu: &mut Processor,
     memory: &mut Memory,
-    _instruction: Instruction,
+    _args: RArgs,
 ) -> Result<ExecutionStatus, String> {
     let syscall_num: usize = cpu.general_purpose_registers[V0 as usize] as usize;
     match SYSCALL_TABLE[syscall_num] {
@@ -156,11 +134,8 @@ pub fn syscall(
 pub fn add(
     cpu: &mut Processor,
     _memory: &mut Memory,
-    instruction: Instruction,
+    args: RArgs,
 ) -> Result<ExecutionStatus, String> {
-    let args = instruction
-        .rtype()
-        .ok_or("Incorrect Arguments passed".to_string())?;
     cpu.general_purpose_registers[args.rd as usize] = cpu.general_purpose_registers
         [args.rs as usize]
         + cpu.general_purpose_registers[args.rt as usize];
@@ -174,11 +149,8 @@ pub fn add(
 pub fn addu(
     cpu: &mut Processor,
     _memory: &mut Memory,
-    instruction: Instruction,
+    args: RArgs,
 ) -> Result<ExecutionStatus, String> {
-    let args = instruction
-        .rtype()
-        .ok_or("Incorrect Arguments passed".to_string())?;
     // check that below works
     cpu.general_purpose_registers[args.rd as usize] = cpu.general_purpose_registers
         [args.rs as usize]
@@ -191,12 +163,8 @@ pub fn addu(
 pub fn sub(
     cpu: &mut Processor,
     _memory: &mut Memory,
-    instruction: Instruction,
+    args: RArgs,
 ) -> Result<ExecutionStatus, String> {
-    let args = instruction
-        .rtype()
-        .ok_or("Incorrect Arguments passed".to_string())?;
-
     let temp: (u32, bool) = cpu.general_purpose_registers[args.rs as usize]
         .overflowing_sub(cpu.general_purpose_registers[args.rt as usize]);
 
@@ -218,12 +186,8 @@ pub fn sub(
 pub fn subu(
     cpu: &mut Processor,
     _memory: &mut Memory,
-    instruction: Instruction,
+    args: RArgs,
 ) -> Result<ExecutionStatus, String> {
-    let args = instruction
-        .rtype()
-        .ok_or("Incorrect Arguments passed".to_string())?;
-
     let temp: (u32, bool) = cpu.general_purpose_registers[args.rs as usize]
         .overflowing_sub(cpu.general_purpose_registers[args.rt as usize]);
 
@@ -236,11 +200,8 @@ pub fn subu(
 pub fn and(
     cpu: &mut Processor,
     _memory: &mut Memory,
-    instruction: Instruction,
+    args: RArgs,
 ) -> Result<ExecutionStatus, String> {
-    let args = instruction
-        .rtype()
-        .ok_or("Incorrect Arguments passed".to_string())?;
     cpu.general_purpose_registers[args.rd as usize] = cpu.general_purpose_registers
         [args.rs as usize]
         & cpu.general_purpose_registers[args.rt as usize];
@@ -251,11 +212,8 @@ pub fn and(
 pub fn or(
     cpu: &mut Processor,
     _memory: &mut Memory,
-    instruction: Instruction,
+    args: RArgs,
 ) -> Result<ExecutionStatus, String> {
-    let args = instruction
-        .rtype()
-        .ok_or("Incorrect Arguments passed".to_string())?;
     cpu.general_purpose_registers[args.rd as usize] = cpu.general_purpose_registers
         [args.rs as usize]
         | cpu.general_purpose_registers[args.rt as usize];
@@ -266,11 +224,8 @@ pub fn or(
 pub fn xor(
     cpu: &mut Processor,
     _memory: &mut Memory,
-    instruction: Instruction,
+    args: RArgs,
 ) -> Result<ExecutionStatus, String> {
-    let args = instruction
-        .rtype()
-        .ok_or("Incorrect Arguments passed".to_string())?;
     cpu.general_purpose_registers[args.rd as usize] = cpu.general_purpose_registers
         [args.rs as usize]
         ^ cpu.general_purpose_registers[args.rt as usize];
@@ -281,11 +236,8 @@ pub fn xor(
 pub fn nor(
     cpu: &mut Processor,
     _memory: &mut Memory,
-    instruction: Instruction,
+    args: RArgs,
 ) -> Result<ExecutionStatus, String> {
-    let args = instruction
-        .rtype()
-        .ok_or("Incorrect Arguments passed".to_string())?;
     cpu.general_purpose_registers[args.rd as usize] = !(cpu.general_purpose_registers
         [args.rs as usize]
         | cpu.general_purpose_registers[args.rt as usize]);
@@ -296,11 +248,8 @@ pub fn nor(
 pub fn slt(
     cpu: &mut Processor,
     _memory: &mut Memory,
-    instruction: Instruction,
+    args: RArgs,
 ) -> Result<ExecutionStatus, String> {
-    let args = instruction
-        .rtype()
-        .ok_or("Incorrect Arguments passed".to_string())?;
     if (cpu.general_purpose_registers[args.rs as usize] as i32)
         < (cpu.general_purpose_registers[args.rt as usize] as i32)
     {
@@ -315,11 +264,8 @@ pub fn slt(
 pub fn sltu(
     cpu: &mut Processor,
     _memory: &mut Memory,
-    instruction: Instruction,
+    args: RArgs,
 ) -> Result<ExecutionStatus, String> {
-    let args = instruction
-        .rtype()
-        .ok_or("Incorrect Arguments passed".to_string())?;
     if cpu.general_purpose_registers[args.rs as usize]
         < cpu.general_purpose_registers[args.rt as usize]
     {
@@ -344,12 +290,7 @@ pub fn sltu(
 */
 
 // 0x02 - j
-pub fn j(
-    cpu: &mut Processor,
-    memory: &mut Memory,
-    instruction: Instruction,
-) -> Result<ExecutionStatus, String> {
-    let args = instruction.jtype().ok_or("Incorrect Arguments passed")?;
+pub fn j(cpu: &mut Processor, memory: &mut Memory, args: JArgs) -> Result<ExecutionStatus, String> {
     let address: u32 = (args.address << 2) | (cpu.pc & 0xF0000000);
 
     if address >= memory.text_end || address < memory.text_start {
@@ -368,9 +309,8 @@ pub fn j(
 pub fn jal(
     cpu: &mut Processor,
     memory: &mut Memory,
-    instruction: Instruction,
+    args: JArgs,
 ) -> Result<ExecutionStatus, String> {
-    let args = instruction.jtype().ok_or("Incorrect Arguments passed")?;
     let address: u32 = (args.address << 2) | (cpu.pc & 0xF0000000);
 
     if address >= memory.text_end || address < memory.text_start {
@@ -390,12 +330,8 @@ pub fn jal(
 pub fn beq(
     cpu: &mut Processor,
     memory: &mut Memory,
-    instruction: Instruction,
+    args: IArgs,
 ) -> Result<ExecutionStatus, String> {
-    let args = instruction
-        .itype()
-        .ok_or("Incorrect Arguments passed".to_string())?;
-
     // Sign extend offset
     let offset: i32 = ((args.imm & 0xFFFF) as i16 as i32) << 2;
 
@@ -421,12 +357,8 @@ pub fn beq(
 pub fn bne(
     cpu: &mut Processor,
     memory: &mut Memory,
-    instruction: Instruction,
+    args: IArgs,
 ) -> Result<ExecutionStatus, String> {
-    let args = instruction
-        .itype()
-        .ok_or("Incorrect Arguments passed".to_string())?;
-
     // Sign extend offset
     let offset: i32 = ((args.imm & 0xFFFF) as i16 as i32) << 2;
 
@@ -452,12 +384,8 @@ pub fn bne(
 pub fn blez(
     cpu: &mut Processor,
     memory: &mut Memory,
-    instruction: Instruction,
+    args: IArgs,
 ) -> Result<ExecutionStatus, String> {
-    let args = instruction
-        .itype()
-        .ok_or("Incorrect Arguments passed".to_string())?;
-
     let offset: i32 = ((args.imm & 0xFFFF) as i16 as i32) << 2;
 
     if (cpu.general_purpose_registers[args.rs as usize] as i32) > 0 {
@@ -480,12 +408,8 @@ pub fn blez(
 pub fn bgtz(
     cpu: &mut Processor,
     memory: &mut Memory,
-    instruction: Instruction,
+    args: IArgs,
 ) -> Result<ExecutionStatus, String> {
-    let args = instruction
-        .itype()
-        .ok_or("Incorrect Arguments passed".to_string())?;
-
     // Sign extend offset
     let offset: i32 = (args.imm as i16 as i32) << 2;
 
@@ -508,11 +432,8 @@ pub fn bgtz(
 pub fn addi(
     cpu: &mut Processor,
     _memory: &mut Memory,
-    instruction: Instruction,
+    args: IArgs,
 ) -> Result<ExecutionStatus, String> {
-    let args = instruction
-        .itype()
-        .ok_or("Incorrect Arguments passed".to_string())?;
     cpu.general_purpose_registers[args.rt as usize] =
         (cpu.general_purpose_registers[args.rs as usize] as i32 + (args.imm as i16 as i32)) as u32;
     Ok(ExecutionStatus::Continue)
@@ -522,11 +443,8 @@ pub fn addi(
 pub fn addiu(
     cpu: &mut Processor,
     _memory: &mut Memory,
-    instruction: Instruction,
+    args: IArgs,
 ) -> Result<ExecutionStatus, String> {
-    let args = instruction
-        .itype()
-        .ok_or("Incorrect Arguments passed".to_string())?;
     cpu.general_purpose_registers[args.rt as usize] = cpu.general_purpose_registers
         [args.rs as usize]
         .overflowing_add(args.imm)
@@ -538,11 +456,8 @@ pub fn addiu(
 pub fn andi(
     cpu: &mut Processor,
     _memory: &mut Memory,
-    instruction: Instruction,
+    args: IArgs,
 ) -> Result<ExecutionStatus, String> {
-    let args = instruction
-        .itype()
-        .ok_or("Incorrect Arguments passed".to_string())?;
     cpu.general_purpose_registers[args.rt as usize] =
         cpu.general_purpose_registers[args.rs as usize] & args.imm;
     Ok(ExecutionStatus::Continue)
@@ -552,11 +467,8 @@ pub fn andi(
 pub fn ori(
     cpu: &mut Processor,
     _memory: &mut Memory,
-    instruction: Instruction,
+    args: IArgs,
 ) -> Result<ExecutionStatus, String> {
-    let args = instruction
-        .itype()
-        .ok_or("Incorrect Arguments passed".to_string())?;
     cpu.general_purpose_registers[args.rt as usize] =
         cpu.general_purpose_registers[args.rs as usize] | args.imm;
     Ok(ExecutionStatus::Continue)
@@ -566,11 +478,8 @@ pub fn ori(
 pub fn xori(
     cpu: &mut Processor,
     _memory: &mut Memory,
-    instruction: Instruction,
+    args: IArgs,
 ) -> Result<ExecutionStatus, String> {
-    let args = instruction
-        .itype()
-        .ok_or("Incorrect Arguments passed".to_string())?;
     cpu.general_purpose_registers[args.rt as usize] =
         cpu.general_purpose_registers[args.rs as usize] ^ args.imm;
     Ok(ExecutionStatus::Continue)
@@ -580,11 +489,8 @@ pub fn xori(
 pub fn lui(
     cpu: &mut Processor,
     _memory: &mut Memory,
-    instruction: Instruction,
+    args: IArgs,
 ) -> Result<ExecutionStatus, String> {
-    let args = instruction
-        .itype()
-        .ok_or("Incorrect Arguments passed".to_string())?;
     // SUPER DUPER PROBLEM SPOT
     cpu.general_purpose_registers[args.rt as usize] = args.imm << 16;
     Ok(ExecutionStatus::Continue)
@@ -594,12 +500,8 @@ pub fn lui(
 pub fn lb(
     cpu: &mut Processor,
     memory: &mut Memory,
-    instruction: Instruction,
+    args: IArgs,
 ) -> Result<ExecutionStatus, String> {
-    let args = instruction
-        .itype()
-        .ok_or("Incorrect Arguments passed".to_string())?;
-
     cpu.general_purpose_registers[At as usize] =
         (cpu.general_purpose_registers[args.rs as usize] as i32 + args.imm as i32) as u32;
 
@@ -623,12 +525,8 @@ pub fn lb(
 pub fn lw(
     cpu: &mut Processor,
     memory: &mut Memory,
-    instruction: Instruction,
+    args: IArgs,
 ) -> Result<ExecutionStatus, String> {
-    let args = instruction
-        .itype()
-        .ok_or("Incorrect Arguments passed".to_string())?;
-
     let temp = (cpu.general_purpose_registers[args.rs as usize] as i32 + args.imm as i32) as u32;
 
     if temp % 4 != 0 {
@@ -658,12 +556,8 @@ pub fn lw(
 pub fn sb(
     cpu: &mut Processor,
     memory: &mut Memory,
-    instruction: Instruction,
+    args: IArgs,
 ) -> Result<ExecutionStatus, String> {
-    let args = instruction
-        .itype()
-        .ok_or("Incorrect Arguments passed".to_string())?;
-
     let temp = (cpu.general_purpose_registers[args.rs as usize] as i32 + args.imm as i32) as u32;
 
     if temp >= memory.data_end || temp < memory.data_start {
@@ -680,12 +574,8 @@ pub fn sb(
 pub fn sw(
     cpu: &mut Processor,
     memory: &mut Memory,
-    instruction: Instruction,
+    args: IArgs,
 ) -> Result<ExecutionStatus, String> {
-    let args = instruction
-        .itype()
-        .ok_or("Incorrect Arguments passed".to_string())?;
-
     let temp = (cpu.general_purpose_registers[args.rs as usize] as i32 + args.imm as i32) as u32;
 
     if temp % 4 != 0 {

@@ -3,11 +3,7 @@ use std::{collections::HashMap, sync::LazyLock};
 use name_core::{
     constants::REGISTERS,
     elf_def::MIPS_ADDRESS_ALIGNMENT,
-    instruction::{
-        information::InstructionInformation,
-        instruction_set::INSTRUCTION_SET,
-        Instruction,
-    },
+    instruction::{information::InstructionInformation, instruction_set::INSTRUCTION_SET},
     structs::{ExecutionStatus, LineInfo, Memory, Processor},
 };
 
@@ -41,12 +37,8 @@ pub fn single_step(
         ));
     }
 
-    // println!("{}", cpu.pc);
-
     // Fetch
     let raw_instruction = fetch(&cpu.pc, &memory)?;
-    dbg!(INSTRUCTION_LOOKUP.len());
-    dbg!(raw_instruction.get_lookup());
     let instr_info = INSTRUCTION_LOOKUP
         .get(&raw_instruction.get_lookup())
         .ok_or(generate_err(
@@ -58,8 +50,7 @@ pub fn single_step(
     cpu.pc += MIPS_ADDRESS_ALIGNMENT;
 
     // Execute
-    let instruction_result =
-        (instr_info.implementation)(cpu, memory, Instruction::from(raw_instruction));
+    let instruction_result = (instr_info.implementation)(cpu, memory, raw_instruction);
 
     // The $0 register should never have been permanently changed. Don't let it remain changed.
     cpu.general_purpose_registers[0] = 0;

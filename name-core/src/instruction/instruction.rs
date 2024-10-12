@@ -77,9 +77,29 @@ pub struct IArgs {
     pub imm: u32,
 }
 
+impl From<RawInstruction> for IArgs {
+    fn from(raw: RawInstruction) -> IArgs {
+        IArgs {
+            opcode: raw.get_opcode(),
+            rs: raw.get_rs(),
+            rt: raw.get_rt(),
+            imm: raw.get_immediate(),
+        }
+    }
+}
+
 pub struct JArgs {
     pub opcode: u32,
     pub address: u32,
+}
+
+impl From<RawInstruction> for JArgs {
+    fn from(raw: RawInstruction) -> JArgs {
+        JArgs {
+            opcode: raw.get_opcode(),
+            address: raw.get_jump(),
+        }
+    }
 }
 
 pub struct RArgs {
@@ -91,57 +111,15 @@ pub struct RArgs {
     pub funct: u32,
 }
 
-pub enum Instruction {
-    IType(IArgs),
-    JType(JArgs),
-    RType(RArgs),
-}
-
-impl From<RawInstruction> for Instruction {
-    fn from(raw: RawInstruction) -> Instruction {
-        let opcode = raw.get_opcode();
-        if raw.is_jtype() {
-            Self::JType(JArgs {
-                opcode,
-                address: raw.get_jump(),
-            })
-        } else if raw.is_rtype() {
-            Self::RType(RArgs {
-                opcode,
-                rs: raw.get_rs(),
-                rt: raw.get_rt(),
-                rd: raw.get_rd(),
-                shamt: raw.get_shamt(),
-                funct: raw.get_funct(),
-            })
-        } else {
-            Self::IType(IArgs {
-                opcode,
-                rs: raw.get_rs(),
-                rt: raw.get_rt(),
-                imm: raw.get_immediate(),
-            })
-        }
-    }
-}
-
-impl Instruction {
-    pub fn jtype(self) -> Option<JArgs> {
-        match self {
-            Self::JType(jargs) => Some(jargs),
-            _ => None,
-        }
-    }
-    pub fn itype(self) -> Option<IArgs> {
-        match self {
-            Self::IType(iargs) => Some(iargs),
-            _ => None,
-        }
-    }
-    pub fn rtype(self) -> Option<RArgs> {
-        match self {
-            Self::RType(rargs) => Some(rargs),
-            _ => None,
+impl From<RawInstruction> for RArgs {
+    fn from(raw: RawInstruction) -> RArgs {
+        RArgs {
+            opcode: raw.get_opcode(),
+            rs: raw.get_rs(),
+            rt: raw.get_rt(),
+            rd: raw.get_rd(),
+            shamt: raw.get_shamt(),
+            funct: raw.get_funct(),
         }
     }
 }
