@@ -4,7 +4,7 @@
 
 NAME ("Not Another MIPS Emulator") is a MIPS assembly code emulation pipeline designed for educational use. It contains a MIPS assembler, linker, emulator, and VSCode development extension. The first three tools can be used entirely from the command line with `cargo`.
 
-**Note** that while this implementation focuses on MIPS, in particular [this](https://s3-eu-west-1.amazonaws.com/downloads-mips/documents/MD00086-2B-MIPS32BIS-AFP-6.06.pdf) TIS, a fork of this project could feasibly produce an implementation for any other asm.
+**Note** that while this implementation focuses on MIPS, in particular [this](https://s3-eu-west-1.amazonaws.com/downloads-mips/documents/MD00086-2B-MIPS32BIS-AFP-6.06.pdf) TIS, a fork of this project could feasibly produce an implementation for any other asm. That being said, many design choices were made with MIPS32 in mind, and it could be a great deal of work.
 
 NAME operates using the ELF file format and associated conventions. If unfamiliar, read more [here](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format).
 
@@ -40,15 +40,16 @@ In its current state, when building from source, NAME will not function unless `
 Some test files have been included. You can find them in [test files](test_files/test_files.md).
 
 ## Assembly
-NAME assembles each module in the user's directory into an ET_REL relocatable object file for the linker to handle, using code found in [elf_utils.rs](name-as/src/elf_utils.rs) and [assembler.rs](name-as/src/nma.rs). Each ET_REL has the same following sections, present in this order:
+NAME assembles each module in the user's directory into an ET_REL relocatable object file for the linker to handle, using code found in [elf_utils.rs](name-as/src/elf_utils.rs) and [assembler.rs](name-as/src/assembler/assembler.rs). Each ET_REL has the same following sections, present in this order:
  - Reserved null section
  - `.text`
  - `.data`
  - `.symtab`
  - `.strtab`
+ - `.line`
  - `.shstrtab`
 
-The order in which sections appear in linked, multi-module programs is not specified. Single-module programs maintain the same section order once assembled.
+The order in which sections appear in linked, multi-module programs is not yet specified. Single-module programs maintain the same section order once assembled.
 
 The NAME MIPS assembler uses a few key steps:
 
@@ -58,7 +59,7 @@ Parsing is implmented in [parser.rs](name-as/src/parser.rs). It uses [logos](htt
 These extracted patterns are handled by the assembler.
 
 #### Assembling
-When the parsed line components contain an instruction mnemonic, the assembler first attempts to retrieve the associated [InstructionInformation](name-const/src/structs.rs). If it cannot be found, an error is returned. Once the InstructionInformation is retrieved, the assembler checks the associated operands for the correct argument configuration. If alternate configurations exist, they are also checked for. If no configurations match, an error is returned. Then, the assembler calls the appropriate helper function to actually pack the instruction. These helpers are defined in [assembly_utils.rs](name-as/src/assembly_utils.rs).
+When the parsed line components contain an instruction mnemonic, the assembler first attempts to retrieve the associated [InstructionInformation](name-core/src/instruction/information.rs) from [core](name-core/src/instruction/instruction_set.rs). If it cannot be found, an error is returned. Once the InstructionInformation is retrieved, the assembler checks the associated operands for the correct argument configuration. If alternate configurations exist, they are also checked for. If no configurations match, an error is returned. Then, the assembler calls the appropriate helper function to actually pack the instruction. These helpers are defined in [assembly_utils.rs](name-as/src/assembler/assembly_utils.rs).
 
 If an instruction which expects a branch label returns `Ok(None)`, this means the branch label was given but not yet defined, otherwise known as a forward reference. Take the following assembly code:
 ```mips
@@ -72,33 +73,31 @@ exit:
   syscall
 ```
 
-It's clear that when the assembler encounters the `j exit` instruction, it does not yet know the corresponding address.
+It's clear that when the assembler encounters the `j exit` instruction, it does not yet know the address of the label `exit` and therefore cannot assemble the instruction at that moment.
 
-NAME tackles this problem using backpatching. The assembler keeps track of any detected forward references (labels referenced with no symbol table entry) and attempts to resolve them once labels are encountered. It does so by saving the byte offset, InstructionInformation, operands, and other associated information for a line once the forward reference is encountered, at which point placeholder bytes `0x00000000` are placed in the `.text` section. Once the correct label is encountered, instructions can be patched by invoking [assemble_instruction](name-as/src/assemble_instruction.rs) on the saved information and arguments, then slicing in the new bytes on the `.text` section. If labels are referenced but never defined in any module, NAME throws an error.
+NAME tackles this problem using backpatching. The assembler keeps track of any detected forward references (labels referenced with no symbol table entry) and attempts to resolve them once labels are encountered. It does so by saving the byte offset, InstructionInformation, operands, and other associated information for a line once the forward reference is encountered, at which point placeholder bytes `0x00000000` are placed in the `.text` section. Once the correct label is encountered, instructions can be patched by invoking [assemble_instruction](name-as/src/assembler/assemble_instruction.rs) on the saved information and arguments, then slicing in the new bytes on the `.text` section. If labels are referenced but never defined in any module, NAME throws an error.
 
 **Note** that when NAME encounters an error on a line, it does not panic. All errors are detected and detailed information is printed for each error in one pass. There are very few fatal errors for NAME.
 
-Once the assembler has assembled the entire file in memory, it is written to disk as an ELF object file. See [elf_utils.rs](name-const/src/elf_utils.rs) for implementation details.
+Once the assembler has assembled the entire file in memory, it is written to disk as an ELF object file. See [elf_utils.rs](name-core/src/elf_utils.rs) for implementation details.
 
 ## Linking
-The linker ([linker.rs](name-as/src/linker.rs)) reads relocatable object files from disk and constructs them into Elf objects. This choice was made for two intertwined reasons - modularity and educational value. Keeping the linker separate allows for better classroom demonstrations regarding how object files are linked into a single executable, and since ELF is a standard format, there is no magical black box for the sake of the classroom; rather, the linking process is entirely accurate to real-world programs, allowing students to make better global connections.
+The [linker](name-ld/) reads relocatable object files from disk and constructs them into Elf objects. This choice was made for two intertwined reasons - modularity and educational value. Keeping the linker separate allows for better understanding of how object files are linked into a single executable, and since ELF is a standard format, there is no magic black box; rather, the linking process is accurate to real-world programs, allowing students to make better global connections.
 
 The convention when linking into an executable is to search the symbol table for the global symbol `main`; if found, that is the entry point, else since `main` is not present, the entry point defaults to the MIPS `.text` start address: `0x4000000`. Conflicting global symbols raise an error, but duplicate local symbols are of course allowed. All linking is performed to the ELF TIS (Tool Interface Standard).
 
 The linker outputs a single file with no extension - an ET_EXEC ELF executable that [name-emu](name-emu/) can interpret.
 
 ## Emulation
-Thanks for giving me a few development cycles.
-
-The NAME emulator accepts ELF files of type `ET_EXEC`. Emulation is carried out using some structs: the `Processor` struct contains the registers as well as the program counter, and the `Memory` struct contains sections `.text` and `.data`. While I could have kept all these pieces separate, it simplifies some later portions of the approach tremendously. The logic for simulation is present in [simulator.rs](name-emu/src/simulator.rs).
+The NAME emulator accepts ELF files of type `ET_EXEC`. Emulation is carried out using some structs: the `Processor` struct contains the registers as well as the program counter, and the `Memory` struct contains sections `.text` and `.data`. While I could have kept all these pieces separate, gluing them together in this way allows for an easier-to-read function. The logic for simulation is present in [simulator.rs](name-emu/src/simulator.rs).
 
 ### Fetch
-Fetching is a simple access of `.text` from where `$pc`, the program counter, points to. If the address currently in `$pc` is not accessible by the emulator, an error is thrown. This is an intuitive and straightforward approach, so it's included in [simulator.rs](name-emu/src/simulator.rs).
+Fetching is a simple access of `.text` from where `$pc`, the program counter, points to. If the address currently in `$pc` is not accessible by the emulator, an error is thrown.
 
 ### Decode
-Decoding is the first novel approach in the emulation process. First, the instruction passed to the decode function has its opcode extracted. The opcode is put through a lookup table for a function pointer with the signature `Fn(&mut Processor, &mut Memory, u32)`. This function pointer represents the target instruction's implementation. If the opcode is `0`, a separate lookup is performed specific for R-type instructions. This allows instruction addition to be a simple edit of a data structure followed by implementing a microscopic function, improving NAME's extensibility. See [decode.rs](name-emu/src/decode.rs) for implementation details.
+Decoding is the first novel approach in the emulation process. First, the instruction passed to the decode function has its opcode and any special code extracted to make a lookup code. This lookup code is used to obtain the corresponding `InstructionInformation` in [name-core](name-core/src/instruction/instruction_set.rs). Then, the emulator retrieves a function pointer with the signature `Fn(&mut Processor, &mut Memory, Instruction)` from that table (note that `Instruction` contains the operands).
 
-Each instruction performs its own unpacking (`unpack_r_type`). This reduces lookup operations.
+This function pointer represents the target instruction's implementation. This allows instruction addition to be a simple addition to a [table](name-core/src/instruction/instruction_set.rs) followed by implementing a microscopic function, improving NAME's extensibility. See [decode.rs](name-emu/src/decode.rs) for implementation details.
 
 ### Execute
-Execution is as simple as invoking the extracted function pointer from the previous step. There exists no separate `execute.rs` since it's a one-liner.
+Execution is as simple as invoking the extracted function pointer from the previous step. There exists no separate `execute.rs` since it's a one-liner. The function simply acts on its passed operands and updates registers/memory accordingly.

@@ -4,7 +4,8 @@ use name_core::{
     constants::REGISTERS,
     elf_def::MIPS_ADDRESS_ALIGNMENT,
     instruction::{
-        information::{InstructionInformation, INSTRUCTION_SET},
+        information::InstructionInformation,
+        instruction_set::INSTRUCTION_SET,
         Instruction,
     },
     structs::{ExecutionStatus, LineInfo, Memory, Processor},
