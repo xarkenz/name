@@ -88,7 +88,7 @@ pub(crate) type ExpansionFn =
 // }
 
 pub(crate) fn expand_bnez(
-    environment: &mut Assembler, 
+    _environment: &mut Assembler, 
     args: &Vec<LineComponent>
 ) -> Result<Vec<(&'static InstructionInformation, Vec<LineComponent>)>, String> {
     if args.len() < 2 {
@@ -102,7 +102,7 @@ pub(crate) fn expand_bnez(
 
     // let add_info: &'static InstructionInformation;
     
-    let bne_info = match environment.instruction_table.get("bne") {
+    let bne_info = match INSTRUCTION_TABLE.get("bne") {
         Some(info) => info,
         None => return Err(format!(" - Failed to expand `bnez` pseudoinstruction. Its expansion was likely defined incorrectly (go use git blame on https://github.com/cameron-b63/name to find out who's at fault).")),
     };
@@ -207,7 +207,7 @@ pub(crate) fn expand_la(
     ])
 }
 
-pub(crate) fn expand_move(environment: &mut Assembler, args: &Vec<LineComponent>) -> Result<Vec<(&'static InstructionInformation, Vec<LineComponent>)>, String> {
+pub(crate) fn expand_move(_environment: &mut Assembler, args: &Vec<LineComponent>) -> Result<Vec<(&'static InstructionInformation, Vec<LineComponent>)>, String> {
     if args.len() < 2 {
         return Err(format!(" - `mv` expected 2 arguments, got {}", args.len()));
     }
@@ -219,7 +219,7 @@ pub(crate) fn expand_move(environment: &mut Assembler, args: &Vec<LineComponent>
 
     // let add_info: &'static InstructionInformation;
     
-    let add_info = match environment.instruction_table.get("add") {
+    let add_info = match INSTRUCTION_TABLE.get("add") {
         Some(info) => info,
         None => return Err(format!(" - Failed to expand `la` pseudoinstruction. Its expansion was likely defined incorrectly (go use git blame on https://github.com/cameron-b63/name to find out who's at fault).")),
     };
