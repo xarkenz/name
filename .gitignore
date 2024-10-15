@@ -5,14 +5,10 @@ node_modules/
 
 .vscode-test/
 
-name-emu/target
-name-as/target
-name-const/target
-name-ln/target
+*/target/*
+target/
 
 *.vsix
-
-target/*
 
 package-lock.json
 .eslistrc.json
@@ -36,3 +32,5 @@ test_files/*/*
 !test_files/*/*.asm
 personal_to_do_list.txt
 test_files/bubblesort/*
+tests/samples/*
+!test/samples/*.asm

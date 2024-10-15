@@ -1,10 +1,10 @@
 use clap::Parser;
 
 #[derive(Parser, Debug)]
-pub(crate) struct Cli {
-    pub(crate) input_filename: std::path::PathBuf,
-    pub(crate) output_filename: std::path::PathBuf,
+pub struct Cli {
+    pub input_filename: std::path::PathBuf,
+    pub output_filename: std::path::PathBuf,
 
     #[arg(short, long)]
-    pub(crate) verbose: bool,
+    pub verbose: bool,
 }

@@ -1,5 +1,5 @@
+pub mod assemble_file;
 pub(crate) mod assemble_instruction;
-pub(crate) mod assemble_file;
 pub(crate) mod assemble_line;
 pub(crate) mod assembler;
 pub(crate) mod assembly_helpers;

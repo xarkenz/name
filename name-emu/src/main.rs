@@ -1,19 +1,8 @@
-mod args;
-mod debug;
-// mod debug_utils;
-mod decode;
-mod definitions;
-mod fetch;
-mod simulator_helpers;
-mod simulator;
+use name_emu::args::Cli;
+use name_emu::simulator;
 
-#[cfg(test)]
-mod tests;
-
-use crate::args::Cli;
-
-use name_const::elf_def::Elf;
-use name_const::elf_utils::read_bytes_to_elf;
+use name_core::elf_def::Elf;
+use name_core::elf_utils::read_bytes_to_elf;
 
 use clap::Parser;
 
@@ -30,6 +19,6 @@ pub fn main() {
     };
 
     let _ = simulator::simulate(executable, args.debug);
-    
+
     // println!("ploink");
 }

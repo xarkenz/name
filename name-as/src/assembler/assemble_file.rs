@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use name_const::structs::{LineInfo, Section};
+use name_core::structs::{LineInfo, Section};
 
 use crate::assembler::assemble_line::assemble_line;
 use crate::assembler::assembler::Assembler;
@@ -15,24 +15,28 @@ There should be next to no fatal errors. I will be vetting this code later to en
 The Ok variant contains the Assembler environment, which contains the needed information for ELF object file output.
 */
 
-pub fn assemble(file_contents: String, current_dir: PathBuf, line_prefix: Option<String>) -> Result<Assembler, Vec<String>> {
+pub fn assemble(
+    file_contents: String,
+    current_dir: PathBuf,
+    line_prefix: Option<String>,
+) -> Result<Assembler, Vec<String>> {
     let mut environment: Assembler = Assembler::new();
 
     environment.current_dir = current_dir;
-    
+
     match line_prefix {
         Some(s) => environment.line_prefix = s,
-        None => {},
+        None => {}
     }
 
     for line in file_contents.split('\n') {
         let start_address = match environment.current_section {
-           Section::Text => environment.current_address,
-           Section::Data => environment.text_address,
-           Section::Null => 0, 
+            Section::Text => environment.current_address,
+            Section::Data => environment.text_address,
+            Section::Null => 0,
         };
 
-        // Pre-process line (expand pseudoinstructions, macros, and .eqv values here)    
+        // Pre-process line (expand pseudoinstructions, macros, and .eqv values here)
         let expanded_line = environment.expand_line(line);
 
         assemble_line(&mut environment, line, expanded_line);
@@ -50,23 +54,40 @@ pub fn assemble(file_contents: String, current_dir: PathBuf, line_prefix: Option
                     Section::Data => environment.text_address,
                     _ => 0,
                 },
-            }.to_bytes()
+            }
+            .to_bytes(),
         );
 
         environment.line_number += 1;
     }
 
     if environment.backpatches.len() > 0 {
-        let undefined_symbols: Vec<String> = environment.backpatches.iter().map(|backpatch| backpatch.undiscovered_identifier.to_owned()).collect();
-        let line_numbers: Vec<usize> = environment.backpatches.iter().map(|backpatch| backpatch.line_number).collect();
-        
-        let err_string: String = undefined_symbols.iter()
+        let undefined_symbols: Vec<String> = environment
+            .backpatches
+            .iter()
+            .map(|backpatch| backpatch.undiscovered_identifier.to_owned())
+            .collect();
+        let line_numbers: Vec<usize> = environment
+            .backpatches
+            .iter()
+            .map(|backpatch| backpatch.line_number)
+            .collect();
+
+        let err_string: String = undefined_symbols
+            .iter()
             .zip(line_numbers.iter())
-            .map(|(symbol, &line_number)| format!(" - {}: line {}{}", symbol, environment.line_prefix, line_number))
+            .map(|(symbol, &line_number)| {
+                format!(
+                    " - {}: line {}{}",
+                    symbol, environment.line_prefix, line_number
+                )
+            })
             .collect::<Vec<String>>()
             .join("\n");
 
-        environment.errors.push(format!("[*] Symbols referenced but undefined:\n{err_string}"));
+        environment.errors.push(format!(
+            "[*] Symbols referenced but undefined:\n{err_string}"
+        ));
     }
 
     if environment.errors.len() == 0 {

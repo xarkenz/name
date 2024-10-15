@@ -1,5 +1,5 @@
-use crate::definitions::structs::PseudoInstruction;
 use crate::definitions::expandables::*;
+use crate::definitions::structs::PseudoInstruction;
 
 pub(crate) const PSEUDO_INSTRUCTION_SET: &[PseudoInstruction] = &[
     PseudoInstruction {

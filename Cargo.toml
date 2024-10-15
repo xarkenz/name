@@ -1,0 +1,15 @@
+[workspace]
+members = [
+  "name-as",
+  "name-core",
+  "name-ld",
+  "name-emu",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+readme = "README.md"
+license-file = "LICENSE"
+repository="https://www.github.com/cameron-b63/name"
