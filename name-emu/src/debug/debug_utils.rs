@@ -155,7 +155,7 @@ pub fn debugger(
                         Ok(execution_status) => match execution_status {
                             ExecutionStatus::Continue => {},
                             ExecutionStatus::Break => {    
-                                match lineinfo.iter().find(|&line| line.start_address == cpu.pc){
+                                match lineinfo.iter().find(|&line| line.start_address == cpu.pc + MIPS_ADDRESS_ALIGNMENT){
                                     Some(line) => { println!("Breakpoint at line {} reached.", line.line_number); }
                                     None => { eprintln!("Illegal state during single-step (lineinfo could not be located for current PC 0x{:x}", cpu.pc); }
                                 }
@@ -173,7 +173,7 @@ pub fn debugger(
                         Ok(execution_status) => match execution_status {
                             ExecutionStatus::Continue => {},
                             ExecutionStatus::Break => {    
-                                match lineinfo.iter().find(|&line| line.start_address == cpu.pc){
+                                match lineinfo.iter().find(|&line| line.start_address == cpu.pc + MIPS_ADDRESS_ALIGNMENT){
                                     Some(line) => { println!("Breakpoint at line {} reached.", line.line_number); }
                                     None => { eprintln!("Illegal state during single-step (lineinfo could not be located for current PC 0x{:x}", cpu.pc); }
                                 }
@@ -191,7 +191,7 @@ pub fn debugger(
                     Ok(execution_status) => match execution_status {
                         ExecutionStatus::Continue => {},
                         ExecutionStatus::Break => {    
-                            match lineinfo.iter().find(|&line| line.start_address == cpu.pc){
+                            match lineinfo.iter().find(|&line| line.start_address == cpu.pc + MIPS_ADDRESS_ALIGNMENT){
                                 Some(line) => { println!("Breakpoint at line {} reached.", line.line_number); }
                                 None => { eprintln!("Illegal state during single-step (lineinfo could not be located for current PC 0x{:x}", cpu.pc); }
                             }
@@ -306,15 +306,15 @@ pub fn debugger(
                     continue;
                 }
 
-                if db_args[1].chars().nth(0) != Some('$') {
-                    eprintln!("First argument to m must be a register. (Did you include the dollar sign?)");
-                    continue;
-                }
+                // if db_args[1].chars().nth(0) != Some('$') {
+                //     eprintln!("First argument to m must be a register. (Did you include the dollar sign?)");
+                //     continue;
+                // }
 
                 let register = match REGISTERS.iter().position(|&x| x == db_args[1]){
                     Some(found_register) => found_register,
                     None => { 
-                        eprintln!("First argument to m must be a register. (Did you include the dollar sign?) (Also something weird has happened. Let a dev know or smth)");
+                        eprintln!("First argument to m must be a register. (Did you include the dollar sign?)");
                         continue;
                     }
                 };
