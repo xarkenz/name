@@ -5,6 +5,7 @@ use name_core::{
     elf_def::MIPS_ADDRESS_ALIGNMENT,
     instruction::{information::InstructionInformation, instruction_set::INSTRUCTION_SET},
     structs::{LineInfo, ProgramState},
+    exception::definitions::ExceptionType,
 };
 
 static INSTRUCTION_LOOKUP: LazyLock<HashMap<u32, &'static InstructionInformation>> =
@@ -16,90 +17,51 @@ static INSTRUCTION_LOOKUP: LazyLock<HashMap<u32, &'static InstructionInformation
     });
 
 use crate::fetch::fetch;
-use crate::simulator_helpers::generate_err;
 
 use std::io::{self, Write};
 
 pub fn single_step(
-    lineinfo: &Vec<LineInfo>,
+    _lineinfo: &Vec<LineInfo>,
     program_state: &mut ProgramState,
     bps: &Vec<Breakpoint>,
-) -> Result<ExecutionStatus, String> {
+) -> () {
     // passing a breakpoints vector into this function is a very messy way of doing this, i'm aware,,,
     // ideally, a break instruction is physically injected into the code and everything works politely from there without extra shenaniganery.
     // however, for now, this will have to do
-    if cpu.pc > memory.text_end || cpu.pc < memory.text_start {
-        return Err(generate_err(
-            lineinfo,
-            cpu.pc - 4,
-            "Program fell off bottom.",
-        ));
+    if program_state.cpu.pc > program_state.memory.text_end || program_state.cpu.pc < program_state.memory.text_start {
+        program_state.set_exception(ExceptionType::AddressExceptionLoad);
     }
 
     // println!("{}", cpu.pc);
 
     // check if there's a breakpoint after instruction on the line is executed
     for bp in bps{
-        if cpu.pc == bp.address { 
+        if program_state.cpu.pc == bp.address { 
             // println!("Breakpoint at line {} reached. (This ran in single_step())", bp.line_num);
-            return Ok(ExecutionStatus::Break)
+            program_state.set_exception(ExceptionType::Breakpoint);
         }
     }
 
     // Fetch
-    let raw_instruction = fetch(&cpu.pc, &memory)?;
-    let instr_info = INSTRUCTION_LOOKUP
-        .get(&raw_instruction.get_lookup())
-        .ok_or(generate_err(
-            lineinfo,
-            cpu.pc - 4,
-            format!("Failed instruction fetch").as_str(),
-        ))?;
+    let raw_instruction = fetch(program_state);
+    let instr_info = match INSTRUCTION_LOOKUP
+        .get(&raw_instruction.get_lookup()) {
+            Some(info) => info,
+            None => {
+                program_state.set_exception(ExceptionType::ReservedInstruction);
+                return;
+            }
+        };
 
-    cpu.pc += MIPS_ADDRESS_ALIGNMENT;
+    program_state.cpu.pc += MIPS_ADDRESS_ALIGNMENT;
 
-    // Execute
-    let instruction_result = (instr_info.implementation)(cpu, memory, raw_instruction);
+    // Execute the instruction; program_state is modified.
+    let _ = (instr_info.implementation)(program_state, raw_instruction);
 
     // The $0 register should never have been permanently changed. Don't let it remain changed.
-    cpu.general_purpose_registers[0] = 0;
-
-    // The instruction result contains an enum value representing whether or not "execution should stop now".
-    match instruction_result {
-        Ok(execution_status) => {
-            return Ok(execution_status);
-        }
-        Err(e) => {
-            return Err(generate_err(
-                lineinfo,
-                cpu.pc - 4,
-                format!("{}", e).as_str(),
-            ))
-        }
-    }
+    program_state.cpu.general_purpose_registers[0] = 0;
 }
 
-// equivalent to running a single line of the code.
-// this function was written to make the debugger itself look a little less ugly
-// although at this point it may be overdoing it
-// fn run_wrapper(lineinfo: &Vec<LineInfo>, cpu: &mut Processor, memory: &mut Memory, bps: &Vec<Breakpoint>) -> Result<ExecutionStatus, String>{
-//     match single_step(lineinfo, cpu, memory, &bps){
-//         Ok(execution_status) => match execution_status {
-//             ExecutionStatus::Continue => { Ok(execution_status) },
-//             ExecutionStatus::Break => { 
-//                 match lineinfo.iter().find(|&line| line.start_address == cpu.pc){
-//                     Some(line) => { println!("Breakpoint at line {} reached.", line.line_number); }
-//                     None => { eprintln!("Illegal state during single-step (lineinfo could not be located for current PC 0x{:x}", cpu.pc); }
-//                 }
-//                 Ok(execution_status)
-//             },
-//             ExecutionStatus::Complete => return Ok(ExecutionStatus::Complete),
-//         },
-//         Err(e) => return Err(e),
-//     }
-// }
-
-// do we really need to put this another file riiiiight now
 #[derive(Debug)]
 pub struct Breakpoint {
     pub bp_num: u16, // why do you have 65535 breakpoints. do better
@@ -173,56 +135,27 @@ pub fn debugger(
                 // idk how to make it do that rn
                 // maybe these can secretly be the same thing and we just keep it here to make it look liek gdb :shrug:
                 loop {
-                    match single_step(lineinfo, program_state, &breakpoints){
-                        Ok(execution_status) => match execution_status {
-                            ExecutionStatus::Continue => {},
-                            ExecutionStatus::Break => {    
-                                match lineinfo.iter().find(|&line| line.start_address == cpu.pc){
-                                    Some(line) => { println!("Breakpoint at line {} reached.", line.line_number); }
-                                    None => { eprintln!("Illegal state during single-step (lineinfo could not be located for current PC 0x{:x}", cpu.pc); }
-                                }
-                                break; 
-                            },
-                            ExecutionStatus::Complete => return Ok(()),
-                        },
-                        Err(e) => return Err(e),
-                    };
+                    single_step(lineinfo, program_state, &breakpoints);
+                    if program_state.is_exception() {
+                        todo!("Handle exception");
+                    }
                 }
             },
             "c" => {
                 loop {
-                    match single_step(lineinfo, program_state, &breakpoints){
-                        Ok(execution_status) => match execution_status {
-                            ExecutionStatus::Continue => {},
-                            ExecutionStatus::Break => {    
-                                match lineinfo.iter().find(|&line| line.start_address == cpu.pc){
-                                    Some(line) => { println!("Breakpoint at line {} reached.", line.line_number); }
-                                    None => { eprintln!("Illegal state during single-step (lineinfo could not be located for current PC 0x{:x}", cpu.pc); }
-                                }
-                                break; 
-                            },
-                            ExecutionStatus::Complete => return Ok(()),
-                        },
-                        Err(e) => return Err(e),
-                    };
+                    single_step(lineinfo, program_state, &breakpoints);
+                    if program_state.is_exception() {
+                        todo!("Handle exception");
+                    }
                 }
             }
             "s" => {
                 // repetition bad
                 // but original fix made worse
-                match single_step(lineinfo, program_state, &breakpoints){
-                    Ok(execution_status) => match execution_status {
-                        ExecutionStatus::Continue => {},
-                        ExecutionStatus::Break => {    
-                            match lineinfo.iter().find(|&line| line.start_address == cpu.pc){
-                                Some(line) => { println!("Breakpoint at line {} reached.", line.line_number); }
-                                None => { eprintln!("Illegal state during single-step (lineinfo could not be located for current PC 0x{:x}", cpu.pc); }
-                            }
-                        },
-                        ExecutionStatus::Complete => return Ok(()),
-                    },
-                    Err(e) => return Err(e),
-                };
+                single_step(lineinfo, program_state, &breakpoints);
+                if program_state.is_exception() {
+                    todo!("Handle exception");
+                }
             }
             "l" => {
                 if db_args.len() == 1 {
@@ -284,10 +217,9 @@ pub fn debugger(
 
                 if db_args[1].chars().nth(0) == Some('$') {
                     for register in db_args[1..].to_vec() {
-                        // #[allow(unused_assignments)]  // oh boy
                         match REGISTERS.iter().position(|&x| x == register){
                             Some(found_register) => {
-                                println!("Value in register {} is {:08x}", found_register, cpu.general_purpose_registers[found_register]);
+                                println!("Value in register {} is {:08x}", found_register, program_state.cpu.general_purpose_registers[found_register]);
                             },
                             None => {
                                 println!("{} is not a valid register.", db_args[1]);
@@ -309,7 +241,7 @@ pub fn debugger(
                     let idx: usize = REGISTERS.iter().position(|&x| x == register).unwrap();
                     println!(
                         "{:>5}: {:08x}",
-                        register, cpu.general_purpose_registers[idx]
+                        register, program_state.cpu.general_purpose_registers[idx]
                     );
                 }
             }

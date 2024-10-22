@@ -8,13 +8,13 @@ use name_core::structs::{LineInfo, Memory, Processor, ProgramState};
 
 pub fn simulate(elf: Elf, debug: bool) -> Result<(), String> {
     // Set up simulation environment from information in ELF
-    let mut cpu: Processor = Processor::new(elf.file_header.e_entry);
+    let cpu: Processor = Processor::new(elf.file_header.e_entry);
 
     let (data, text) = extract_loadable_sections(&elf);
 
     let lineinfo: Vec<LineInfo> = extract_lineinfo(&elf);
 
-    let mut memory: Memory = Memory::new(data, text);
+    let memory: Memory = Memory::new(data, text);
 
     // Create program state
     let mut program_state: ProgramState = ProgramState::new(cpu, memory);
