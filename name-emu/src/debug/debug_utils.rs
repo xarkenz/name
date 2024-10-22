@@ -58,9 +58,9 @@ pub fn single_step(
     cpu.general_purpose_registers[0] = 0;
 
     // check if there's a breakpoint on the line AFTER the current one
-    for bp in bps{
-        if cpu.pc + MIPS_ADDRESS_ALIGNMENT == bp.address { 
-            return Ok(ExecutionStatus::Break)
+    for bp in bps {
+        if cpu.pc + MIPS_ADDRESS_ALIGNMENT == bp.address {
+            return Ok(ExecutionStatus::Break);
         }
     }
 
@@ -106,7 +106,6 @@ impl Breakpoint {
     // assembler::add_label is not the solution to male loneliness
 }
 
-
 // pub type DebugFn = fn(&Vec<LineInfo>, &mut Memory, &mut Processor, &Vec<Breakpoint>) -> Result<(), String>;
 
 // This is the name debugger. Have fun...
@@ -151,51 +150,72 @@ pub fn debugger(
                 // idk how to make it do that rn
                 // maybe these can secretly be the same thing and we just keep it here to make it look liek gdb :shrug:
                 loop {
-                    match single_step(lineinfo, cpu, memory, &breakpoints){
+                    match single_step(lineinfo, cpu, memory, &breakpoints) {
                         Ok(execution_status) => match execution_status {
-                            ExecutionStatus::Continue => {},
-                            ExecutionStatus::Break => {    
-                                match lineinfo.iter().find(|&line| line.start_address == cpu.pc + MIPS_ADDRESS_ALIGNMENT){
-                                    Some(line) => { println!("Breakpoint at line {} reached.", line.line_number); }
-                                    None => { eprintln!("Illegal state during single-step (lineinfo could not be located for current PC 0x{:x}", cpu.pc); }
+                            ExecutionStatus::Continue => {}
+                            ExecutionStatus::Break => {
+                                match lineinfo.iter().find(|&line| {
+                                    line.start_address == cpu.pc + MIPS_ADDRESS_ALIGNMENT
+                                }) {
+                                    Some(line) => {
+                                        println!(
+                                            "Breakpoint at line {} reached.",
+                                            line.line_number
+                                        );
+                                    }
+                                    None => {
+                                        eprintln!("Illegal state during single-step (lineinfo could not be located for current PC 0x{:x}", cpu.pc);
+                                    }
                                 }
-                                break; 
-                            },
+                                break;
+                            }
                             ExecutionStatus::Complete => return Ok(()),
                         },
                         Err(e) => return Err(e),
                     };
                 }
             }
-            "c" => {
-                loop {
-                    match single_step(lineinfo, cpu, memory, &breakpoints){
-                        Ok(execution_status) => match execution_status {
-                            ExecutionStatus::Continue => {},
-                            ExecutionStatus::Break => {    
-                                match lineinfo.iter().find(|&line| line.start_address == cpu.pc + MIPS_ADDRESS_ALIGNMENT){
-                                    Some(line) => { println!("Breakpoint at line {} reached.", line.line_number); }
-                                    None => { eprintln!("Illegal state during single-step (lineinfo could not be located for current PC 0x{:x}", cpu.pc); }
+            "c" => loop {
+                match single_step(lineinfo, cpu, memory, &breakpoints) {
+                    Ok(execution_status) => match execution_status {
+                        ExecutionStatus::Continue => {}
+                        ExecutionStatus::Break => {
+                            match lineinfo
+                                .iter()
+                                .find(|&line| line.start_address == cpu.pc + MIPS_ADDRESS_ALIGNMENT)
+                            {
+                                Some(line) => {
+                                    println!("Breakpoint at line {} reached.", line.line_number);
                                 }
-                                break; 
-                            },
-                            ExecutionStatus::Complete => return Ok(()),
-                        },
-                        Err(e) => return Err(e),
-                    };
-                }
-            }
+                                None => {
+                                    eprintln!("Illegal state during single-step (lineinfo could not be located for current PC 0x{:x}", cpu.pc);
+                                }
+                            }
+                            break;
+                        }
+                        ExecutionStatus::Complete => return Ok(()),
+                    },
+                    Err(e) => return Err(e),
+                };
+            },
             "s" => {
                 // repetition bad...
-                match single_step(lineinfo, cpu, memory, &breakpoints){
+                match single_step(lineinfo, cpu, memory, &breakpoints) {
                     Ok(execution_status) => match execution_status {
-                        ExecutionStatus::Continue => {},
-                        ExecutionStatus::Break => {    
-                            match lineinfo.iter().find(|&line| line.start_address == cpu.pc + MIPS_ADDRESS_ALIGNMENT){
-                                Some(line) => { println!("Breakpoint at line {} reached.", line.line_number); }
-                                None => { eprintln!("Illegal state during single-step (lineinfo could not be located for current PC 0x{:x}", cpu.pc); }
+                        ExecutionStatus::Continue => {}
+                        ExecutionStatus::Break => {
+                            match lineinfo
+                                .iter()
+                                .find(|&line| line.start_address == cpu.pc + MIPS_ADDRESS_ALIGNMENT)
+                            {
+                                Some(line) => {
+                                    println!("Breakpoint at line {} reached.", line.line_number);
+                                }
+                                None => {
+                                    eprintln!("Illegal state during single-step (lineinfo could not be located for current PC 0x{:x}", cpu.pc);
+                                }
                             }
-                        },
+                        }
                         ExecutionStatus::Complete => return Ok(()),
                     },
                     Err(e) => return Err(e),
@@ -217,7 +237,9 @@ pub fn debugger(
                     // wrap the default line number around if it exceeds the number of lines of the program
                     global_list_loc = if global_list_loc + 9 <= num_lines {
                         global_list_loc + 9
-                    } else { 5 };
+                    } else {
+                        5
+                    };
                 } else if db_args.len() == 2 {
                     if db_args[1] == "all" {
                         for line in lineinfo {
@@ -230,14 +252,16 @@ pub fn debugger(
                         match db_args[1].parse::<usize>() {
                             Err(_) => {
                                 eprintln!("l expects an unsigned int or \"all\" as an argument");
+                                continue;
                             }
                             Ok(lnum) => {
                                 if lnum > lineinfo.len() {
                                     eprintln!("{} out of bounds of program.", lnum);
                                 } else {
                                     let begin = lnum.saturating_sub(5);
-                                    let end = std::cmp::min(lnum.saturating_add(3), lineinfo.len());
-                                    for i in begin..end {
+                                    let end =
+                                        std::cmp::min(lnum.saturating_add(3), lineinfo.len() - 1);
+                                    for i in begin..=end {
                                         println!(
                                             "{:>3} #{:08x}  {}",
                                             lineinfo[i].line_number,
@@ -264,7 +288,10 @@ pub fn debugger(
             }
             "p" => {
                 if db_args.len() < 2 {
-                    eprintln!("p expects a non-zero argument, received {}", db_args.len()-1);
+                    eprintln!(
+                        "p expects a non-zero argument, received {}",
+                        db_args.len() - 1
+                    );
                     continue;
                 }
 
@@ -275,10 +302,13 @@ pub fn debugger(
 
                 for register in db_args[1..].to_vec() {
                     // #[allow(unused_assignments)]  // oh boy
-                    match REGISTERS.iter().position(|&x| x == register){
+                    match REGISTERS.iter().position(|&x| x == register) {
                         Some(found_register) => {
-                            println!("Value in register {} is {:08x}", found_register, cpu.general_purpose_registers[found_register]);
-                        },
+                            println!(
+                                "Value in register {} is {:08x}",
+                                found_register, cpu.general_purpose_registers[found_register]
+                            );
+                        }
                         None => {
                             println!("{} is not a valid register.", db_args[1]);
                             continue;
@@ -311,9 +341,9 @@ pub fn debugger(
                 //     continue;
                 // }
 
-                let register = match REGISTERS.iter().position(|&x| x == db_args[1]){
+                let register = match REGISTERS.iter().position(|&x| x == db_args[1]) {
                     Some(found_register) => found_register,
-                    None => { 
+                    None => {
                         eprintln!("First argument to m must be a register. (Did you include the dollar sign?)");
                         continue;
                     }
@@ -324,13 +354,13 @@ pub fn debugger(
                     Err(e) => {
                         eprintln!("{e}");
                         continue;
-                    },
+                    }
                 };
 
                 let original_val = cpu.general_purpose_registers[register];
                 cpu.general_purpose_registers[register] = parsed_u32;
                 println!(
-                    "Successfully modified value in register {} from {} to {}.", 
+                    "Successfully modified value in register {} from {} to {}.",
                     db_args[1], original_val, parsed_u32
                 );
             }
