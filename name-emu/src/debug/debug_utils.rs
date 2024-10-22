@@ -4,7 +4,7 @@ use name_core::{
     constants::REGISTERS,
     elf_def::MIPS_ADDRESS_ALIGNMENT,
     instruction::{information::InstructionInformation, instruction_set::INSTRUCTION_SET},
-    structs::{ExecutionStatus, LineInfo, Memory, Processor},
+    structs::{LineInfo, ProgramState},
 };
 
 static INSTRUCTION_LOOKUP: LazyLock<HashMap<u32, &'static InstructionInformation>> =
@@ -22,8 +22,7 @@ use std::io::{self, Write};
 
 pub fn single_step(
     lineinfo: &Vec<LineInfo>,
-    cpu: &mut Processor,
-    memory: &mut Memory,
+    program_state: &mut ProgramState,
     bps: &Vec<Breakpoint>,
 ) -> Result<ExecutionStatus, String> {
     // passing a breakpoints vector into this function is a very messy way of doing this, i'm aware,,,
@@ -133,8 +132,7 @@ impl Breakpoint {
 // This is the name debugger. Have fun...
 pub fn debugger(
     lineinfo: &Vec<LineInfo>,
-    memory: &mut Memory,
-    cpu: &mut Processor,
+    program_state: &mut ProgramState
 ) -> Result<(), String> {
     let mut breakpoints: Vec<Breakpoint> = Vec::new();
     let mut global_bp_num: u16 = 0;
@@ -175,7 +173,7 @@ pub fn debugger(
                 // idk how to make it do that rn
                 // maybe these can secretly be the same thing and we just keep it here to make it look liek gdb :shrug:
                 loop {
-                    match single_step(lineinfo, cpu, memory, &breakpoints){
+                    match single_step(lineinfo, program_state, &breakpoints){
                         Ok(execution_status) => match execution_status {
                             ExecutionStatus::Continue => {},
                             ExecutionStatus::Break => {    
@@ -193,7 +191,7 @@ pub fn debugger(
             },
             "c" => {
                 loop {
-                    match single_step(lineinfo, cpu, memory, &breakpoints){
+                    match single_step(lineinfo, program_state, &breakpoints){
                         Ok(execution_status) => match execution_status {
                             ExecutionStatus::Continue => {},
                             ExecutionStatus::Break => {    
@@ -212,7 +210,7 @@ pub fn debugger(
             "s" => {
                 // repetition bad
                 // but original fix made worse
-                match single_step(lineinfo, cpu, memory, &breakpoints){
+                match single_step(lineinfo, program_state, &breakpoints){
                     Ok(execution_status) => match execution_status {
                         ExecutionStatus::Continue => {},
                         ExecutionStatus::Break => {    

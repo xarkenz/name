@@ -1,5 +1,23 @@
 use crate::elf_def::{MIPS_DATA_START_ADDR, MIPS_TEXT_START_ADDR};
-use crate::structs::{LineInfo, Memory};
+use crate::structs::{LineInfo, Memory, Processor, Coprocessor0, ProgramState};
+
+impl Processor {
+    pub fn new(entry: u32) -> Self {
+        Processor {
+            pc: entry,
+            general_purpose_registers: [0; 32],
+        }
+    }
+}
+
+// TODO: Fill any default values for cp0 fields
+impl Coprocessor0 {
+    pub fn new() -> Self {
+        Coprocessor0 {
+            registers: [0; 32],
+        }
+    }
+}
 
 impl Memory {
     pub fn new(data: Vec<u8>, text: Vec<u8>) -> Self {
@@ -38,6 +56,20 @@ impl Memory {
 
         // Read the byte from memory
         Ok(self.data[offset].clone())
+    }
+}
+
+impl ProgramState {
+    pub fn new(cpu: Processor, memory: Memory) -> Self {
+        ProgramState {
+            cpu: cpu,
+            cp0: Coprocessor0::new(),
+            memory: memory,
+        }
+    }
+
+    pub fn is_exception(&self) -> bool {
+        todo!("Check exception status");
     }
 }
 

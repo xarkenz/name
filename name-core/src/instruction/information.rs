@@ -1,6 +1,6 @@
 use crate::{
     instruction::instruction::RawInstruction,
-    structs::{ExecutionStatus, Memory, Processor},
+    structs::ProgramState,
 };
 use std::fmt::Debug;
 
@@ -10,7 +10,7 @@ pub struct InstructionInformation {
     pub op_code: u32,
     pub funct_code: Option<u32>,
     pub implementation: Box<
-        dyn Fn(&mut Processor, &mut Memory, RawInstruction) -> Result<ExecutionStatus, String>
+        dyn Fn(&mut ProgramState, RawInstruction) -> ()
             + Sync
             + Send,
     >,
@@ -55,13 +55,13 @@ impl InstructionInformation {
 }
 
 pub fn wrap_imp<Args: From<RawInstruction> + 'static>(
-    f: fn(&mut Processor, &mut Memory, Args) -> Result<ExecutionStatus, String>,
+    f: fn(&mut ProgramState, Args) -> (),
 ) -> Box<
-    dyn Fn(&mut Processor, &mut Memory, RawInstruction) -> Result<ExecutionStatus, String>
+    dyn Fn(&mut ProgramState, RawInstruction) -> ()
         + Sync
         + Send,
 > {
-    Box::new(move |processor, mem, instr| f(processor, mem, Args::from(instr)))
+    Box::new(move |program_state, instr| f(program_state, Args::from(instr)))
 }
 
 #[derive(Debug, PartialEq)]

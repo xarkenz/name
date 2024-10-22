@@ -1,13 +1,13 @@
 use std::io::{Read, Write};
 
-use crate::structs::{
-    ExecutionStatus, Memory, Processor,
+use crate::{exception::definitions::ExceptionType, structs::{
+    ProgramState,
     Register::{A0, V0},
-};
+}};
 
 use std::io;
 
-pub type SyscallFn = fn(&mut Processor, &mut Memory) -> Result<ExecutionStatus, String>;
+pub type SyscallFn = fn(&mut ProgramState) -> ();
 
 pub const SYSCALL_TABLE: [Option<SyscallFn>; 64] = [
     None,                   // 0x00
@@ -77,23 +77,25 @@ pub const SYSCALL_TABLE: [Option<SyscallFn>; 64] = [
 ];
 
 // Syscall 1 - SysPrintInt
-pub fn sys_print_int(cpu: &mut Processor, _memory: &mut Memory) -> Result<ExecutionStatus, String> {
-    print!("{}", cpu.general_purpose_registers[A0 as usize]);
-    Ok(ExecutionStatus::Continue)
+pub fn sys_print_int(program_state: &mut ProgramState) -> () {
+    print!("{}", program_state.cpu.general_purpose_registers[A0 as usize]);
 }
 
 // Syscall 4 - SysPrintString
 pub fn sys_print_string(
-    cpu: &mut Processor,
-    memory: &mut Memory,
-) -> Result<ExecutionStatus, String> {
-    let mut address = cpu.general_purpose_registers[A0 as usize];
+    program_state: &mut ProgramState
+) -> () {
+    let mut address = program_state.cpu.general_purpose_registers[A0 as usize];
     let mut to_print: Vec<u8> = Vec::new();
 
     loop {
-        let byte = match memory.read_byte(address) {
+        let byte = match program_state.memory.read_byte(address) {
             Ok(b) => b,
-            Err(e) => return Err(e),
+            // TODO: Take care of this Err result from before
+            Err(_) => {
+                program_state.set_exception(ExceptionType::Syscall);
+                return;
+            },
         };
 
         if byte == 0 {
@@ -104,16 +106,15 @@ pub fn sys_print_string(
         address += 1;
     }
 
+    // FIXME: Sorry bout this but I need it working like yesterday
     let output_string: String =
-        String::from_utf8(to_print).map_err(|e| format!("UTF-8 conversion error: {}", e))?;
+        String::from_utf8(to_print).expect("Supplied string is NOT utf-8");
 
     print!("{}", output_string);
-
-    Ok(ExecutionStatus::Continue)
 }
 
 // Syscall 5 - SysReadInt
-pub fn sys_read_int(cpu: &mut Processor, _memory: &mut Memory) -> Result<ExecutionStatus, String> {
+pub fn sys_read_int(program_state: &mut ProgramState) -> () {
     let mut input_text = String::new();
     io::stdin()
         .read_line(&mut input_text)
@@ -122,43 +123,42 @@ pub fn sys_read_int(cpu: &mut Processor, _memory: &mut Memory) -> Result<Executi
     let trimmed = input_text.trim();
     match trimmed.parse::<u32>() {
         Ok(i) => {
-            cpu.general_purpose_registers[V0 as usize] = i;
-            Ok(ExecutionStatus::Continue)
+            program_state.cpu.general_purpose_registers[V0 as usize] = i;
         }
         Err(..) => {
-            // eprintln!("{} is not an integer.\nRead failed", trimmed);
-            Err(format!("{} is not an integer.\nRead failed", trimmed))
+            // TODO: take care of this lingering Err
+            program_state.set_exception(ExceptionType::Syscall);
         }
     }
 }
 
 // Syscall 10 - SysExit
-pub fn sys_exit(_cpu: &mut Processor, _memory: &mut Memory) -> Result<ExecutionStatus, String> {
-    return Ok(ExecutionStatus::Complete);
+pub fn sys_exit(_program_state: &mut ProgramState) -> () {
+    // FIXME: Make SysExit exit!
 }
 
 // Syscall 11 - SysPrintChar
 pub fn sys_print_char(
-    cpu: &mut Processor,
-    _memory: &mut Memory,
-) -> Result<ExecutionStatus, String> {
-    match char::from_u32(cpu.general_purpose_registers[A0 as usize]) {
+    program_state: &mut ProgramState
+) -> () {
+    match char::from_u32(program_state.cpu.general_purpose_registers[A0 as usize]) {
         Some(valid_char) => {
             print!("{}", valid_char);
-            Ok(ExecutionStatus::Continue)
         }
-        None => Err("Value in register $a0 could not be evaluated to a char.".to_string()),
+        // TODO: take care of other lingering Err
+        None => program_state.set_exception(ExceptionType::Syscall),
     }
 }
 
+// FIXME: Get these .expect()s outta here
 // Syscall 12 - SysReadChar
-pub fn sys_read_char(cpu: &mut Processor, _memory: &mut Memory) -> Result<ExecutionStatus, String> {
+pub fn sys_read_char(program_state: &mut ProgramState) -> () {
+    // FIXME: .expect() pipeline is not good!
     let mut buf = [0; 1];
     io::stdout().flush().expect("Failed to flush stdout");
     io::stdin()
         .read_exact(&mut buf)
         .expect("Failed to read from stdin");
 
-    cpu.general_purpose_registers[V0 as usize] = buf[0] as u32;
-    Ok(ExecutionStatus::Continue)
+    program_state.cpu.general_purpose_registers[V0 as usize] = buf[0] as u32;
 }

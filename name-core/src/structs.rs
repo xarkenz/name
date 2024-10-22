@@ -14,20 +14,26 @@ pub struct Processor {
     pub general_purpose_registers: [u32; 32],
 }
 
-impl Processor {
-    pub fn new(entry: u32) -> Self {
-        Processor {
-            pc: entry,
-            general_purpose_registers: [0; 32],
-        }
-    }
+#[derive(Debug)]
+pub struct Coprocessor0 {
+    pub registers: [u32; 32],
 }
 
-// FIXME cba
-pub enum ExecutionStatus {
-    Continue,
-    Complete,
-    Break,
+#[derive(Debug)]
+pub struct Memory {
+    pub data: Vec<u8>,
+    pub text: Vec<u8>,
+    pub data_start: u32,
+    pub data_end: u32,
+    pub text_start: u32,
+    pub text_end: u32,
+}
+
+#[derive(Debug)]
+pub struct ProgramState {
+    pub cpu: Processor,
+    pub cp0: Coprocessor0,
+    pub memory: Memory,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -80,16 +86,6 @@ pub enum Section {
     Null,
     Text,
     Data,
-}
-
-#[derive(Debug)]
-pub struct Memory {
-    pub data: Vec<u8>,
-    pub text: Vec<u8>,
-    pub data_start: u32,
-    pub data_end: u32,
-    pub text_start: u32,
-    pub text_end: u32,
 }
 
 #[derive(Debug)]

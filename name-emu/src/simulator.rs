@@ -4,10 +4,10 @@ use crate::debug::debug_utils::{debugger, single_step};
 
 use name_core::elf_def::Elf;
 use name_core::elf_utils::extract_lineinfo;
-use name_core::structs::{ExecutionStatus, LineInfo, Memory, Processor};
+use name_core::structs::{LineInfo, Memory, Processor, ProgramState};
 
 pub fn simulate(elf: Elf, debug: bool) -> Result<(), String> {
-    // Set up simulation environment
+    // Set up simulation environment from information in ELF
     let mut cpu: Processor = Processor::new(elf.file_header.e_entry);
 
     let (data, text) = extract_loadable_sections(&elf);
@@ -16,23 +16,19 @@ pub fn simulate(elf: Elf, debug: bool) -> Result<(), String> {
 
     let mut memory: Memory = Memory::new(data, text);
 
+    // Create program state
+    let mut program_state: ProgramState = ProgramState::new(cpu, memory);
+
     if debug {
-        debugger(&lineinfo, &mut memory, &mut cpu)
+        // Invoke the cli debugger if the user asked for it
+        debugger(&lineinfo, &mut program_state)
     } else {
         // Begin fetch/decode/execute cycle to run program normally
         loop {
-            match single_step(&lineinfo, &mut cpu, &mut memory, &Vec::new()) {
-                Ok(execution_status) => match execution_status {
-                    ExecutionStatus::Continue => {}
-                    ExecutionStatus::Break => {
-                        // assuming this behavior will be more well defined upon implementation of the extension
-                        println!("Break instruction located at address {}", cpu.pc);
-                        break Ok(());
-                    }
-                    ExecutionStatus::Complete => return Ok(()),
-                },
-                Err(e) => return Err(e),
-            };
+            single_step(&lineinfo, &mut program_state, &Vec::new());
+            if program_state.is_exception() {
+                todo!("Call on exception handler");
+            }
         }
     }
 }
