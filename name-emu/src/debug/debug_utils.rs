@@ -1,7 +1,6 @@
 use std::{collections::HashMap, sync::LazyLock};
 
 use name_core::{
-    constants::REGISTERS,
     elf_def::MIPS_ADDRESS_ALIGNMENT,
     instruction::{information::InstructionInformation, instruction_set::INSTRUCTION_SET},
     structs::{ExecutionStatus, LineInfo, Memory, Processor},
@@ -91,55 +90,6 @@ pub struct DebuggerState {
     pub breakpoints: Vec<Breakpoint>,
     pub global_bp_num: u16,
     pub global_list_loc: usize // for the l command; the center of the output, so to speak
-}
-
-impl Breakpoint {
-    pub fn new(bp_num: u16, line_num: u32, lineinfo: &Vec<LineInfo>) -> Self {
-        Breakpoint {
-            bp_num,
-            line_num,
-            address: {
-                match lineinfo.iter().find(|&line| line.line_number == line_num) {
-                    Some(line) => line.start_address,
-                    None => {
-                        eprintln!("Breakpoint not found in memory.");
-                        0
-                    }
-                }
-            },
-        }
-    }
-    // assembler::add_label is not the solution to male loneliness
-}
-
-impl DebuggerState {
-    pub fn new(breakpoints: Vec<Breakpoint>, global_bp_num: u16, global_list_loc: usize) -> Self {
-        DebuggerState {
-            breakpoints,
-            global_bp_num,
-            global_list_loc
-        }
-    }
-
-    pub fn add_breakpoint(&mut self, line_num: u32, lineinfo: &Vec<LineInfo>){
-        self.global_bp_num += 1;
-        self.breakpoints.push(Breakpoint::new(self.global_bp_num, line_num, lineinfo));
-        println!(
-            "Successfully added breakpoint {} at line {}.",
-            self.global_bp_num, line_num
-        );
-    }
-
-    pub fn remove_breakpoint(&mut self, bp_num: u16){
-        // i KNOW this can be better
-        if let Some(index) = self.breakpoints.iter().position(|brpt| brpt.bp_num == bp_num) {
-            let removed_element = self.breakpoints.remove(index);
-            println!("Removed {:?}", removed_element);
-            self.global_bp_num -= 1;
-        } else {
-            eprintln!("Breakpoint with bp_num {} not found", bp_num);
-        }
-    }
 }
 
 
@@ -258,120 +208,43 @@ pub fn debugger(
             }
             "l" => {
                 // this error is terrible and i don't know why it's happening but i'll fix it in the next commit
-                /*
-                match list_text(lineinfo, memory, cpu, &breakpoints, &db_args, &mut global_list_loc) => {
+                match list_text(lineinfo, memory, cpu, &mut db_state, &db_args) {
                     Ok(_) => { continue; }
-                    Err(e) => { eprintln(e); }
+                    Err(e) => { eprintln!("{e}"); }
                 };
-                */
             }
             "p" => {
-                if db_args.len() < 2 {
-                    eprintln!(
-                        "p expects a non-zero argument, received {}",
-                        db_args.len() - 1
-                    );
-                    continue;
-                }
-
-                if db_args[1].chars().nth(0) != Some('$') {
-                    eprintln!("Congrats! You discovered an unimplemented feature... or you forgot the dollar sign on your register.");
-                    continue;
-                }
-
-                for register in db_args[1..].to_vec() {
-                    // #[allow(unused_assignments)]  // oh boy
-                    match REGISTERS.iter().position(|&x| x == register) {
-                        Some(found_register) => {
-                            println!(
-                                "Value in register {} is {:08x}",
-                                found_register, cpu.general_purpose_registers[found_register]
-                            );
-                        }
-                        None => {
-                            println!("{} is not a valid register.", db_args[1]);
-                            continue;
-                        }
-                    }
+                match print_register(cpu, &db_args) {
+                    Ok(()) => { continue; }
+                    Err(e) => { eprintln!("{e}"); }
                 }
             }
             "pa" => {
-                if db_args.len() != 1 {
-                    // this outputs a lot so make sure the user actually meant to type pa and not pb or p or something
-                    eprintln!("pa expects 0 arguments, received {}", db_args.len() - 1);
-                    continue;
-                }
-                for register in REGISTERS {
-                    let idx: usize = REGISTERS.iter().position(|&x| x == register).unwrap();
-                    println!(
-                        "{:>5}: {:08x}",
-                        register, cpu.general_purpose_registers[idx]
-                    );
+                match print_all_registers(cpu, &db_args) {
+                    Ok(()) => { continue; }
+                    Err(e) => { eprintln!("{e}"); }
                 }
             }
             "m" => {
-                if db_args.len() != 3 {
-                    eprintln!("m expects 2 arguments, received {}", db_args.len() - 1);
-                    continue;
+                match modify_register(cpu, &db_args) {
+                    Ok(()) => { continue; }
+                    Err(e) => { eprintln!("{e}"); }
                 }
-
-                let register = match REGISTERS.iter().position(|&x| x == db_args[1]) {
-                    Some(found_register) => found_register,
-                    None => {
-                        eprintln!("First argument to m must be a register. (Did you include the dollar sign?)");
-                        continue;
-                    }
-                };
-
-                let parsed_u32 = match db_args[2].parse::<u32>() {
-                    Ok(found) => found,
-                    Err(e) => {
-                        eprintln!("{e}");
-                        continue;
-                    }
-                };
-
-                let original_val = cpu.general_purpose_registers[register];
-                cpu.general_purpose_registers[register] = parsed_u32;
-                println!(
-                    "Successfully modified value in register {} from {} to {}.",
-                    db_args[1], original_val, parsed_u32
-                );
             }
             "pb" => {
-                println!("BP_NUM: LINE_NUM");
-                for breakpoint in &db_state.breakpoints {
-                    println!("{:>6}: {}", breakpoint.bp_num, breakpoint.line_num);
-                }
+                db_state.print_all_breakpoints();
             }
             "b" => {
-                if db_args.len() != 2 {
-                    eprintln!("b expects 1 argument, received {}", db_args.len() - 1);
-                    continue;
-                }
-                
-                let line_num: u32 = db_args[1]
-                    .parse()
-                    .expect("b takes 32-bit unsigned int as input");
-
-                if line_num > lineinfo.len().try_into().unwrap() {
-                    eprintln!("{} exceeds number of lines in program.", line_num);
-                    // something like that
-                }
-
-                db_state.add_breakpoint(line_num, lineinfo);
+                match db_state.add_breakpoint(lineinfo, &db_args) {
+                    Ok(_) => { continue; }
+                    Err(e) => { eprintln!("{e}"); }
+                };
             }
             "del" => {
-                if db_args.len() != 2 {
-                    eprintln!("del expects 1 argument, received {}", db_args.len() - 1);
-                    continue;
-                }
-
-                let bp_num: u16 = db_args[1]
-                    .parse()
-                    .expect("del takes a 16-bit unsigned int as input");
-
-                db_state.remove_breakpoint(bp_num);
+                match db_state.remove_breakpoint(&db_args) {
+                    Ok(_) => { continue; }
+                    Err(e) => { eprintln!("{e}"); }
+                };
             }
             _ => println!("Option not recognized. Use \"help\" to view accepted options."),
         };
