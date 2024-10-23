@@ -38,9 +38,9 @@ macro_rules! getset {
     };
 }
 
-/// All the implementations below are to perform bit-level accesses.
 /// Coprocessor 0 is organized with multiple fields inside any one 4-byte word. It would get old to remember where they all are.
 /// For instance, bit 1 of register 12, select 0 (Status) represents the Exception Level.
+/// The implementations below are used to perform bit-level accesses. They are used in the getset! macro to generate the appropriate methods.
 impl Coprocessor0 {
     fn get_bit_field(&self, register: usize, start: usize, end: usize) -> u32 {
         if start > end || end > 31 {
@@ -70,4 +70,6 @@ impl Coprocessor0 {
 }
 
 // Below are all the macro-defined accessors for the small bit fields.
+getset!(current_mode, Register::Status, 3, 4);
 getset!(exception_level, Register::Status, 1, 1);
+getset!(epc, Register::EPC, 31, 0);

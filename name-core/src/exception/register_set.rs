@@ -6,9 +6,10 @@ use super::registers::Register;
 pub struct Cp0RegisterInformation {
     name: Register,
     register: usize,
-    // The select field is for different interpretations of the same bit.
-    // It is largely unused.
-    select: usize,
+    /* The _select field is for different interpretations of the same bit.
+    It is largely unused, except for certain instructions.
+    It is included for now. */
+    _select: usize,
 }
 
 /// This helper function allows for quick translation from a Register to a usize.
@@ -19,16 +20,16 @@ pub fn to_register(reg: Register) -> usize {
     }
 }
 
-
+/// Correspondence between a Register in Coprocessor0 and its register number.
 pub const CP0_REGISTER_INFO: &[Cp0RegisterInformation] = &[
     Cp0RegisterInformation {
         name: Register::Status,
         register: 12,
-        select: 0,
+        _select: 0,
     },
     Cp0RegisterInformation {
         name: Register::Cause,
         register: 13,
-        select: 0,
+        _select: 0,
     }
 ];

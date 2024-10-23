@@ -1,4 +1,5 @@
 use crate::elf_def::{MIPS_DATA_START_ADDR, MIPS_TEXT_START_ADDR};
+use crate::exception::constants::*;
 use crate::structs::{LineInfo, Memory, Processor, Coprocessor0, ProgramState};
 
 impl Processor {
@@ -69,7 +70,7 @@ impl ProgramState {
     }
 
     pub fn is_exception(&self) -> bool {
-        todo!("Check exception status");
+        return self.cp0.get_exception_level() == EXCEPTION_BEING_HANDLED;
     }
 }
 
