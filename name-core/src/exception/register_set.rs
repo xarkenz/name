@@ -6,8 +6,19 @@ use super::registers::Register;
 pub struct Cp0RegisterInformation {
     name: Register,
     register: usize,
+    // The select field is for different interpretations of the same bit.
+    // It is largely unused.
     select: usize,
 }
+
+/// This helper function allows for quick translation from a Register to a usize.
+pub fn to_register(reg: Register) -> usize {
+    match CP0_REGISTER_INFO.iter().find(|info| info.name == reg) {
+        Some(information) => information.register,
+        None => panic!("Coprocessor 0 register {:?} was not implemented.", reg),
+    }
+}
+
 
 pub const CP0_REGISTER_INFO: &[Cp0RegisterInformation] = &[
     Cp0RegisterInformation {

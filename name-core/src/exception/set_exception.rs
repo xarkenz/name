@@ -1,5 +1,5 @@
 use crate::structs::ProgramState;
-use super::definitions::ExceptionType;
+use super::{definitions::ExceptionType, register_set::to_register, registers::Register};
 
 impl ProgramState {
     /// When an exception is triggered in the MIPS architecture, 
@@ -8,8 +8,8 @@ impl ProgramState {
     /// filling in the Status (12) and Cause (13) registers appropriately.
     pub fn set_exception(&mut self, _exception_type: ExceptionType) -> () {
         // Some values are set no matter what to indicate an exception state:
-        let _current_mode = (self.cp0.registers[/* Status [Current Mode] */ 12 ] >> 1) & 0x3;    // Extract the current operating mode. 
-        self.cp0.registers[/* Status [EXL] */ 12 ] |= 1 << 1;                   // This indicates to the OS that an exception is being handled.
+        // Extract the current operating mode. 
+        self.cp0.set_exception_level(1 as u32);  // This indicates to the OS that an exception is being handled.
         self.cp0.registers[/* Exception Program Counter */ 14 ] = self.cpu.pc;  // This register contains the PC of where the exception occurred.
 
     }
