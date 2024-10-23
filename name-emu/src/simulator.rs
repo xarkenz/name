@@ -1,6 +1,6 @@
 use crate::simulator_helpers::extract_loadable_sections;
 
-use crate::debug::debug_utils::{debugger, single_step};
+use crate::debug::debug_utils::{debugger, single_step, DebuggerState};
 
 use name_core::elf_def::Elf;
 use name_core::elf_utils::extract_lineinfo;
@@ -21,7 +21,7 @@ pub fn simulate(elf: Elf, debug: bool) -> Result<(), String> {
     } else {
         // Begin fetch/decode/execute cycle to run program normally
         loop {
-            match single_step(&lineinfo, &mut cpu, &mut memory, &Vec::new()) {
+            match single_step(&lineinfo, &mut cpu, &mut memory, &DebuggerState::new(Vec::new(), 0, 5)) {
                 Ok(execution_status) => match execution_status {
                     ExecutionStatus::Continue => {}
                     ExecutionStatus::Break => {
