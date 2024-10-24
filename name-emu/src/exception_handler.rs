@@ -1,13 +1,19 @@
-use name_core::{exception::definitions::ExceptionType, structs::{LineInfo, ProgramState}};
+use name_core::{
+    exception::definitions::ExceptionType,
+    structs::{LineInfo, ProgramState},
+};
 
-use crate::{debug::debug_utils::handle_breakpoint, simulator_helpers::generate_err, syscall_handler::handle_syscall};
+use crate::{
+    debug::debug_utils::handle_breakpoint, simulator_helpers::generate_err,
+    syscall_handler::handle_syscall,
+};
 
 /// The exception handler is invoked whenever an exception has occurred.
 /// Some common exceptions include breakpoints, syscalls, and arithmetic overflow.
 /// It takes a mutable program state and matches on the exception type - then, it resets state if possible.
-pub fn exception_handler(program_state: &mut ProgramState, lineinfo: &Vec<LineInfo>) {
+pub fn handle_exception(program_state: &mut ProgramState, lineinfo: &Vec<LineInfo>) {
     // In order to invoke this function, certain values (like exception_level == 1) are already assumed.
-    
+
     // Attempt to recognize the exception that occurred
     let exception_type: ExceptionType;
     match ExceptionType::try_from(program_state.cp0.get_exc_code()) {
@@ -23,41 +29,57 @@ pub fn exception_handler(program_state: &mut ProgramState, lineinfo: &Vec<LineIn
         ExceptionType::AddressExceptionLoad => {
             // TODO: Detect difference between instructions like bad lw and bad/misaligned pc
             generate_err(lineinfo, epc, "Illegal address provided for load/fetch; misaligned, unreachable, or unowned address.");
-        },
+        }
         ExceptionType::AddressExceptionStore => {
             generate_err(lineinfo, epc, "Illegal address provided on store operation; misaligned, unreachable, or unowned address.");
-        },
+        }
         ExceptionType::BusFetch => {
-            generate_err(lineinfo, epc, "Failed to interpret instruction as word; Unrecognized bytes in ELF .text space.");
-        },
+            generate_err(
+                lineinfo,
+                epc,
+                "Failed to interpret instruction as word; Unrecognized bytes in ELF .text space.",
+            );
+        }
         ExceptionType::BusLoadStore => {
             generate_err(lineinfo, epc, "Failed to store data in given address.");
-        },
+        }
         ExceptionType::Syscall => {
             // Invoke the syscall handler on program state
             handle_syscall(program_state);
-        },
+        }
         ExceptionType::Breakpoint => {
             // Invoke the breakpoint handler on program state and lineinfo
             handle_breakpoint(program_state, lineinfo);
-        },
+        }
         ExceptionType::ReservedInstruction => {
-            generate_err(lineinfo, epc, "Unrecognized bytes in ELF at program counter.");
-        },
+            generate_err(
+                lineinfo,
+                epc,
+                "Unrecognized bytes in ELF at program counter.",
+            );
+        }
         ExceptionType::CoprocessorUnusable => {
-            generate_err(lineinfo, epc, "Attempted to access a coprocessor without correct operating mode.");
-        },
+            generate_err(
+                lineinfo,
+                epc,
+                "Attempted to access a coprocessor without correct operating mode.",
+            );
+        }
         ExceptionType::ArithmeticOverflow => {
             // TODO: Differentiate between these
-            generate_err(lineinfo, epc, "Arithmetic overflow, underflow, or divide by zero detected on instruction.");
-        },
+            generate_err(
+                lineinfo,
+                epc,
+                "Arithmetic overflow, underflow, or divide by zero detected on instruction.",
+            );
+        }
         ExceptionType::Trap => {
             todo!("Not sure how we want trap to work yet.");
-        },
+        }
         ExceptionType::FloatingPoint => {
             // Will be more useful once cp1 is implemented
             generate_err(lineinfo, epc, "Floating point exception occurred.");
-        },
+        }
     }
 
     // If the exception did not cause a crash, reset program state to reflect that execution will continue as normal

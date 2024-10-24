@@ -1,11 +1,11 @@
-use crate::structs::Coprocessor0;
 use crate::exception::register_set::to_register;
 use crate::exception::registers::Register;
+use crate::structs::Coprocessor0;
 
 use paste::paste;
 
 #[macro_export]
-// The following macro allows us to enter just a couple values to generate an appropriately-named getter and setter for 
+// The following macro allows us to enter just a couple values to generate an appropriately-named getter and setter for
 // each bit field.
 macro_rules! getset {
     // This variant is for when the register is supplied.
@@ -44,11 +44,15 @@ macro_rules! getset {
 impl Coprocessor0 {
     fn get_bit_field(&self, register: usize, start: usize, end: usize) -> u32 {
         if start > end || end > 31 {
-            panic!("Improper values provided to get_bit_field (Start: {}, End: {})", start, end);
+            panic!(
+                "Improper values provided to get_bit_field (Start: {}, End: {})",
+                start, end
+            );
         }
 
         let num_bits = end - start + 1;
-        let mask = ((1 as u32) << num_bits) - 1;    // Neat hack I learned a while ago. Give it some thought!
+        // Neat hack I learned a while ago. Give it some thought!
+        let mask = 1u32.checked_shl(num_bits as u32).unwrap_or(0xFFFF as u32); // If the shift overflowed, we wanted every bit set.
 
         // And retrieve the field. Easy as that!
         return (self.registers[register] >> start) & mask;
@@ -56,11 +60,14 @@ impl Coprocessor0 {
 
     fn set_bit_field(&mut self, register: usize, start: usize, end: usize, value: u32) -> () {
         if start > end || end > 31 {
-            panic!("Improper values provided to set_bit_field (Start: {}, End: {})", start, end);
+            panic!(
+                "Improper values provided to set_bit_field (Start: {}, End: {})",
+                start, end
+            );
         }
 
         let num_bits = end - start + 1;
-        let mask = ((1 as u32) << num_bits) - 1;
+        let mask = 1u32.checked_shl(num_bits as u32).unwrap_or(0xFFFF as u32); // If the shift overflowed, we wanted every bit set.
 
         // Clear the specified field
         self.registers[register] &= !(mask << start);
@@ -73,4 +80,4 @@ impl Coprocessor0 {
 getset!(current_mode, Register::Status, 3, 4);
 getset!(exception_level, Register::Status, 1, 1);
 getset!(exc_code, Register::Cause, 2, 6);
-getset!(epc, Register::EPC, 31, 0);
+getset!(epc, Register::EPC, 0, 31);

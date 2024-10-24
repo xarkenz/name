@@ -31,6 +31,7 @@ pub struct Memory {
 
 #[derive(Debug)]
 pub struct ProgramState {
+    pub should_continue_execution: bool,
     pub cpu: Processor,
     pub cp0: Coprocessor0,
     pub memory: Memory,

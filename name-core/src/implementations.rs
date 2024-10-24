@@ -1,6 +1,6 @@
 use crate::elf_def::{MIPS_DATA_START_ADDR, MIPS_TEXT_START_ADDR};
 use crate::exception::constants::*;
-use crate::structs::{LineInfo, Memory, Processor, Coprocessor0, ProgramState};
+use crate::structs::{Coprocessor0, LineInfo, Memory, Processor, ProgramState};
 
 impl Processor {
     pub fn new(entry: u32) -> Self {
@@ -14,9 +14,7 @@ impl Processor {
 // TODO: Fill any default values for cp0 fields
 impl Coprocessor0 {
     pub fn new() -> Self {
-        Coprocessor0 {
-            registers: [0; 32],
-        }
+        Coprocessor0 { registers: [0; 32] }
     }
 }
 
@@ -63,6 +61,7 @@ impl Memory {
 impl ProgramState {
     pub fn new(cpu: Processor, memory: Memory) -> Self {
         ProgramState {
+            should_continue_execution: true,
             cpu: cpu,
             cp0: Coprocessor0::new(),
             memory: memory,

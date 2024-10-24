@@ -1,10 +1,10 @@
-use crate::structs::ProgramState;
 use super::{constants::*, definitions::ExceptionType};
+use crate::structs::ProgramState;
 
 impl ProgramState {
-    /// When an exception is triggered in the MIPS architecture, 
+    /// When an exception is triggered in the MIPS architecture,
     /// values in Coprocessor 0 registers are set to indicate the exception state to the operating system.
-    /// This impl modifies the ProgramState based on a passed ExceptionType, 
+    /// This impl modifies the ProgramState based on a passed ExceptionType,
     /// filling in the Status (12) and Cause (13) registers appropriately.
     pub fn set_exception(&mut self, exception_type: ExceptionType) -> () {
         // Some values are set no matter what to indicate an exception state:

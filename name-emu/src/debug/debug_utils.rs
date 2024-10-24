@@ -3,9 +3,9 @@ use std::{collections::HashMap, sync::LazyLock};
 use name_core::{
     constants::REGISTERS,
     elf_def::MIPS_ADDRESS_ALIGNMENT,
+    exception::definitions::ExceptionType,
     instruction::{information::InstructionInformation, instruction_set::INSTRUCTION_SET},
     structs::{LineInfo, ProgramState},
-    exception::definitions::ExceptionType,
 };
 
 static INSTRUCTION_LOOKUP: LazyLock<HashMap<u32, &'static InstructionInformation>> =
@@ -21,7 +21,7 @@ use crate::fetch::fetch;
 use std::io::{self, Write};
 
 pub fn handle_breakpoint(_program_state: &mut ProgramState, _lineinfo: &Vec<LineInfo>) -> () {
-    todo!("Finish breakpoint handler implementation");
+    todo!("Finish breakpoint handler implementation @Nick");
 }
 
 pub fn single_step(
@@ -32,15 +32,17 @@ pub fn single_step(
     // passing a breakpoints vector into this function is a very messy way of doing this, i'm aware,,,
     // ideally, a break instruction is physically injected into the code and everything works politely from there without extra shenaniganery.
     // however, for now, this will have to do
-    if program_state.cpu.pc > program_state.memory.text_end || program_state.cpu.pc < program_state.memory.text_start {
+    if program_state.cpu.pc > program_state.memory.text_end
+        || program_state.cpu.pc < program_state.memory.text_start
+    {
         program_state.set_exception(ExceptionType::AddressExceptionLoad);
     }
 
     // println!("{}", cpu.pc);
 
     // check if there's a breakpoint after instruction on the line is executed
-    for bp in bps{
-        if program_state.cpu.pc == bp.address { 
+    for bp in bps {
+        if program_state.cpu.pc == bp.address {
             // println!("Breakpoint at line {} reached. (This ran in single_step())", bp.line_num);
             program_state.set_exception(ExceptionType::Breakpoint);
         }
@@ -48,14 +50,13 @@ pub fn single_step(
 
     // Fetch
     let raw_instruction = fetch(program_state);
-    let instr_info = match INSTRUCTION_LOOKUP
-        .get(&raw_instruction.get_lookup()) {
-            Some(info) => info,
-            None => {
-                program_state.set_exception(ExceptionType::ReservedInstruction);
-                return;
-            }
-        };
+    let instr_info = match INSTRUCTION_LOOKUP.get(&raw_instruction.get_lookup()) {
+        Some(info) => info,
+        None => {
+            program_state.set_exception(ExceptionType::ReservedInstruction);
+            return;
+        }
+    };
 
     program_state.cpu.pc += MIPS_ADDRESS_ALIGNMENT;
 
@@ -92,14 +93,10 @@ impl Breakpoint {
     // assembler::add_label is not the solution to male loneliness
 }
 
-
 // pub type DebugFn = fn(&Vec<LineInfo>, &mut Memory, &mut Processor, &Vec<Breakpoint>) -> Result<(), String>;
 
 // This is the name debugger. Have fun...
-pub fn debugger(
-    lineinfo: &Vec<LineInfo>,
-    program_state: &mut ProgramState
-) -> Result<(), String> {
+pub fn debugger(lineinfo: &Vec<LineInfo>, program_state: &mut ProgramState) -> Result<(), String> {
     let mut breakpoints: Vec<Breakpoint> = Vec::new();
     let mut global_bp_num: u16 = 0;
     let mut global_list_loc: usize = 5; // for the l command
@@ -144,15 +141,13 @@ pub fn debugger(
                         todo!("Handle exception");
                     }
                 }
-            },
-            "c" => {
-                loop {
-                    single_step(lineinfo, program_state, &breakpoints);
-                    if program_state.is_exception() {
-                        todo!("Handle exception");
-                    }
-                }
             }
+            "c" => loop {
+                single_step(lineinfo, program_state, &breakpoints);
+                if program_state.is_exception() {
+                    todo!("Handle exception");
+                }
+            },
             "s" => {
                 // repetition bad
                 // but original fix made worse
@@ -177,7 +172,9 @@ pub fn debugger(
                     // wrap the default line number around if it exceeds the number of lines of the program
                     global_list_loc = if global_list_loc + 9 <= num_lines {
                         global_list_loc + 9
-                    } else { 5 };
+                    } else {
+                        5
+                    };
                 } else if db_args.len() == 2 {
                     if db_args[1] == "all" {
                         for line in lineinfo {
@@ -215,16 +212,23 @@ pub fn debugger(
             }
             "p" => {
                 if db_args.len() < 2 {
-                    eprintln!("p expects a non-zero argument, received {}", db_args.len()-1);
+                    eprintln!(
+                        "p expects a non-zero argument, received {}",
+                        db_args.len() - 1
+                    );
                     continue;
                 }
 
                 if db_args[1].chars().nth(0) == Some('$') {
                     for register in db_args[1..].to_vec() {
-                        match REGISTERS.iter().position(|&x| x == register){
+                        match REGISTERS.iter().position(|&x| x == register) {
                             Some(found_register) => {
-                                println!("Value in register {} is {:08x}", found_register, program_state.cpu.general_purpose_registers[found_register]);
-                            },
+                                println!(
+                                    "Value in register {} is {:08x}",
+                                    found_register,
+                                    program_state.cpu.general_purpose_registers[found_register]
+                                );
+                            }
                             None => {
                                 println!("{} is not a valid register.", db_args[1]);
                                 continue;

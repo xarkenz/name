@@ -1,3 +1,4 @@
+use crate::exception_handler::handle_exception;
 use crate::simulator_helpers::extract_loadable_sections;
 
 use crate::debug::debug_utils::{debugger, single_step};
@@ -27,7 +28,7 @@ pub fn simulate(elf: Elf, debug: bool) -> Result<(), String> {
         loop {
             single_step(&lineinfo, &mut program_state, &Vec::new());
             if program_state.is_exception() {
-                todo!("Call on exception handler");
+                handle_exception(&mut program_state, &lineinfo);
             }
         }
     }

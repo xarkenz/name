@@ -74,7 +74,10 @@ impl TryFrom<u32> for ExceptionType {
             0x0c => Ok(ExceptionType::ArithmeticOverflow),
             0x0d => Ok(ExceptionType::Trap),
             0x0f => Ok(ExceptionType::FloatingPoint),
-            _ => Err(format!("Failed to coerce ExcCode {} to ExceptionType.", value)),
+            _ => Err(format!(
+                "Failed to coerce ExcCode {} to ExceptionType.",
+                value
+            )),
         }
     }
 }

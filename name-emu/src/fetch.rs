@@ -1,8 +1,12 @@
-use name_core::{exception::definitions::ExceptionType, instruction::RawInstruction, structs::ProgramState};
+use name_core::{
+    exception::definitions::ExceptionType, instruction::RawInstruction, structs::ProgramState,
+};
 
 // Fetch the next instruction and check that it's in acceptable memory space
 pub fn fetch(program_state: &mut ProgramState) -> RawInstruction {
-    if program_state.cpu.pc > program_state.memory.text_end || program_state.cpu.pc < program_state.memory.text_start {
+    if program_state.cpu.pc > program_state.memory.text_end
+        || program_state.cpu.pc < program_state.memory.text_start
+    {
         program_state.set_exception(ExceptionType::AddressExceptionLoad);
     }
 
@@ -14,7 +18,6 @@ pub fn fetch(program_state: &mut ProgramState) -> RawInstruction {
             Ok(val) => val,
             Err(_) => {
                 program_state.set_exception(ExceptionType::BusFetch);
-                
                 [0; 4] // Fill with 0's because it's not going to execute anyways.
             },
         });

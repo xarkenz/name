@@ -1,13 +1,23 @@
 use std::io::{Read, Write};
 
-use crate::{exception::definitions::ExceptionType, structs::{
+use crate::structs::{
     ProgramState,
     Register::{A0, V0},
-}};
+};
 
 use std::io;
 
-pub type SyscallFn = fn(&mut ProgramState) -> ();
+// This macro is used to keep from having to type a bunch of stuff when implementing a new syscall.
+macro_rules! make_syscall {
+    ($name: ident, $ps: ident, $body: expr) => {
+        pub fn $name($ps: &mut ProgramState) -> Result<(), String> {
+            $body
+            Ok(())
+        }
+    };
+}
+
+pub type SyscallFn = fn(&mut ProgramState) -> Result<(), String>;
 
 pub const SYSCALL_TABLE: [Option<SyscallFn>; 64] = [
     None,                   // 0x00
@@ -77,26 +87,23 @@ pub const SYSCALL_TABLE: [Option<SyscallFn>; 64] = [
 ];
 
 // Syscall 1 - SysPrintInt
-pub fn sys_print_int(program_state: &mut ProgramState) -> () {
-    print!("{}", program_state.cpu.general_purpose_registers[A0 as usize]);
-}
+make_syscall!(sys_print_int, program_state, {
+    print!(
+        "{}",
+        program_state.cpu.general_purpose_registers[A0 as usize]
+    );
+});
 
 // Syscall 4 - SysPrintString
-pub fn sys_print_string(
-    program_state: &mut ProgramState
-) -> () {
+make_syscall!(sys_print_string, program_state, {
     let mut address = program_state.cpu.general_purpose_registers[A0 as usize];
     let mut to_print: Vec<u8> = Vec::new();
 
     loop {
-        let byte = match program_state.memory.read_byte(address) {
-            Ok(b) => b,
-            // TODO: Take care of this Err result from before
-            Err(_) => {
-                program_state.set_exception(ExceptionType::Syscall);
-                return;
-            },
-        };
+        let byte = program_state
+            .memory
+            .read_byte(address)
+            .map_err(|_| "Failed to read byte from memory")?;
 
         if byte == 0 {
             break;
@@ -106,59 +113,53 @@ pub fn sys_print_string(
         address += 1;
     }
 
-    // FIXME: Sorry bout this but I need it working like yesterday
     let output_string: String =
-        String::from_utf8(to_print).expect("Supplied string is NOT utf-8");
+        String::from_utf8(to_print).map_err(|_| "Supplied string is NOT utf-8")?;
 
     print!("{}", output_string);
-}
+});
 
 // Syscall 5 - SysReadInt
-pub fn sys_read_int(program_state: &mut ProgramState) -> () {
+make_syscall!(sys_read_int, program_state, {
     let mut input_text = String::new();
     io::stdin()
         .read_line(&mut input_text)
-        .expect("Failed to read from stdin");
+        .map_err(|_| "Failed to read from stdin")?;
 
     let trimmed = input_text.trim();
     match trimmed.parse::<u32>() {
         Ok(i) => {
             program_state.cpu.general_purpose_registers[V0 as usize] = i;
         }
-        Err(..) => {
-            // TODO: take care of this lingering Err
-            program_state.set_exception(ExceptionType::Syscall);
+        Err(_) => {
+            return Err(format!("Failed to convert input to Int"));
         }
     }
-}
+});
 
 // Syscall 10 - SysExit
-pub fn sys_exit(_program_state: &mut ProgramState) -> () {
-    // FIXME: Make SysExit exit!
-}
+make_syscall!(sys_exit, program_state, {
+    // Simply tell the program it should no longer execute.
+    program_state.should_continue_execution = false;
+});
 
 // Syscall 11 - SysPrintChar
-pub fn sys_print_char(
-    program_state: &mut ProgramState
-) -> () {
+make_syscall!(sys_print_char, program_state, {
     match char::from_u32(program_state.cpu.general_purpose_registers[A0 as usize]) {
         Some(valid_char) => {
             print!("{}", valid_char);
         }
-        // TODO: take care of other lingering Err
-        None => program_state.set_exception(ExceptionType::Syscall),
+        None => return Err(format!("Failed to convert given character to byte value.")),
     }
-}
+});
 
-// FIXME: Get these .expect()s outta here
 // Syscall 12 - SysReadChar
-pub fn sys_read_char(program_state: &mut ProgramState) -> () {
-    // FIXME: .expect() pipeline is not good!
+make_syscall!(sys_read_char, program_state, {
     let mut buf = [0; 1];
-    io::stdout().flush().expect("Failed to flush stdout");
+    io::stdout().flush().map_err(|_| "Failed to flush stdout")?;
     io::stdin()
         .read_exact(&mut buf)
-        .expect("Failed to read from stdin");
+        .map_err(|_| "Failed to read from stdin")?;
 
     program_state.cpu.general_purpose_registers[V0 as usize] = buf[0] as u32;
-}
+});
