@@ -5,7 +5,7 @@
 // This enum contains all the exceptions we could generate.
 #[derive(Debug)]
 pub enum ExceptionType {
-    Interrupt,
+    // Interrupt,
     // TlbMod,
     // TlbLoad,
     // TlbStore,
@@ -16,7 +16,7 @@ pub enum ExceptionType {
     Syscall,
     Breakpoint,
     ReservedInstruction,
-    // CoprocessorUnusable,
+    CoprocessorUnusable,
     ArithmeticOverflow,
     Trap,
     // MsaFloatingPoint,
@@ -36,4 +36,45 @@ pub enum ExceptionType {
     // Reserved,
     // CacheErr,
     // Reserved,
+}
+
+/// This impl block allows us to simply translate from ExceptionType to ExcCode later with `e as u32`
+impl From<ExceptionType> for u32 {
+    fn from(e: ExceptionType) -> u32 {
+        match e {
+            ExceptionType::AddressExceptionLoad => 0x04,
+            ExceptionType::AddressExceptionStore => 0x05,
+            ExceptionType::BusFetch => 0x06,
+            ExceptionType::BusLoadStore => 0x07,
+            ExceptionType::Syscall => 0x08,
+            ExceptionType::Breakpoint => 0x09,
+            ExceptionType::ReservedInstruction => 0x0a,
+            ExceptionType::CoprocessorUnusable => 0x0b,
+            ExceptionType::ArithmeticOverflow => 0x0c,
+            ExceptionType::Trap => 0x0d,
+            ExceptionType::FloatingPoint => 0x0f,
+        }
+    }
+}
+
+/// This impl block allows for converting the other way around:
+impl TryFrom<u32> for ExceptionType {
+    type Error = String;
+
+    fn try_from(value: u32) -> Result<Self, Self::Error> {
+        match value {
+            0x04 => Ok(ExceptionType::AddressExceptionLoad),
+            0x05 => Ok(ExceptionType::AddressExceptionStore),
+            0x06 => Ok(ExceptionType::BusFetch),
+            0x07 => Ok(ExceptionType::BusLoadStore),
+            0x08 => Ok(ExceptionType::Syscall),
+            0x09 => Ok(ExceptionType::Breakpoint),
+            0x0a => Ok(ExceptionType::ReservedInstruction),
+            0x0b => Ok(ExceptionType::CoprocessorUnusable),
+            0x0c => Ok(ExceptionType::ArithmeticOverflow),
+            0x0d => Ok(ExceptionType::Trap),
+            0x0f => Ok(ExceptionType::FloatingPoint),
+            _ => Err(format!("Failed to coerce ExcCode {} to ExceptionType.", value)),
+        }
+    }
 }

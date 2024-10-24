@@ -72,4 +72,5 @@ impl Coprocessor0 {
 // Below are all the macro-defined accessors for the small bit fields.
 getset!(current_mode, Register::Status, 3, 4);
 getset!(exception_level, Register::Status, 1, 1);
+getset!(exc_code, Register::Cause, 2, 6);
 getset!(epc, Register::EPC, 31, 0);

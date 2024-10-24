@@ -20,6 +20,10 @@ use crate::fetch::fetch;
 
 use std::io::{self, Write};
 
+pub fn handle_breakpoint(_program_state: &mut ProgramState, _lineinfo: &Vec<LineInfo>) -> () {
+    todo!("Finish breakpoint handler implementation");
+}
+
 pub fn single_step(
     _lineinfo: &Vec<LineInfo>,
     program_state: &mut ProgramState,

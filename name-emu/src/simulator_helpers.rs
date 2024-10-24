@@ -34,9 +34,11 @@ pub fn generate_err(lineinfo: &Vec<LineInfo>, address: u32, message: &str) -> St
         .find(|li| (li.start_address <= address) && (address < li.end_address))
     {
         Some(info) => info,
-        None => return String::new(),
+        // If no lineinfo was found, just give a general message
+        None => return format!("[*] At pc 0x{:x}:\n - {}", address, message),
     };
 
+    // If lineinfo was retrieved, print a well-formed error message
     return format!(
         "[*] {}: {}\n - {}",
         found_lineinfo.line_number,
