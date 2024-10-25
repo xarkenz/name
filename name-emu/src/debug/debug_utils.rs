@@ -45,7 +45,7 @@ pub fn single_step(
         .get(&raw_instruction.get_lookup())
         .ok_or(generate_err(
             lineinfo,
-            cpu.pc - 4,
+            cpu.pc - MIPS_ADDRESS_ALIGNMENT,
             format!("Failed instruction fetch").as_str(),
         ))?;
 
@@ -89,9 +89,8 @@ pub struct Breakpoint {
 pub struct DebuggerState {
     pub breakpoints: Vec<Breakpoint>,
     pub global_bp_num: u16,
-    pub global_list_loc: usize // for the l command; the center of the output, so to speak
+    pub global_list_loc: usize, // for the l command; the center of the output, so to speak
 }
-
 
 // This is the name debugger. Have fun...
 pub fn debugger(
@@ -99,18 +98,12 @@ pub fn debugger(
     memory: &mut Memory,
     cpu: &mut Processor,
 ) -> Result<(), String> {
-    let mut db_state: DebuggerState = DebuggerState::new(
-        Vec::new(), 
-        0, 
-        5
-    );
+    let mut db_state: DebuggerState = DebuggerState::new(Vec::new(), 0, 5);
 
     // static COMMANDS: &[(&str, DebugFn)] = &[
     //     ("help", )
     // ]
-
-    println!("Welcome to the NAME debugger.");
-    println!("For a list of commands, type \"help\".");
+    println!("Welcome to the NAME debugger.\nFor a list of commands, type \"help\".");
 
     loop {
         print!("(name-db) ");
@@ -122,17 +115,45 @@ pub fn debugger(
             Ok(_) => {}
             Err(e) => eprintln!("stdin error: {e}"),
         };
-        let db_args: Vec<String> = user_input.trim().split(" ").map(|s| s.to_string()).collect();
+        let db_args: Vec<String> = user_input
+            .trim()
+            .split(" ")
+            .map(|s| s.to_string())
+            .collect();
 
-        // run the 
+        // run the command the user inputsY 
         // this could be better
         match db_args[0].as_str() {
             "help" => {
                 help_menu(db_args);
             }
-            "q"    => return Ok(()),
-            "exit" => return Ok(()),
-            "quit" => return Ok(()),
+            "q" => match quit_db() {
+                // this looks absolutely ridiculous but i'm writing it this
+                // way to hint at the lookup table i want to implement after
+                // this juicy pull request
+                Ok(()) => {
+                    return Ok(());
+                }
+                Err(e) => {
+                    eprintln!("{e}");
+                }
+            },
+            "exit" => match quit_db() {
+                Ok(()) => {
+                    return Ok(());
+                }
+                Err(e) => {
+                    eprintln!("{e}");
+                }
+            },
+            "quit" => match quit_db() {
+                Ok(()) => {
+                    return Ok(());
+                }
+                Err(e) => {
+                    eprintln!("{e}");
+                }
+            },
             "r" => loop {
                 // this is supposed to always start program execution from the beginning.
                 // idk how to make it do that rn
@@ -140,14 +161,12 @@ pub fn debugger(
                     Ok(execution_status) => match execution_status {
                         ExecutionStatus::Continue => {}
                         ExecutionStatus::Break => {
-                            match lineinfo.iter().find(|&line| {
-                                line.start_address == cpu.pc + MIPS_ADDRESS_ALIGNMENT
-                            }) {
+                            match lineinfo
+                                .iter()
+                                .find(|&line| line.start_address == cpu.pc + MIPS_ADDRESS_ALIGNMENT)
+                            {
                                 Some(line) => {
-                                    println!(
-                                        "Breakpoint at line {} reached.",
-                                        line.line_number
-                                    );
+                                    println!("Breakpoint at line {} reached.", line.line_number);
                                 }
                                 None => {
                                     eprintln!("Illegal state during single-step (lineinfo could not be located for current PC 0x{:x})", cpu.pc + MIPS_ADDRESS_ALIGNMENT);
@@ -159,7 +178,7 @@ pub fn debugger(
                     },
                     Err(e) => return Err(e),
                 };
-            }
+            },
             "c" => loop {
                 match single_step(lineinfo, cpu, memory, &db_state) {
                     Ok(execution_status) => match execution_status {
@@ -206,45 +225,56 @@ pub fn debugger(
                     Err(e) => return Err(e),
                 };
             }
-            "l" => {
-                // this error is terrible and i don't know why it's happening but i'll fix it in the next commit
-                match list_text(lineinfo, memory, cpu, &mut db_state, &db_args) {
-                    Ok(_) => { continue; }
-                    Err(e) => { eprintln!("{e}"); }
-                };
-            }
-            "p" => {
-                match print_register(cpu, &db_args) {
-                    Ok(()) => { continue; }
-                    Err(e) => { eprintln!("{e}"); }
+            "l" => match list_text(lineinfo, &mut db_state, &db_args) {
+                Ok(_) => {
+                    continue;
+                }
+                Err(e) => {
+                    eprintln!("{e}");
                 }
             }
-            "pa" => {
-                match print_all_registers(cpu, &db_args) {
-                    Ok(()) => { continue; }
-                    Err(e) => { eprintln!("{e}"); }
+            "p" => match print_register(cpu, &db_args) {
+                Ok(()) => {
+                    continue;
+                }
+                Err(e) => {
+                    eprintln!("{e}");
+                }
+            },
+            "pa" => match print_all_registers(cpu, &db_args) {
+                Ok(()) => {
+                    continue;
+                }
+                Err(e) => {
+                    eprintln!("{e}");
                 }
             }
-            "m" => {
-                match modify_register(cpu, &db_args) {
-                    Ok(()) => { continue; }
-                    Err(e) => { eprintln!("{e}"); }
+            "m" => match modify_register(cpu, &db_args) {
+                Ok(()) => {
+                    continue;
+                }
+                Err(e) => {
+                    eprintln!("{e}");
                 }
             }
             "pb" => {
                 db_state.print_all_breakpoints();
             }
-            "b" => {
-                match db_state.add_breakpoint(lineinfo, &db_args) {
-                    Ok(_) => { continue; }
-                    Err(e) => { eprintln!("{e}"); }
-                };
+            "b" => match db_state.add_breakpoint(lineinfo, &db_args) {
+                Ok(_) => {
+                    continue;
+                }
+                Err(e) => {
+                    eprintln!("{e}");
+                }
             }
-            "del" => {
-                match db_state.remove_breakpoint(&db_args) {
-                    Ok(_) => { continue; }
-                    Err(e) => { eprintln!("{e}"); }
-                };
+            "del" => match db_state.remove_breakpoint(&db_args) {
+                Ok(_) => {
+                    continue;
+                }
+                Err(e) => {
+                    eprintln!("{e}");
+                }
             }
             _ => println!("Option not recognized. Use \"help\" to view accepted options."),
         };

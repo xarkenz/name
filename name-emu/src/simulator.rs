@@ -21,7 +21,12 @@ pub fn simulate(elf: Elf, debug: bool) -> Result<(), String> {
     } else {
         // Begin fetch/decode/execute cycle to run program normally
         loop {
-            match single_step(&lineinfo, &mut cpu, &mut memory, &DebuggerState::new(Vec::new(), 0, 5)) {
+            match single_step(
+                &lineinfo,
+                &mut cpu,
+                &mut memory,
+                &DebuggerState::new(Vec::new(), 0, 5),
+            ) {
                 Ok(execution_status) => match execution_status {
                     ExecutionStatus::Continue => {}
                     ExecutionStatus::Break => {
