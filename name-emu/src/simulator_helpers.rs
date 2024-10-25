@@ -40,9 +40,10 @@ pub fn generate_err(lineinfo: &Vec<LineInfo>, address: u32, message: &str) -> St
 
     // If lineinfo was retrieved, print a well-formed error message
     return format!(
-        "[*] {}: {}\n - {}",
+        "[*] At pc 0x{:x}:\n - {}: {}\n - {}",
+        address,
         found_lineinfo.line_number,
         found_lineinfo.content.trim(),
-        message
+        message,
     );
 }

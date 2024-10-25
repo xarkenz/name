@@ -25,11 +25,15 @@ pub fn simulate(elf: Elf, debug: bool) -> Result<(), String> {
         debugger(&lineinfo, &mut program_state)
     } else {
         // Begin fetch/decode/execute cycle to run program normally
-        loop {
+        while program_state.should_continue_execution {
+            // Run the next instruction
             single_step(&lineinfo, &mut program_state, &Vec::new());
+            // If an exception occurred, handle it
             if program_state.is_exception() {
                 handle_exception(&mut program_state, &lineinfo);
             }
         }
+
+        Ok(())
     }
 }

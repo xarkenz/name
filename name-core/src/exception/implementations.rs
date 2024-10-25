@@ -49,14 +49,20 @@ impl Coprocessor0 {
                 start, end
             );
         }
-
+    
         let num_bits = end - start + 1;
-        // Neat hack I learned a while ago. Give it some thought!
-        let mask = 1u32.checked_shl(num_bits as u32).unwrap_or(0xFFFF as u32); // If the shift overflowed, we wanted every bit set.
-
-        // And retrieve the field. Easy as that!
-        return (self.registers[register] >> start) & mask;
+        
+        // If num_bits is 32, the mask should cover all 32 bits
+        let mask = if num_bits == 32 {
+            u32::MAX // All bits set
+        } else {
+            ((1u32 << num_bits) - 1) << start
+        };
+    
+        // Apply mask and shift the bits back to the right
+        (self.registers[register] & mask) >> start
     }
+    
 
     fn set_bit_field(&mut self, register: usize, start: usize, end: usize, value: u32) -> () {
         if start > end || end > 31 {
@@ -65,15 +71,23 @@ impl Coprocessor0 {
                 start, end
             );
         }
-
+    
         let num_bits = end - start + 1;
-        let mask = 1u32.checked_shl(num_bits as u32).unwrap_or(0xFFFF as u32); // If the shift overflowed, we wanted every bit set.
-
+        
+        // If num_bits is 32, the mask should cover all 32 bits
+        let mask = if num_bits >= 31 {
+            u32::MAX
+        } else {
+            (1u32 << num_bits) - 1
+        };
+    
         // Clear the specified field
-        self.registers[register] &= !(mask << start);
+        self.registers[register] &= !mask;
+    
         // Set the specified field
         self.registers[register] |= (value & mask) << start;
-    }
+    }    
+    
 }
 
 // Below are all the macro-defined accessors for the small bit fields.

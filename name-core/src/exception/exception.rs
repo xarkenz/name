@@ -9,15 +9,16 @@ impl ProgramState {
     pub fn set_exception(&mut self, exception_type: ExceptionType) -> () {
         // Some values are set no matter what to indicate an exception state:
         //
-        // The EXL bit indicates to the OS that an exception is being handled.
-        self.cp0.set_exception_level(EXCEPTION_BEING_HANDLED);
         // Exceptions are handled in Kernel Mode.
         self.cp0.set_current_mode(KERNEL_MODE);
+        // The EXL bit indicates to the OS that an exception is being handled.
         // The EPC register contains the PC of where the exception occurred.
         // If it already contains some other value important to our flow, we do not want to overwrite the address.
         if !self.is_exception() {
             self.cp0.set_epc(self.cpu.pc);
         }
+        // Set the EXL bit.
+        self.cp0.set_exception_level(EXCEPTION_BEING_HANDLED);
         // Set the ExcCode field of Cause to the proper value
         self.cp0.set_exc_code(exception_type as u32);
     }
@@ -27,7 +28,9 @@ impl ProgramState {
         // Unset the EXL bit to indicate an exception is no longer being handled
         self.cp0.set_exception_level(NO_EXCEPTION);
         // TODO: LEAVE KERNEL MODE
-        // Go back to where we were before the exception was handled
+        // Go back to where we were headed before the exception was handled
         self.cpu.pc = self.cp0.get_epc();
+        // Clear EPC
+        self.cp0.set_epc(0u32);
     }
 }

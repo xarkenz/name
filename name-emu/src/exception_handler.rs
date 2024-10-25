@@ -24,24 +24,29 @@ pub fn handle_exception(program_state: &mut ProgramState, lineinfo: &Vec<LineInf
     // Retrieve necessary values
     let epc: u32 = program_state.cp0.get_epc();
 
+    dbg!(&exception_type);
+
     // Match on exception type to either error out or handle appropriately
     match exception_type {
         ExceptionType::AddressExceptionLoad => {
             // TODO: Detect difference between instructions like bad lw and bad/misaligned pc
-            generate_err(lineinfo, epc, "Illegal address provided for load/fetch; misaligned, unreachable, or unowned address.");
+            panic!("{}", generate_err(lineinfo, epc, "Illegal address provided for load/fetch; misaligned, unreachable, or unowned address."));
         }
         ExceptionType::AddressExceptionStore => {
-            generate_err(lineinfo, epc, "Illegal address provided on store operation; misaligned, unreachable, or unowned address.");
+            panic!("{}", generate_err(lineinfo, epc, "Illegal address provided on store operation; misaligned, unreachable, or unowned address."));
         }
         ExceptionType::BusFetch => {
-            generate_err(
+            panic!("{}", generate_err(
                 lineinfo,
                 epc,
                 "Failed to interpret instruction as word; Unrecognized bytes in ELF .text space.",
-            );
+            ));
         }
         ExceptionType::BusLoadStore => {
-            generate_err(lineinfo, epc, "Failed to store data in given address.");
+            panic!(
+                "{}",
+                generate_err(lineinfo, epc, "Failed to store data in given address.")
+            );
         }
         ExceptionType::Syscall => {
             // Invoke the syscall handler on program state
@@ -52,25 +57,34 @@ pub fn handle_exception(program_state: &mut ProgramState, lineinfo: &Vec<LineInf
             handle_breakpoint(program_state, lineinfo);
         }
         ExceptionType::ReservedInstruction => {
-            generate_err(
-                lineinfo,
-                epc,
-                "Unrecognized bytes in ELF at program counter.",
+            panic!(
+                "{}",
+                generate_err(
+                    lineinfo,
+                    epc,
+                    "Unrecognized bytes in ELF at program counter.",
+                )
             );
         }
         ExceptionType::CoprocessorUnusable => {
-            generate_err(
-                lineinfo,
-                epc,
-                "Attempted to access a coprocessor without correct operating mode.",
+            panic!(
+                "{}",
+                generate_err(
+                    lineinfo,
+                    epc,
+                    "Attempted to access a coprocessor without correct operating mode.",
+                )
             );
         }
         ExceptionType::ArithmeticOverflow => {
             // TODO: Differentiate between these
-            generate_err(
-                lineinfo,
-                epc,
-                "Arithmetic overflow, underflow, or divide by zero detected on instruction.",
+            panic!(
+                "{}",
+                generate_err(
+                    lineinfo,
+                    epc,
+                    "Arithmetic overflow, underflow, or divide by zero detected on instruction.",
+                )
             );
         }
         ExceptionType::Trap => {
@@ -78,7 +92,10 @@ pub fn handle_exception(program_state: &mut ProgramState, lineinfo: &Vec<LineInf
         }
         ExceptionType::FloatingPoint => {
             // Will be more useful once cp1 is implemented
-            generate_err(lineinfo, epc, "Floating point exception occurred.");
+            panic!(
+                "{}",
+                generate_err(lineinfo, epc, "Floating point exception occurred.")
+            );
         }
     }
 

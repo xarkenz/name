@@ -42,7 +42,7 @@ print:	add  	$t0, $zero, $a0  # starting address of array
       	la   	$a0, head        # load address of print heading
       	li   	$v0, SysPrintString
       	syscall                    # print heading
-print5:  	lw   	$a0, 0($t0)      # load fibonacci number for syscall
+print5: 	lw   	$a0, 0($t0)      # load fibonacci number for syscall
       	li   	$v0, SysPrintInt # specify Print Integer service
       	syscall                    # print fibonacci number
       	la   	$a0, space       # load address of spacer for syscall

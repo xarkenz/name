@@ -363,15 +363,16 @@ pub fn lw(program_state: &mut ProgramState, args: IArgs) -> () {
         + args.imm as i32) as u32;
 
     if temp % 4 != 0 {
-        // TODO: Use a function which sets the proper values in cp0 for us
         program_state.set_exception(ExceptionType::AddressExceptionLoad);
+        return;
     }
 
     if temp + 4 >= program_state.memory.data_end || temp < program_state.memory.data_start {
-        // TODO: Use a function which sets the proper values in cp0 for us
         program_state.set_exception(ExceptionType::AddressExceptionLoad);
+        return;
     }
 
+    // Checks passed. Load word.
     let start_idx: usize = (temp - program_state.memory.data_start) as usize;
     let end_idx: usize = (start_idx + 4) as usize;
 

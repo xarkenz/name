@@ -38,7 +38,7 @@ pub fn single_step(
         program_state.set_exception(ExceptionType::AddressExceptionLoad);
     }
 
-    // println!("{}", cpu.pc);
+    // println!("{}", program_state.cpu.pc);
 
     // check if there's a breakpoint after instruction on the line is executed
     for bp in bps {
@@ -61,6 +61,11 @@ pub fn single_step(
     program_state.cpu.pc += MIPS_ADDRESS_ALIGNMENT;
 
     // Execute the instruction; program_state is modified.
+    if false
+    /* Allowing for some later verbose mode */
+    {
+        println!("Executing {}", instr_info.mnemonic);
+    }
     let _ = (instr_info.implementation)(program_state, raw_instruction);
 
     // The $0 register should never have been permanently changed. Don't let it remain changed.
