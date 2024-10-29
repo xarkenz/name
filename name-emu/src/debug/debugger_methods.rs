@@ -38,6 +38,8 @@ impl DebuggerState {
         }
     }
 
+    /* These are all functions that only impact the debugger and not the state of the program. */
+
     pub fn print_all_breakpoints(&self) -> Result<(), String> {
         println!("BP_NUM: LINE_NUM");
         for breakpoint in &self.breakpoints {
@@ -118,8 +120,8 @@ impl DebuggerState {
 pub fn db_step(lineinfo: &Vec<LineInfo>, program_state: &mut ProgramState, debugger_state: &mut DebuggerState) -> Result<(), String> {
     single_step(lineinfo, program_state, debugger_state);
     if program_state.is_exception() {
-        // todo!("Handle exception");
-        return Err("exceptionnnnnnnnn".to_string())
+        todo!("Handle exception");
+        // return Err("exceptionnnnnnnnn".to_string())
     }
     Ok(())
 }
@@ -157,7 +159,7 @@ pub fn list_text(
                 }
                 Ok(lnum) => {
                     if lnum > lineinfo.len() {
-                        eprintln!("{} out of bounds of program.", lnum);
+                        return Err(format!("{} out of bounds of program.", lnum));
                     } else {
                         debugger_state.list_lines(lineinfo, lnum);
                     }

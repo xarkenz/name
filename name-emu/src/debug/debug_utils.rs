@@ -138,6 +138,10 @@ pub fn debugger(lineinfo: &Vec<LineInfo>, program_state: &mut ProgramState) -> R
                 Ok(_) => continue,
                 Err(e) => eprintln!("{e}"),
             }
+            "m" => match modify_register(program_state, &db_args) {
+                Ok(_) => continue,
+                Err(e) => eprintln!("{e}"),
+            }
             "pb" => match debugger_state.print_all_breakpoints() {
                 Ok(_) => continue,
                 Err(e) => eprintln!("{e}"),
