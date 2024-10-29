@@ -1,12 +1,13 @@
 use std::{collections::HashMap, sync::LazyLock};
 
 use name_core::{
-    constants::REGISTERS,
     elf_def::MIPS_ADDRESS_ALIGNMENT,
     exception::definitions::ExceptionType,
     instruction::{information::InstructionInformation, instruction_set::INSTRUCTION_SET},
     structs::{LineInfo, ProgramState},
 };
+
+use crate::debug::debugger_methods::*;
 
 static INSTRUCTION_LOOKUP: LazyLock<HashMap<u32, &'static InstructionInformation>> =
     LazyLock::new(|| {
@@ -27,7 +28,7 @@ pub fn handle_breakpoint(_program_state: &mut ProgramState, _lineinfo: &Vec<Line
 pub fn single_step(
     _lineinfo: &Vec<LineInfo>,
     program_state: &mut ProgramState,
-    bps: &Vec<Breakpoint>,
+    debugger_state: &DebuggerState,
 ) -> () {
     // passing a breakpoints vector into this function is a very messy way of doing this, i'm aware,,,
     // ideally, a break instruction is physically injected into the code and everything works politely from there without extra shenaniganery.
@@ -41,7 +42,7 @@ pub fn single_step(
     // println!("{}", program_state.cpu.pc);
 
     // check if there's a breakpoint after instruction on the line is executed
-    for bp in bps {
+    for bp in &debugger_state.breakpoints {
         if program_state.cpu.pc == bp.address {
             // println!("Breakpoint at line {} reached. (This ran in single_step())", bp.line_num);
             program_state.set_exception(ExceptionType::Breakpoint);
@@ -79,292 +80,78 @@ pub struct Breakpoint {
     pub address: u32,
 }
 
-impl Breakpoint {
-    pub fn new(bp_num: u16, line_num: u32, lineinfo: &Vec<LineInfo>) -> Self {
-        Breakpoint {
-            bp_num,
-            line_num,
-            address: {
-                match lineinfo.iter().find(|&line| line.line_number == line_num) {
-                    Some(line) => line.start_address,
-                    None => {
-                        eprintln!("Breakpoint not found in memory.");
-                        0
-                    }
-                }
-            },
-        }
-    }
-    // assembler::add_label is not the solution to male loneliness
+pub struct DebuggerState {
+    pub breakpoints: Vec<Breakpoint>,
+    pub global_bp_num: u16,
+    pub global_list_loc: usize, // for the l command
 }
 
 // pub type DebugFn = fn(&Vec<LineInfo>, &mut Memory, &mut Processor, &Vec<Breakpoint>) -> Result<(), String>;
 
 // This is the name debugger. Have fun...
 pub fn debugger(lineinfo: &Vec<LineInfo>, program_state: &mut ProgramState) -> Result<(), String> {
-    let mut breakpoints: Vec<Breakpoint> = Vec::new();
-    let mut global_bp_num: u16 = 0;
-    let mut global_list_loc: usize = 5; // for the l command
+    let mut debugger_state = DebuggerState::new();
 
     println!("Welcome to the NAME debugger.");
     println!("For a list of commands, type \"help\".");
 
-    // i have not written real rust before. please forgive me
     loop {
         print!("(name-db) ");
-        io::stdout().flush().expect("Failed to flush stdout"); // i took cs 3377 and i still don't know why this is a thing
+        io::stdout().flush().expect("Failed to flush stdout");
 
         let mut user_input = String::new();
         match io::stdin().read_line(&mut user_input) {
             Ok(_) => {}
             Err(e) => eprintln!("stdin error: {e}"),
         };
-        let db_args: Vec<&str> = user_input.trim().split(" ").collect();
+        let db_args: Vec<String> = user_input.trim().split(" ").map(|s| s.to_string()).collect();
 
-        // static COMMANDS: &[(&str, DebugFn)] = &[
-        //     ("help", )
-        // ]
-
-        // match db_args[0] {
-
-        // }
-        // this could be better mayb
-        match db_args[0] {
-            "help" => {
-                help_menu(db_args.iter().map(|&s| s.to_string()).collect());
-            } // life would be too easy if there was only one type of string
+        match db_args[0].as_str() {
+            "help" => match help_menu(db_args) {
+                Ok(_) => continue,
+                Err(e) => eprintln!("{e}"),
+            }
             "q" => return Ok(()),
             "exit" => return Ok(()),
             "quit" => return Ok(()),
-            "r" => {
-                // this is supposed to always start program execution from the beginning.
-                // idk how to make it do that rn
-                // maybe these can secretly be the same thing and we just keep it here to make it look liek gdb :shrug:
-                loop {
-                    single_step(lineinfo, program_state, &breakpoints);
-                    if program_state.is_exception() {
-                        todo!("Handle exception");
-                    }
-                }
+            "r" => match continuously_execute(lineinfo, program_state, &mut debugger_state) {
+                Ok(_) => continue,
+                Err(e) => eprintln!("{e}"),
             }
-            "c" => loop {
-                single_step(lineinfo, program_state, &breakpoints);
-                if program_state.is_exception() {
-                    todo!("Handle exception");
-                }
+            "c" => match continuously_execute(lineinfo, program_state, &mut debugger_state) {
+                Ok(_) => continue,
+                Err(e) => eprintln!("{e}"),                
             },
-            "s" => {
-                // repetition bad
-                // but original fix made worse
-                single_step(lineinfo, program_state, &breakpoints);
-                if program_state.is_exception() {
-                    todo!("Handle exception");
-                }
+            "s" => match db_step(lineinfo, program_state, &mut debugger_state) {
+                Ok(_) => continue,
+                Err(e) => eprintln!("{e}"),
             }
-            "l" => {
-                if db_args.len() == 1 {
-                    let num_lines = lineinfo.len();
-
-                    let begin = global_list_loc.saturating_sub(5);
-                    let end = std::cmp::min(global_list_loc.saturating_add(3), num_lines - 1);
-                    for i in begin..=end {
-                        println!(
-                            "{:>3} #{:08x}  {}",
-                            lineinfo[i].line_number, lineinfo[i].start_address, lineinfo[i].content
-                        );
-                    }
-
-                    // wrap the default line number around if it exceeds the number of lines of the program
-                    global_list_loc = if global_list_loc + 9 <= num_lines {
-                        global_list_loc + 9
-                    } else {
-                        5
-                    };
-                } else if db_args.len() == 2 {
-                    if db_args[1] == "all" {
-                        for line in lineinfo {
-                            println!(
-                                "{:>3} #{:08x}  {}",
-                                line.line_number, line.start_address, line.content
-                            );
-                        }
-                    } else {
-                        match db_args[1].parse::<usize>() {
-                            Err(_) => {
-                                eprintln!("l expects an unsigned int or \"all\" as an argument");
-                            }
-                            Ok(lnum) => {
-                                if lnum > lineinfo.len() {
-                                    eprintln!("{} out of bounds of program.", lnum);
-                                } else {
-                                    let begin = lnum.saturating_sub(5);
-                                    let end = std::cmp::min(lnum.saturating_add(3), lineinfo.len());
-                                    for i in begin..end {
-                                        println!(
-                                            "{:>3} #{:08x}  {}",
-                                            lineinfo[i].line_number,
-                                            lineinfo[i].start_address,
-                                            lineinfo[i].content
-                                        );
-                                    }
-                                }
-                            }
-                        };
-                    }
-                } else {
-                    eprintln!("l expects 0 or 1 arguments, received {}", db_args.len() - 1);
-                }
+            "l" => match list_text(lineinfo, &mut debugger_state, &db_args) {
+                Ok(_) => continue,
+                Err(e) => eprintln!("{e}"),
             }
-            "p" => {
-                if db_args.len() < 2 {
-                    eprintln!(
-                        "p expects a non-zero argument, received {}",
-                        db_args.len() - 1
-                    );
-                    continue;
-                }
-
-                if db_args[1].chars().nth(0) == Some('$') {
-                    for register in db_args[1..].to_vec() {
-                        match REGISTERS.iter().position(|&x| x == register) {
-                            Some(found_register) => {
-                                println!(
-                                    "Value in register {} is {:08x}",
-                                    found_register,
-                                    program_state.cpu.general_purpose_registers[found_register]
-                                );
-                            }
-                            None => {
-                                println!("{} is not a valid register.", db_args[1]);
-                                continue;
-                            }
-                        }
-                    }
-                } else {
-                    eprintln!("Congrats! You discovered an unimplemented feature... or you forgot the dollar sign on your register.");
-                }
+            "p" => match print_register(program_state, &db_args) {
+                Ok(_) => continue,
+                Err(e) => eprintln!("{e}"),
             }
-            "pa" => {
-                if db_args.len() != 1 {
-                    // this outputs a lot so make sure the user actually meant to type pa and not pb or p or something
-                    eprintln!("pa expects 0 arguments, received {}", db_args.len() - 1);
-                    continue;
-                }
-                for register in REGISTERS {
-                    let idx: usize = REGISTERS.iter().position(|&x| x == register).unwrap();
-                    println!(
-                        "{:>5}: {:08x}",
-                        register, program_state.cpu.general_purpose_registers[idx]
-                    );
-                }
+            "pa" => match print_all_registers(program_state, &db_args) {
+                Ok(_) => continue,
+                Err(e) => eprintln!("{e}"),
             }
-            "pb" => {
-                println!("BP_NUM: LINE_NUM");
-                for breakpoint in &breakpoints {
-                    println!("{:>6}: {}", breakpoint.bp_num, breakpoint.line_num);
-                    // format this...?
-                }
+            "pb" => match debugger_state.print_all_breakpoints() {
+                Ok(_) => continue,
+                Err(e) => eprintln!("{e}"),
             }
-            "b" => {
-                // i know there's probably better error handling but i don't have time
-                // to read the whole rust book rn soz
-                if db_args.len() != 2 {
-                    eprintln!("b expects 1 argument, received {}", db_args.len() - 1);
-                    continue;
-                }
-                let line_num: u32 = db_args[1]
-                    .parse()
-                    .expect("b takes 32-bit unsigned int as input");
-
-                if line_num > lineinfo.len().try_into().unwrap() {
-                    eprintln!("{} exceeds number of lines in program.", line_num);
-                    // something like that
-                }
-
-                global_bp_num += 1;
-                breakpoints.push(Breakpoint::new(global_bp_num, line_num, lineinfo));
-                println!(
-                    "Successfully added breakpoint {} at line {}.",
-                    global_bp_num, line_num
-                );
+            "b" => match debugger_state.add_breakpoint(lineinfo, &db_args) {
+                Ok(_) => continue,
+                Err(e) => eprintln!("{e}"),
             }
-            "del" => {
-                if db_args.len() != 2 {
-                    eprintln!("del expects 1 argument, received {}", db_args.len() - 1);
-                    continue;
-                }
-                let bp_num: u16 = db_args[1]
-                    .parse()
-                    .expect("del takes a 16-bit unsigned int as input");
-
-                // i KNOW this can be better
-                if let Some(index) = breakpoints.iter().position(|brpt| brpt.bp_num == bp_num) {
-                    let removed_element = breakpoints.remove(index);
-                    println!("Removed {:?}", removed_element);
-                    global_bp_num -= 1;
-                } else {
-                    eprintln!("Breakpoint with bp_num {} not found", bp_num);
-                }
+            "del" => match debugger_state.remove_breakpoint(&db_args) {
+                Ok(_) => continue,
+                Err(e) => eprintln!("{e}"),
             }
-            _ => println!("Option not recognized. Type \"help\" to view accepted options."),
+            _ => eprintln!("Option not recognized. Type \"help\" to view accepted options.")
         };
     }
 }
 
-fn help_menu(args: Vec<String>) {
-    if args.len() == 1 {
-        println!("help - Display this menu.");
-        println!("help [CMD] - Get more information about a specific db command CMD.");
-        println!("r - Begin execution of program.");
-        println!("c - Continue program execution until the next breakpoint.");
-        println!("s - Execute only the next instruction.");
-        println!("l - Print the entire program. (this functionality will be much improved later)");
-        println!("p - Print the value of a register (or registers) at the current place in program execution (please include the dollar sign).");
-        println!("pa - Print value of ALL registers at once.");
-        println!("pb - Print all breakpoints.");
-        println!("b [N] - Insert a breakpoint at line number N.");
-        println!("del [N] - Delete breakpoint number N.");
-        println!("q - Exit (quit) debugger.");
-    } else if args.len() == 2 {
-        match &args[1] as &str {
-            "help" => {
-                println!("you're funny");
-            }
-            "r" => {
-                println!("Begin execution of program.");
-            }
-            "c" => {
-                println!("Continue program execution until the next breakpoint.");
-            }
-            "s" => {
-                println!("Execute only the next instruction.");
-            }
-            "l" => {
-                println!("When provided no arguments: print the first ten lines of the program. Then, print the next 10, and so forth.");
-                println!("When provided a line number (positive integer): print 9 lines around the given line number.");
-                println!("When provided the argument \"all\": print the entire program.");
-            }
-            "p" => {
-                println!("Print the value stored in the provided register.");
-            }
-            "pa" => {
-                println!("Print each register and the value stored therein.");
-            }
-            "pb" => {
-                println!("Print all user-created breakpoints.");
-            }
-            "b" => {
-                println!("Insert a breakpoint at the line number provided. Note that this line will be executed before the break occurs.");
-            }
-            "del" => {
-                println!("Delete the breakpoint with the associated number. (run pb to find out which number the desired breakpoint has)");
-            }
-            "q" => {
-                println!("please work :wq please work :wq plea");
-            }
-            _ => {
-                eprintln!("{} is either not recognized as a valid command or the help menu for it was neglected to be implemented.", args[1]);
-            }
-        };
-    }
-}

@@ -1,7 +1,7 @@
 use crate::exception_handler::handle_exception;
 use crate::simulator_helpers::extract_loadable_sections;
 
-use crate::debug::debug_utils::{debugger, single_step};
+use crate::debug::debug_utils::{debugger, single_step, DebuggerState};
 
 use name_core::elf_def::Elf;
 use name_core::elf_utils::extract_lineinfo;
@@ -27,7 +27,7 @@ pub fn simulate(elf: Elf, debug: bool) -> Result<(), String> {
         // Begin fetch/decode/execute cycle to run program normally
         while program_state.should_continue_execution {
             // Run the next instruction
-            single_step(&lineinfo, &mut program_state, &Vec::new());
+            single_step(&lineinfo, &mut program_state, &DebuggerState::new());
             // If an exception occurred, handle it
             if program_state.is_exception() {
                 handle_exception(&mut program_state, &lineinfo);
