@@ -136,12 +136,12 @@
       },
       {
         "command": "extension.vsname.startEmu",
-        "title": "Start Emulator",
+        "title": "Run Without Debugging",
         "category" : "NAME"
       },
       {
         "command": "extension.vsname.startAndDebug",
-        "title": "Start Emulator and Begin Debugging Current File",
+        "title": "Run and Debug Current File",
         "category" : "NAME"
       }
     ],
@@ -169,7 +169,7 @@
           "mips-assembly"
         ],
         "label": "MIPS Debug",
-        "program": "/home/qwe/Documents/CS4485/name/name-emu/target/release/name",
+        "program": "../name-emu/target/release/name",
         "configurationAttributes": {
           "launch": {
             "required": [

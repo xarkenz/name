@@ -1,65 +1,58 @@
-extern crate pest;
-extern crate pest_derive;
-//use name_const::LineInfo;
+use std::path::PathBuf;
 
-pub mod args;
-pub mod config;
+use name_as::args::Cli;
+use name_as::assembler::assemble_file::assemble;
+use name_as::helpers::extract_symbol_table_to_sections;
 
-pub mod nma;
-pub mod parser;
+use name_core::elf_utils::{create_new_et_rel, write_elf_to_file};
 
-use args::parse_args;
-use nma::assemble;
-use std::process::Command;
+use clap::Parser;
 
-fn main() -> Result<(), String> {
-    // Parse command line arguments and the config file
-    let cmd_args = parse_args()?;
+fn main() {
+    let args = Cli::parse();
+    let file_contents: String = std::fs::read_to_string(&args.input_filename)
+        .expect("Failed to read input file (likely does not exist).");
 
-    let config: config::Config = match config::parse_config(&cmd_args) {
-        Ok(v) => v,
-        _ => {
-            println!("WARN : Failed to parse config file, defaulting to nma");
-            config::backup_config()
-        }
-    };
+    let mut base_path = PathBuf::from(&args.input_filename);
+    base_path.pop();
 
-    if config.as_cmd.is_empty() {
-        // If no provided as config, default to NMA
-        assemble(&cmd_args)?;
-    } else {
-        // Otherwise, use provided assembler command
-        println!("Config Name:   {}", config.config_name);
-        println!("Assembler CMD: {:?}", config.as_cmd);
+    // Preprocessor would do its work here
 
-        for full_cmd in &config.as_cmd {
-            let split_cmd: Vec<&str> = full_cmd.split_whitespace().collect();
+    // Allowing assemble to take ownership of the source file contents, because this is the end of its utility in this function.
+    // TODO: these fields on the Assembler type probably shouldn't be public, maybe clean this up
+    let assembled_result = assemble(file_contents, base_path, None);
+    match assembled_result {
+        Ok(assembler_environment) => {
+            let (section_dot_symtab, section_dot_strtab) =
+                extract_symbol_table_to_sections(assembler_environment.symbol_table);
 
-            match Command::new(split_cmd[0]).args(&split_cmd[1..]).output() {
-                Ok(output) => {
-                    if output.status.success() {
-                        if !&output.stdout.is_empty() {
-                            println!(
-                                "CMD {}\n{}",
-                                full_cmd,
-                                String::from_utf8_lossy(&output.stdout)
-                            );
-                        }
-                    } else if !&output.stderr.is_empty() {
-                        eprintln!(
-                            "CMD {}\n{}",
-                            full_cmd,
-                            String::from_utf8_lossy(&output.stderr)
-                        );
-                    }
-                }
-                Err(err) => {
-                    eprintln!("CMD {}\nError: {}", full_cmd, err);
-                    return Err("Failed to run assembler command".to_string());
+            let et_rel = create_new_et_rel(
+                assembler_environment.section_dot_data,
+                assembler_environment.section_dot_text,
+                section_dot_symtab,
+                section_dot_strtab,
+                assembler_environment.section_dot_line,
+            );
+            match write_elf_to_file(&args.output_filename, &et_rel) {
+                Ok(()) => println!(
+                    "Object file successfuly written to {:?}",
+                    args.output_filename
+                ),
+                Err(e) => {
+                    eprintln!("{}", e);
+                    panic!();
                 }
             }
+
+            println!("Assembly was successful.");
+        }
+        Err(errors) => {
+            eprintln!("Errors were encountered during assembly: \n");
+            let joined_errors = errors.join("\n");
+            eprintln!("{joined_errors}");
+
+            // This exit with a bad exit code tells the vscode extension to not bother with linking or emulation.
+            std::process::exit(1);
         }
     }
-
-    Ok(())
 }
