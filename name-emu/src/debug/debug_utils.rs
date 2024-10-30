@@ -48,7 +48,7 @@ pub fn single_step(
             program_state.set_exception(ExceptionType::Breakpoint);
         }
     }
-
+  
     // Fetch
     let raw_instruction = fetch(program_state);
     let instr_info = match INSTRUCTION_LOOKUP.get(&raw_instruction.get_lookup()) {
@@ -70,6 +70,7 @@ pub fn single_step(
     let _ = (instr_info.implementation)(program_state, raw_instruction);
 
     // The $0 register should never have been permanently changed. Don't let it remain changed.
+
     program_state.cpu.general_purpose_registers[0] = 0;
 }
 
@@ -83,6 +84,7 @@ pub struct Breakpoint {
 pub struct DebuggerState {
     pub breakpoints: Vec<Breakpoint>,
     pub global_bp_num: u16,
+
     pub global_list_loc: usize, // for the l command
 }
 
@@ -99,6 +101,7 @@ pub fn debugger(lineinfo: &Vec<LineInfo>, program_state: &mut ProgramState) -> R
         print!("(name-db) ");
         io::stdout().flush().expect("Failed to flush stdout");
 
+        // take in the command and split it up into arguments
         let mut user_input = String::new();
         match io::stdin().read_line(&mut user_input) {
             Ok(_) => {}
@@ -158,4 +161,3 @@ pub fn debugger(lineinfo: &Vec<LineInfo>, program_state: &mut ProgramState) -> R
         };
     }
 }
-

@@ -1,3 +1,8 @@
+/*  System call functions.
+ *
+ *  Most of these are analogous to functions found in nearly every operating system, 
+ */
+
 use std::io::{Read, Write};
 
 use crate::structs::{
@@ -22,21 +27,21 @@ pub type SyscallFn = fn(&mut ProgramState) -> Result<(), String>;
 pub const SYSCALL_TABLE: [Option<SyscallFn>; 64] = [
     None,                   // 0x00
     Some(sys_print_int),    // 0x01
-    None,                   // 0x02
-    None,                   // 0x03
+    None,                   // 0x02  sys_print_float
+    None,                   // 0x03  sys_print_double
     Some(sys_print_string), // 0x04
     Some(sys_read_int),     // 0x05
     None,                   // 0x06
     None,                   // 0x07
-    None,                   // 0x08
-    None,                   // 0x09
+    Some(sys_read_string),  // 0x08  sys_read_string
+    None,                   // 0x09  sys_alloc (SBRK)
     Some(sys_exit),         // 0x0A
     Some(sys_print_char),   // 0x0B
     Some(sys_read_char),    // 0x0C
-    None,                   // 0x0D
-    None,                   // 0x0E
-    None,                   // 0x0F
-    None,                   // 0x10
+    None,                   // 0x0D  sys_open_file
+    None,                   // 0x0E  sys_read_file
+    None,                   // 0x0F  sys_write_file
+    None,                   // 0x10  sys_close_fie
     None,                   // 0x11
     None,                   // 0x12
     None,                   // 0x13
@@ -137,11 +142,42 @@ make_syscall!(sys_read_int, program_state, {
     }
 });
 
+// Syscall 8 - sys_read_string  -- Read a string from the keyboard one character at a time
+// until we get either a \n character or run out of space.  We accept up to maxlength-1
+// characters because the string is alwaays null-terminated.  If we get to the maximum
+// length the \n will not be stored.
+pub fn sys_read_string
+(cpu: &mut Processor, memory: &mut Memory) -> Result<ExecutionStatus, String>
+{
+    let mut buf = [0; 1];
+    let mut count = 0;
+    let mut address = cpu.general_purpose_registers[A0 as usize];
+    let maxlength = cpu.general_purpose_registers[A1 as usize];
+    while count < maxlength
+    {
+    io::stdout().flush().expect("Failed to flush stdout");
+    io::stdin()
+        .read_exact(&mut buf)
+        .expect("Failed to read from stdin");
+        memory.data[address as usize] = buf[0];
+        count += 1;
+        address += 1;
+        if buf[0] == b'\n' as u8
+        {
+            break;
+        }
+    }
+    buf[0] = 0;
+    memory.data[address as usize] = buf[0];
+Ok(ExecutionStatus::Continue)
+}
+
 // Syscall 10 - SysExit
 make_syscall!(sys_exit, program_state, {
     // Simply tell the program it should no longer execute.
     program_state.should_continue_execution = false;
 });
+
 
 // Syscall 11 - SysPrintChar
 make_syscall!(sys_print_char, program_state, {
