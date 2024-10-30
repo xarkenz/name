@@ -1,4 +1,4 @@
-# This program uses all of the implemented instructions in NAME 
+# This program uses all of the implemented instructions in NAME
 # to test expected behavior across all three pieces of the pipeline.
 
     .include    "SysCalls.asm"
@@ -6,11 +6,11 @@
 skipNotSkippedString:
     .asciiz     "Something was meant to be skipped, but wasn't skipped.\n"
 
-testString: 
+testString:
     .asciiz     "Hello, World!"
 
     .text
-main: 
+main:
     addi        $t0, $t0, 1
     add         $t1, $t0, $t0
     addiu       $t2, $t1, 0xFFFF
@@ -30,14 +30,14 @@ demo1:
     bgtz        $t3, demo2
 
 skip2:
-    # This label should be skipped. 
+    # This label should be skipped.
     la          $a0, skipNotSkippedString
     li          $v0, SysPrintString
     syscall
 
 demo2:
     li          $t0, -2
-    blez        $t0, demo3 
+    blez        $t0, demo3
 
 skip3:
     # This label should be skipped.
@@ -97,11 +97,11 @@ demo8:
     la          $t0, testString
     lb          $t1, 1($t0)     # "e"
     lui         $t2, 42
-    lw          $t1, 4($t0)     # "o, Wo" 
+    lw          $t1, 4($t0)     # "o, Wo"
     nor         $t2, $t2, $t1
     nop
-    nop 
-    nop 
+    nop
+    nop
     or          $t1, $t2, $t0
     ori         $t5, $zero, 'C'
     sb          $t5, $t0        # "Cello, World!"

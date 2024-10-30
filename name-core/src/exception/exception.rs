@@ -20,7 +20,7 @@ impl ProgramState {
         // Set the EXL bit.
         self.cp0.set_exception_level(EXCEPTION_BEING_HANDLED);
         // Set the ExcCode field of Cause to the proper value
-        self.cp0.set_exc_code(exception_type as u32);
+        self.cp0.set_exc_code(exception_type.into());
     }
 
     /// When an exception was handled without needing to halt, Coprocessor 0 is reset to indicate normal operation.

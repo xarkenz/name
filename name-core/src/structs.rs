@@ -1,3 +1,10 @@
+use std::io::{stdin, stdout, Stdin, Stdout};
+
+use crate::{
+    elf_def::{MIPS_DATA_START_ADDR, MIPS_TEXT_START_ADDR},
+    syscalls::*,
+};
+
 #[derive(Debug)]
 pub struct Symbol {
     pub symbol_type: u8,
@@ -14,7 +21,16 @@ pub struct Processor {
     pub general_purpose_registers: [u32; 32],
 }
 
-#[derive(Debug)]
+impl Default for Processor {
+    fn default() -> Self {
+        Self {
+            pc: MIPS_TEXT_START_ADDR,
+            general_purpose_registers: [0u32; 32],
+        }
+    }
+}
+
+#[derive(Debug, Default)]
 pub struct Coprocessor0 {
     pub registers: [u32; 32],
 }
@@ -29,7 +45,20 @@ pub struct Memory {
     pub text_end: u32,
 }
 
-#[derive(Debug)]
+impl Default for Memory {
+    fn default() -> Self {
+        Memory {
+            data: Vec::new(),
+            text: Vec::new(),
+            data_start: MIPS_DATA_START_ADDR,
+            data_end: MIPS_DATA_START_ADDR,
+            text_start: MIPS_TEXT_START_ADDR,
+            text_end: MIPS_TEXT_START_ADDR,
+        }
+    }
+}
+
+#[derive(Debug, Default)]
 pub struct ProgramState {
     pub should_continue_execution: bool,
     pub cpu: Processor,
@@ -95,4 +124,38 @@ pub struct LineInfo {
     pub line_number: u32,
     pub start_address: u32,
     pub end_address: u32,
+}
+
+/// Handler for outside world. Operating System interprets syscalls.
+/// Still WIP will grow to include other non processor peripheries
+#[derive(Debug)]
+pub struct OperatingSystem {
+    stdin: Stdin,
+    stdout: Stdout,
+}
+
+impl OperatingSystem {
+    pub fn new() -> OperatingSystem {
+        OperatingSystem {
+            stdin: stdin(),
+            stdout: stdout(),
+        }
+    }
+
+    /// Contains the logic for handling syscalls.
+    /// I nvoked by the exception handler.
+    pub fn handle_syscall(&mut self, program_state: &mut ProgramState) -> Result<(), String> {
+        let syscall_num: usize =
+            program_state.cpu.general_purpose_registers[Register::V0 as usize] as usize;
+
+        match syscall_num {
+            0x01 => sys_print_int(program_state, &mut self.stdout.lock()),
+            0x04 => sys_print_string(program_state, &mut self.stdout.lock()),
+            0x05 => sys_read_int(program_state, &mut self.stdin.lock()),
+            0x0A => sys_exit(program_state),
+            0x0B => sys_print_char(program_state, &mut self.stdout.lock()),
+            0x0C => sys_read_char(program_state, &mut self.stdin.lock()),
+            _ => Err(format!("{} is not a recognized syscall.", syscall_num)),
+        }
+    }
 }

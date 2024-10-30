@@ -107,57 +107,61 @@ pub fn debugger(lineinfo: &Vec<LineInfo>, program_state: &mut ProgramState) -> R
             Ok(_) => {}
             Err(e) => eprintln!("stdin error: {e}"),
         };
-        let db_args: Vec<String> = user_input.trim().split(" ").map(|s| s.to_string()).collect();
+        let db_args: Vec<String> = user_input
+            .trim()
+            .split(" ")
+            .map(|s| s.to_string())
+            .collect();
 
         match db_args[0].as_str() {
             "help" => match help_menu(db_args) {
                 Ok(_) => continue,
                 Err(e) => eprintln!("{e}"),
-            }
+            },
             "q" => return Ok(()),
             "exit" => return Ok(()),
             "quit" => return Ok(()),
             "r" => match continuously_execute(lineinfo, program_state, &mut debugger_state) {
                 Ok(_) => continue,
                 Err(e) => eprintln!("{e}"),
-            }
+            },
             "c" => match continuously_execute(lineinfo, program_state, &mut debugger_state) {
                 Ok(_) => continue,
-                Err(e) => eprintln!("{e}"),                
+                Err(e) => eprintln!("{e}"),
             },
             "s" => match db_step(lineinfo, program_state, &mut debugger_state) {
                 Ok(_) => continue,
                 Err(e) => eprintln!("{e}"),
-            }
+            },
             "l" => match list_text(lineinfo, &mut debugger_state, &db_args) {
                 Ok(_) => continue,
                 Err(e) => eprintln!("{e}"),
-            }
+            },
             "p" => match print_register(program_state, &db_args) {
                 Ok(_) => continue,
                 Err(e) => eprintln!("{e}"),
-            }
+            },
             "pa" => match print_all_registers(program_state, &db_args) {
                 Ok(_) => continue,
                 Err(e) => eprintln!("{e}"),
-            }
+            },
             "m" => match modify_register(program_state, &db_args) {
                 Ok(_) => continue,
                 Err(e) => eprintln!("{e}"),
-            }
+            },
             "pb" => match debugger_state.print_all_breakpoints() {
                 Ok(_) => continue,
                 Err(e) => eprintln!("{e}"),
-            }
+            },
             "b" => match debugger_state.add_breakpoint(lineinfo, &db_args) {
                 Ok(_) => continue,
                 Err(e) => eprintln!("{e}"),
-            }
+            },
             "del" => match debugger_state.remove_breakpoint(&db_args) {
                 Ok(_) => continue,
                 Err(e) => eprintln!("{e}"),
-            }
-            _ => eprintln!("Option not recognized. Type \"help\" to view accepted options.")
+            },
+            _ => eprintln!("Option not recognized. Type \"help\" to view accepted options."),
         };
     }
 }

@@ -5,7 +5,7 @@ use crate::debug::debug_utils::{debugger, single_step, DebuggerState};
 
 use name_core::elf_def::Elf;
 use name_core::elf_utils::extract_lineinfo;
-use name_core::structs::{LineInfo, Memory, Processor, ProgramState};
+use name_core::structs::{LineInfo, Memory, OperatingSystem, Processor, ProgramState};
 
 pub fn simulate(elf: Elf, debug: bool) -> Result<(), String> {
     // Set up simulation environment from information in ELF
@@ -19,6 +19,8 @@ pub fn simulate(elf: Elf, debug: bool) -> Result<(), String> {
 
     // Create program state
     let mut program_state: ProgramState = ProgramState::new(cpu, memory);
+    // Setup a new operating system
+    let mut operating_system: OperatingSystem = OperatingSystem::new();
 
     if debug {
         // Invoke the cli debugger if the user asked for it
@@ -30,7 +32,7 @@ pub fn simulate(elf: Elf, debug: bool) -> Result<(), String> {
             single_step(&lineinfo, &mut program_state, &DebuggerState::new());
             // If an exception occurred, handle it
             if program_state.is_exception() {
-                handle_exception(&mut program_state, &lineinfo);
+                handle_exception(&mut program_state, &mut operating_system, &lineinfo);
             }
         }
 
