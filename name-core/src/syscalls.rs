@@ -7,7 +7,7 @@ use std::io::{Read, Write};
 
 use crate::structs::{
     ProgramState,
-    Register::{A0, V0},
+    Register::{A0, A1, V0},
 };
 
 use std::io;
@@ -142,35 +142,35 @@ make_syscall!(sys_read_int, program_state, {
     }
 });
 
+// @azenna I just made this one like the others cause I'm assuming you fixed them all in the same way
 // Syscall 8 - sys_read_string  -- Read a string from the keyboard one character at a time
 // until we get either a \n character or run out of space.  We accept up to maxlength-1
 // characters because the string is alwaays null-terminated.  If we get to the maximum
 // length the \n will not be stored.
-pub fn sys_read_string
-(cpu: &mut Processor, memory: &mut Memory) -> Result<ExecutionStatus, String>
-{
-    let mut buf = [0; 1];
-    let mut count = 0;
-    let mut address = cpu.general_purpose_registers[A0 as usize];
-    let maxlength = cpu.general_purpose_registers[A1 as usize];
-    while count < maxlength
+make_syscall!(sys_read_string, program_state,
     {
-    io::stdout().flush().expect("Failed to flush stdout");
-    io::stdin()
-        .read_exact(&mut buf)
-        .expect("Failed to read from stdin");
-        memory.data[address as usize] = buf[0];
-        count += 1;
-        address += 1;
-        if buf[0] == b'\n' as u8
+        let mut buf = [0; 1];
+        let mut count = 0;
+        let mut address = program_state.cpu.general_purpose_registers[A0 as usize];
+        let maxlength = program_state.cpu.general_purpose_registers[A1 as usize];
+        while count < maxlength
         {
-            break;
+        io::stdout().flush().expect("Failed to flush stdout");
+        io::stdin()
+            .read_exact(&mut buf)
+            .expect("Failed to read from stdin");
+            program_state.memory.data[address as usize] = buf[0];
+            count += 1;
+            address += 1;
+            if buf[0] == b'\n' as u8
+            {
+                break;
+            }
         }
+        buf[0] = 0;
+        program_state.memory.data[address as usize] = buf[0];
     }
-    buf[0] = 0;
-    memory.data[address as usize] = buf[0];
-Ok(ExecutionStatus::Continue)
-}
+);
 
 // Syscall 10 - SysExit
 make_syscall!(sys_exit, program_state, {

@@ -92,12 +92,17 @@ The linker outputs a single file with no extension - an ET_EXEC ELF executable t
 The NAME emulator accepts ELF files of type `ET_EXEC`. Emulation is carried out using some structs: the `Processor` struct contains the registers as well as the program counter, and the `Memory` struct contains sections `.text` and `.data`. While I could have kept all these pieces separate, gluing them together in this way allows for an easier-to-read function. The logic for simulation is present in [simulator.rs](name-emu/src/simulator.rs).
 
 ### Fetch
-Fetching is a simple access of `.text` from where `$pc`, the program counter, points to. If the address currently in `$pc` is not accessible by the emulator, an error is thrown.
+Fetching is a simple access of `.text` from where `$pc`, the program counter, points to. If the address currently in `$pc` is not accessible by the emulator, an exception state is set using `Coprocessor0` and the exception handler is invoked (see **Exceptions**).
 
 ### Decode
-Decoding is the first novel approach in the emulation process. First, the instruction passed to the decode function has its opcode and any special code extracted to make a lookup code. This lookup code is used to obtain the corresponding `InstructionInformation` in [name-core](name-core/src/instruction/instruction_set.rs). Then, the emulator retrieves a function pointer with the signature `Fn(&mut Processor, &mut Memory, Instruction)` from that table (note that `Instruction` contains the operands).
+Decoding is the first novel approach in the emulation process. First, the instruction passed to the decode function has its opcode and any special code extracted to make a lookup code. This lookup code is used to obtain the corresponding `InstructionInformation` in [name-core](name-core/src/instruction/instruction_set.rs). Then, the emulator retrieves a function pointer with the signature `Fn(&mut ProgramState, Args)` from that table. Each function actually uses its own variant of Args (either RArgs, IArgs, JArgs, etc.).
 
-This function pointer represents the target instruction's implementation. This allows instruction addition to be a simple addition to a [table](name-core/src/instruction/instruction_set.rs) followed by implementing a microscopic function, improving NAME's extensibility. See [decode.rs](name-emu/src/decode.rs) for implementation details.
+The retrieved function pointer represents the target instruction's implementation. This allows instruction addition to be a simple addition to a [table](name-core/src/instruction/instruction_set.rs) followed by implementing a microscopic function, improving NAME's extensibility. See [decode.rs](name-emu/src/decode.rs) for implementation details.
 
 ### Execute
 Execution is as simple as invoking the extracted function pointer from the previous step. There exists no separate `execute.rs` since it's a one-liner. The function simply acts on its passed operands and updates registers/memory accordingly.
+
+### Exceptions
+NAME models exceptions the same way MIPS hardware would - using Coprocessor 0. The `Coprocessor0` struct models Coprocessor 0 inside `ProgramState`: The *Status* and *Cause* Registers contain information about what happened to cause the exception to occur, and *EPC* contains the **E**xception **P**rogram **C**ounter - the program counter at which the exception occurred. Some commonly encountered exceptions include **syscalls**, **breakpoints**, dividing by zero, et cetera.
+
+During each fetch-decode-execute cycle, NAME checks to see if the *Status* register indicates an exception has occurred. If so, the exception handler is invoked, which matches on the *ExcCode* field in the *Cause* register to perform the appropriate crash or transfer of control. When the *ExcCode* field represents a syscall, the syscall handler is invoked; similarly, when the *ExcCode* field represents a breakpoint, the breakpoint handler is invoked.
