@@ -36,5 +36,5 @@ pub const CP0_REGISTER_INFO: &[Cp0RegisterInformation] = &[
         name: Register::EPC,
         register: 14,
         _select: 0,
-    }
+    },
 ];

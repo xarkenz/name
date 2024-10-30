@@ -1,17 +1,18 @@
 use name_core::{
     exception::definitions::ExceptionType,
-    structs::{LineInfo, ProgramState},
+    structs::{LineInfo, OperatingSystem, ProgramState},
 };
 
-use crate::{
-    debug::debug_utils::handle_breakpoint, simulator_helpers::generate_err,
-    syscall_handler::handle_syscall,
-};
+use crate::{debug::debug_utils::handle_breakpoint, simulator_helpers::generate_err};
 
 /// The exception handler is invoked whenever an exception has occurred.
 /// Some common exceptions include breakpoints, syscalls, and arithmetic overflow.
 /// It takes a mutable program state and matches on the exception type - then, it resets state if possible.
-pub fn handle_exception(program_state: &mut ProgramState, lineinfo: &Vec<LineInfo>) {
+pub fn handle_exception(
+    program_state: &mut ProgramState,
+    os: &mut OperatingSystem,
+    lineinfo: &Vec<LineInfo>,
+) {
     // In order to invoke this function, certain values (like exception_level == 1) are already assumed.
 
     // Attempt to recognize the exception that occurred
@@ -24,7 +25,7 @@ pub fn handle_exception(program_state: &mut ProgramState, lineinfo: &Vec<LineInf
     // Retrieve necessary values
     let epc: u32 = program_state.cp0.get_epc();
 
-    dbg!(&exception_type);
+    // dbg!(&exception_type);
 
     // Match on exception type to either error out or handle appropriately
     match exception_type {
@@ -50,7 +51,12 @@ pub fn handle_exception(program_state: &mut ProgramState, lineinfo: &Vec<LineInf
         }
         ExceptionType::Syscall => {
             // Invoke the syscall handler on program state
-            handle_syscall(program_state);
+            if let Err(e) = os.handle_syscall(program_state) {
+                panic!(
+                    "{}",
+                    generate_err(lineinfo, epc, &format!("Failed to handle a syscall: {e}"))
+                )
+            }
         }
         ExceptionType::Breakpoint => {
             // Invoke the breakpoint handler on program state and lineinfo

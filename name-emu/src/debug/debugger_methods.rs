@@ -6,7 +6,7 @@ use name_core::{
     structs::{LineInfo, ProgramState},
 };
 
-use crate::debug::debug_utils::{Breakpoint, DebuggerState, single_step};
+use crate::debug::debug_utils::{single_step, Breakpoint, DebuggerState};
 
 impl Breakpoint {
     pub fn new(bp_num: u16, line_num: u32, lineinfo: &Vec<LineInfo>) -> Self {
@@ -48,21 +48,30 @@ impl DebuggerState {
         Ok(())
     }
 
-    pub fn add_breakpoint(&mut self, lineinfo: &Vec<LineInfo>, db_args: &Vec<String>) -> Result<(), String>{
+    pub fn add_breakpoint(
+        &mut self,
+        lineinfo: &Vec<LineInfo>,
+        db_args: &Vec<String>,
+    ) -> Result<(), String> {
         if db_args.len() != 2 {
-            return Err(format!("b expects 1 argument, received {}", db_args.len() - 1))
+            return Err(format!(
+                "b expects 1 argument, received {}",
+                db_args.len() - 1
+            ));
         }
-        
+
         let line_num: u32 = db_args[1]
             .parse()
             .expect("b takes 32-bit unsigned int as input");
 
-        if line_num > lineinfo.len().try_into().unwrap() { // something like that
-            return Err(format!("{} exceeds number of lines in program.", line_num))
+        if line_num > lineinfo.len().try_into().unwrap() {
+            // something like that
+            return Err(format!("{} exceeds number of lines in program.", line_num));
         }
 
         self.global_bp_num += 1;
-        self.breakpoints.push(Breakpoint::new(self.global_bp_num, line_num, lineinfo));
+        self.breakpoints
+            .push(Breakpoint::new(self.global_bp_num, line_num, lineinfo));
         println!(
             "Successfully added breakpoint {} at line {}.",
             self.global_bp_num, line_num
@@ -70,16 +79,23 @@ impl DebuggerState {
         Ok(())
     }
 
-    pub fn remove_breakpoint(&mut self, db_args: &Vec<String>) -> Result<(), String>{
+    pub fn remove_breakpoint(&mut self, db_args: &Vec<String>) -> Result<(), String> {
         if db_args.len() != 2 {
-            return Err(format!("del expects 1 argument, received {}", db_args.len() - 1))
+            return Err(format!(
+                "del expects 1 argument, received {}",
+                db_args.len() - 1
+            ));
         }
 
         let bp_num: u16 = db_args[1]
             .parse()
             .expect("del takes a 16-bit unsigned int as input");
         // i KNOW this can be better
-        if let Some(index) = self.breakpoints.iter().position(|brpt| brpt.bp_num == bp_num) {
+        if let Some(index) = self
+            .breakpoints
+            .iter()
+            .position(|brpt| brpt.bp_num == bp_num)
+        {
             let removed_element = self.breakpoints.remove(index);
             println!("Removed {:?}", removed_element);
             self.global_bp_num -= 1;
@@ -93,16 +109,13 @@ impl DebuggerState {
         if lnum == 0 {
             lnum = self.global_list_loc;
         }
-            
+
         let begin = lnum.saturating_sub(5);
-        let end =
-            std::cmp::min(lnum.saturating_add(3), lineinfo.len() - 1);
+        let end = std::cmp::min(lnum.saturating_add(3), lineinfo.len() - 1);
         for i in begin..=end {
             println!(
                 "{:>3} #{:08x}  {}",
-                lineinfo[i].line_number,
-                lineinfo[i].start_address,
-                lineinfo[i].content
+                lineinfo[i].line_number, lineinfo[i].start_address, lineinfo[i].content
             );
         }
 
@@ -117,7 +130,11 @@ impl DebuggerState {
     }
 }
 
-pub fn db_step(lineinfo: &Vec<LineInfo>, program_state: &mut ProgramState, debugger_state: &mut DebuggerState) -> Result<(), String> {
+pub fn db_step(
+    lineinfo: &Vec<LineInfo>,
+    program_state: &mut ProgramState,
+    debugger_state: &mut DebuggerState,
+) -> Result<(), String> {
     single_step(lineinfo, program_state, debugger_state);
     if program_state.is_exception() {
         todo!("Handle exception");
@@ -126,7 +143,11 @@ pub fn db_step(lineinfo: &Vec<LineInfo>, program_state: &mut ProgramState, debug
     Ok(())
 }
 
-pub fn continuously_execute(lineinfo: &Vec<LineInfo>, program_state: &mut ProgramState, debugger_state: &mut DebuggerState) -> Result<(), String> {
+pub fn continuously_execute(
+    lineinfo: &Vec<LineInfo>,
+    program_state: &mut ProgramState,
+    debugger_state: &mut DebuggerState,
+) -> Result<(), String> {
     loop {
         match db_step(lineinfo, program_state, debugger_state) {
             Ok(_) => continue,
@@ -147,7 +168,7 @@ pub fn list_text(
         if db_args[1] == "all" {
             for line in lineinfo {
                 println!(
-                   "{:>3} #{:08x}  {}",
+                    "{:>3} #{:08x}  {}",
                     line.line_number, line.start_address, line.content
                 );
             }
@@ -155,7 +176,9 @@ pub fn list_text(
         } else {
             match db_args[1].parse::<usize>() {
                 Err(_) => {
-                    return Err(format!("l expects an unsigned int or \"all\" as an argument"));
+                    return Err(format!(
+                        "l expects an unsigned int or \"all\" as an argument"
+                    ));
                 }
                 Ok(lnum) => {
                     if lnum > lineinfo.len() {
@@ -168,11 +191,17 @@ pub fn list_text(
             Ok(())
         }
     } else {
-        Err(format!("l expects 0 or 1 arguments, received {}", db_args.len() - 1))
+        Err(format!(
+            "l expects 0 or 1 arguments, received {}",
+            db_args.len() - 1
+        ))
     }
 }
 
-pub fn print_register(program_state: &mut ProgramState, db_args: &Vec<String>) -> Result<(), String> {
+pub fn print_register(
+    program_state: &mut ProgramState,
+    db_args: &Vec<String>,
+) -> Result<(), String> {
     if db_args.len() < 2 {
         return Err(format!(
             "p expects a non-zero argument, received {}",
@@ -201,10 +230,16 @@ pub fn print_register(program_state: &mut ProgramState, db_args: &Vec<String>) -
     Ok(())
 }
 
-pub fn print_all_registers(program_state: &mut ProgramState, db_args: &Vec<String>) -> Result<(), String>{
+pub fn print_all_registers(
+    program_state: &mut ProgramState,
+    db_args: &Vec<String>,
+) -> Result<(), String> {
     if db_args.len() != 1 {
         // this outputs a lot so make sure the user actually meant to type pa and not pb or p or something
-        return Err(format!("pa expects 0 arguments, received {}", db_args.len() - 1))
+        return Err(format!(
+            "pa expects 0 arguments, received {}",
+            db_args.len() - 1
+        ));
     }
 
     for register in REGISTERS {
@@ -217,15 +252,23 @@ pub fn print_all_registers(program_state: &mut ProgramState, db_args: &Vec<Strin
     Ok(())
 }
 
-pub fn modify_register(program_state: &mut ProgramState, db_args: &Vec<String>) -> Result<(), String> {
+pub fn modify_register(
+    program_state: &mut ProgramState,
+    db_args: &Vec<String>,
+) -> Result<(), String> {
     if db_args.len() != 3 {
-        return Err(format!("m expects 2 arguments, received {}", db_args.len() - 1))
+        return Err(format!(
+            "m expects 2 arguments, received {}",
+            db_args.len() - 1
+        ));
     }
 
     let register = match REGISTERS.iter().position(|&x| x == db_args[1]) {
         Some(found_register) => found_register,
         None => {
-            return Err(format!("First argument to m must be a register. (Did you include the dollar sign?)"));
+            return Err(format!(
+                "First argument to m must be a register. (Did you include the dollar sign?)"
+            ));
         }
     };
 
