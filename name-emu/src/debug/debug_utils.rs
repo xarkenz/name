@@ -21,10 +21,6 @@ use crate::fetch::fetch;
 
 use std::io::{self, Write};
 
-pub fn handle_breakpoint(_program_state: &mut ProgramState, _lineinfo: &Vec<LineInfo>) -> () {
-    todo!("Finish breakpoint handler implementation @Nick");
-}
-
 pub fn single_step(
     _lineinfo: &Vec<LineInfo>,
     program_state: &mut ProgramState,
@@ -44,7 +40,6 @@ pub fn single_step(
     // check if there's a breakpoint after instruction on the line is executed
     for bp in &debugger_state.breakpoints {
         if program_state.cpu.pc == bp.address {
-            // println!("Breakpoint at line {} reached. (This ran in single_step())", bp.line_num);
             program_state.set_exception(ExceptionType::Breakpoint);
         }
     }

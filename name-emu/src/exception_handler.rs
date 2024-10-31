@@ -3,7 +3,9 @@ use name_core::{
     structs::{LineInfo, OperatingSystem, ProgramState},
 };
 
-use crate::{debug::debug_utils::handle_breakpoint, simulator_helpers::generate_err};
+use crate::{
+    debug::debugger_methods::handle_breakpoint, simulator_helpers::generate_err,
+};
 
 /// The exception handler is invoked whenever an exception has occurred.
 /// Some common exceptions include breakpoints, syscalls, and arithmetic overflow.
