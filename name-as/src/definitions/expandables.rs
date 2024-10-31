@@ -88,11 +88,14 @@ pub(crate) type ExpansionFn =
 // }
 
 pub(crate) fn expand_bnez(
-    _environment: &mut Assembler, 
-    args: &Vec<LineComponent>
+    _environment: &mut Assembler,
+    args: &Vec<LineComponent>,
 ) -> Result<Vec<(&'static InstructionInformation, Vec<LineComponent>)>, String> {
     if args.len() < 2 {
-        return Err(format!(" - `bnez` expected 2 arguments, got {}", args.len()));
+        return Err(format!(
+            " - `bnez` expected 2 arguments, got {}",
+            args.len()
+        ));
     }
 
     let rs = args[0].clone();
@@ -101,19 +104,17 @@ pub(crate) fn expand_bnez(
     let zero: LineComponent = LineComponent::Register(String::from("$0"));
 
     // let add_info: &'static InstructionInformation;
-    
+
     let bne_info = match INSTRUCTION_TABLE.get("bne") {
         Some(info) => info,
         None => return Err(format!(" - Failed to expand `bnez` pseudoinstruction. Its expansion was likely defined incorrectly (go use git blame on https://github.com/cameron-b63/name to find out who's at fault).")),
     };
 
-    Ok(
-        vec![
-            // bnez    $rs, $0, label
-            (bne_info, vec![rs, zero, label])
+    Ok(vec![
+        // bnez    $rs, $0, label
+        (bne_info, vec![rs, zero, label]),
     ])
 }
-
 
 pub(crate) fn expand_li(
     _environment: &mut Assembler,
@@ -207,7 +208,10 @@ pub(crate) fn expand_la(
     ])
 }
 
-pub(crate) fn expand_move(_environment: &mut Assembler, args: &Vec<LineComponent>) -> Result<Vec<(&'static InstructionInformation, Vec<LineComponent>)>, String> {
+pub(crate) fn expand_move(
+    _environment: &mut Assembler,
+    args: &Vec<LineComponent>,
+) -> Result<Vec<(&'static InstructionInformation, Vec<LineComponent>)>, String> {
     if args.len() < 2 {
         return Err(format!(" - `mv` expected 2 arguments, got {}", args.len()));
     }
@@ -218,16 +222,15 @@ pub(crate) fn expand_move(_environment: &mut Assembler, args: &Vec<LineComponent
     let zero: LineComponent = LineComponent::Register(String::from("$0"));
 
     // let add_info: &'static InstructionInformation;
-    
+
     let add_info = match INSTRUCTION_TABLE.get("add") {
         Some(info) => info,
         None => return Err(format!(" - Failed to expand `la` pseudoinstruction. Its expansion was likely defined incorrectly (go use git blame on https://github.com/cameron-b63/name to find out who's at fault).")),
     };
 
-    Ok(
-        vec![
-            // add  $rd, $rs, $0
-            (add_info, vec![rd, rs, zero])
+    Ok(vec![
+        // add  $rd, $rs, $0
+        (add_info, vec![rd, rs, zero]),
     ])
 }
 

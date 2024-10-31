@@ -4,8 +4,8 @@
       	.include "SysCalls.asm"
      	.data
 fibs: 	.word   0 : 12        # "array" of 12 words to contain fib values
-size: 	.word  12             # size of "array" 
-      
+size: 	.word  12             # size of "array"
+
 # Start of code.
       	.text
 	    la   	$t0, fibs        # load address of array
@@ -18,7 +18,7 @@ size: 	.word  12             # size of "array"
 #		lw      $t5, 0($0)		 # Messed up instruction for testing
 
 # Loop for computing numbers.
-compute: 	lw   	$t3, 0($t0)      # Get value from array F[n] 
+compute: 	lw   	$t3, 0($t0)      # Get value from array F[n]
       	lw   	$t4, 4($t0)      # Get value from array F[n+1]
       	add  	$t2, $t3, $t4    # $t2 = F[n] + F[n+1]
       	sw   	$t2, 8($t0)      # Store F[n+2] = F[n] + F[n+1] in array
@@ -27,11 +27,11 @@ compute: 	lw   	$t3, 0($t0)      # Get value from array F[n]
       	bgtz 	$t1, compute     # repeat if not finished yet.
       	la   	$a0, fibs        # first argument for print (array)
       	add  	$a1, $zero, $t5  # second argument for print (size)
-      	jal  	print            # call print routine. 
+      	jal  	print            # call print routine.
       	li   	$v0, SysExit     # system call for exit
       	syscall                    # we are out of here.
-		
-#########  routine to print the numbers on one line. 
+
+#########  routine to print the numbers on one line.
 
       .data
 space:.asciiz  " "          # space to insert between numbers
@@ -42,7 +42,7 @@ print:	add  	$t0, $zero, $a0  # starting address of array
       	la   	$a0, head        # load address of print heading
       	li   	$v0, SysPrintString
       	syscall                    # print heading
-print5:  	lw   	$a0, 0($t0)      # load fibonacci number for syscall
+print5: 	lw   	$a0, 0($t0)      # load fibonacci number for syscall
       	li   	$v0, SysPrintInt # specify Print Integer service
       	syscall                    # print fibonacci number
       	la   	$a0, space       # load address of spacer for syscall
