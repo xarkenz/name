@@ -1,13 +1,15 @@
 use std::{collections::HashMap, sync::LazyLock};
+use std::io::{self, Write};
+
+use crate::debug::debugger_methods::*;
+use crate::fetch::fetch;
 
 use name_core::{
     constants::MIPS_ADDRESS_ALIGNMENT,
     exception::definitions::ExceptionType,
     instruction::{information::InstructionInformation, instruction_set::INSTRUCTION_SET},
-    structs::{LineInfo, ProgramState},
+    structs::{LineInfo, OperatingSystem, ProgramState},
 };
-
-use crate::debug::debugger_methods::*;
 
 static INSTRUCTION_LOOKUP: LazyLock<HashMap<u32, &'static InstructionInformation>> =
     LazyLock::new(|| {
@@ -17,18 +19,12 @@ static INSTRUCTION_LOOKUP: LazyLock<HashMap<u32, &'static InstructionInformation
             .collect()
     });
 
-use crate::fetch::fetch;
-
-use std::io::{self, Write};
 
 pub fn single_step(
     _lineinfo: &Vec<LineInfo>,
     program_state: &mut ProgramState,
     debugger_state: &DebuggerState,
 ) -> () {
-    // passing a breakpoints vector into this function is a very messy way of doing this, i'm aware,,,
-    // ideally, a break instruction is physically injected into the code and everything works politely from there without extra shenaniganery.
-    // however, for now, this will have to do
     if !program_state
         .memory
         .allows_execution_of(program_state.cpu.pc)
@@ -39,12 +35,18 @@ pub fn single_step(
 
     // println!("{}", program_state.cpu.pc);
 
-    // check if there's a breakpoint after instruction on the line is executed
-    for bp in &debugger_state.breakpoints {
-        if program_state.cpu.pc == bp.address {
-            program_state.set_exception(ExceptionType::Breakpoint);
-        }
+    // check if there's a breakpoint before instruction on the line is executed
+    match debugger_state
+        .breakpoints
+        // .contains(&program_state.cpu.pc)
+        .iter()
+        .find(|bp| bp.address == program_state.cpu.pc)
+    {
+        // println!("Breakpoint at line {} reached. (This ran in single_step())", bp.line_num);
+        Some(_) => program_state.set_exception(ExceptionType::Breakpoint),
+        None => {},
     }
+    //TODO: implement break instruction. check after fetch.
 
     // Fetch
     let raw_instruction = fetch(program_state);
@@ -81,16 +83,21 @@ pub struct Breakpoint {
 pub struct DebuggerState {
     pub breakpoints: Vec<Breakpoint>,
     pub global_bp_num: u16,
+    pub replaced_instructions: Vec<u32>, // map the breakpoint number (index) to its replaced instruction
     pub global_list_loc: usize, // for the l command; like the center of the output
 }
 
 // pub type DebugFn = fn(&Vec<LineInfo>, &mut Memory, &mut Processor, &Vec<Breakpoint>) -> Result<(), String>;
 
-// This is the name debugger. Have fun...
-pub fn debugger(lineinfo: &Vec<LineInfo>, program_state: &mut ProgramState) -> Result<(), String> {
+// Pass control to the user upon hitting a breakpoint
+pub fn cli_debugger(
+    lineinfo: &Vec<LineInfo>,
+    program_state: &mut ProgramState,
+    os: &mut OperatingSystem,
+) -> Result<(), String> {
     let mut debugger_state = DebuggerState::new();
 
-    println!("Welcome to the NAME debugger.");
+    println!("Welcome to the NAME CLI debugger.");
     println!("For a list of commands, type \"help\".");
 
     loop {
@@ -117,15 +124,15 @@ pub fn debugger(lineinfo: &Vec<LineInfo>, program_state: &mut ProgramState) -> R
             "q" => return Ok(()),
             "exit" => return Ok(()),
             "quit" => return Ok(()),
-            "r" => match continuously_execute(lineinfo, program_state, &mut debugger_state) {
+            "r" => match continuously_execute(lineinfo, program_state, os, &mut debugger_state) {
                 Ok(_) => continue,
                 Err(e) => eprintln!("{e}"),
             },
-            "c" => match continuously_execute(lineinfo, program_state, &mut debugger_state) {
+            "c" => match continuously_execute(lineinfo, program_state, os, &mut debugger_state) {
                 Ok(_) => continue,
                 Err(e) => eprintln!("{e}"),
             },
-            "s" => match db_step(lineinfo, program_state, &mut debugger_state) {
+            "s" => match db_step(lineinfo, program_state, os, &mut debugger_state) {
                 Ok(_) => continue,
                 Err(e) => eprintln!("{e}"),
             },
@@ -149,14 +156,14 @@ pub fn debugger(lineinfo: &Vec<LineInfo>, program_state: &mut ProgramState) -> R
                 Ok(_) => continue,
                 Err(e) => eprintln!("{e}"),
             },
-            "b" => match debugger_state.add_breakpoint(lineinfo, &db_args) {
+            "b" => match debugger_state.add_breakpoint(lineinfo, &db_args, program_state) {
                 Ok(_) => continue,
                 Err(e) => eprintln!("{e}"),
             },
-            "del" => match debugger_state.remove_breakpoint(&db_args) {
-                Ok(_) => continue,
-                Err(e) => eprintln!("{e}"),
-            },
+            // "del" => match debugger_state.remove_breakpoint(&db_args) {
+            //     Ok(_) => continue,
+            //     Err(e) => eprintln!("{e}"),
+            // },
             _ => eprintln!("Option not recognized. Type \"help\" to view accepted options."),
         };
     }

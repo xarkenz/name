@@ -1,7 +1,7 @@
 use crate::exception_handler::handle_exception;
 use crate::simulator_helpers::extract_loadable_sections;
 
-use crate::debug::debug_utils::{debugger, single_step, DebuggerState};
+use crate::debug::debug_utils::{cli_debugger, single_step, DebuggerState};
 
 use name_core::elf_def::Elf;
 use name_core::elf_utils::extract_lineinfo;
@@ -24,7 +24,7 @@ pub fn simulate(elf: Elf, debug: bool) -> Result<(), String> {
 
     if debug {
         // Invoke the cli debugger if the user asked for it
-        debugger(&lineinfo, &mut program_state)
+        cli_debugger(&lineinfo, &mut program_state, &mut operating_system)
     } else {
         // Begin fetch/decode/execute cycle to run program normally
         while program_state.should_continue_execution {

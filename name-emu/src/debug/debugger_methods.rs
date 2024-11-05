@@ -1,122 +1,13 @@
-/* Autocollapse is your best friend...
- */
-
 use name_core::{
     constants::REGISTERS,
-    structs::{LineInfo, ProgramState},
+    // structs::Register,
+    structs::{LineInfo, OperatingSystem, ProgramState},
 };
 
-use crate::debug::debug_utils::{Breakpoint, DebuggerState, single_step, debugger};
+use crate::debug::debug_utils::{single_step, /*cli_debugger, Breakpoint, */ DebuggerState};
 
-impl Breakpoint {
-    pub fn new(bp_num: u16, line_num: u32, lineinfo: &Vec<LineInfo>) -> Self {
-        Breakpoint {
-            bp_num,
-            line_num,
-            address: {
-                match lineinfo.iter().find(|&line| line.line_number == line_num) {
-                    Some(line) => line.start_address,
-                    None => {
-                        panic!("Breakpoint not found in memory.");
-                    }
-                }
-            },
-        }
-    }
-    // assembler::add_label is not the solution to male loneliness
-}
+use crate::exception_handler::handle_exception;
 
-impl DebuggerState {
-    pub fn new() -> Self {
-        let breakpoints: Vec<Breakpoint> = Vec::new();
-        let global_bp_num: u16 = 0;
-        let global_list_loc: usize = 5;
-        DebuggerState {
-            breakpoints,
-            global_bp_num,
-            global_list_loc,
-        }
-    }
-
-    /* These are all functions that only impact the debugger and not the state of the program. */
-
-    /// "pb"
-    pub fn print_all_breakpoints(&self) -> Result<(), String> {
-        println!("BP_NUM: LINE_NUM");
-        for breakpoint in &self.breakpoints {
-            println!("{:>6}: {}", breakpoint.bp_num, breakpoint.line_num);
-        }
-        Ok(())
-    }
-
-    // This method is used to shorten list_text.
-    pub fn list_lines(&mut self, lineinfo: &Vec<LineInfo>, mut lnum: usize) {
-        if lnum == 0 {
-            lnum = self.global_list_loc;
-        }
-
-        let begin = lnum.saturating_sub(5);
-        let end = std::cmp::min(lnum.saturating_add(3), lineinfo.len() - 1);
-        for i in begin..=end {
-            println!(
-                "{:>3} #{:08x}  {}",
-                lineinfo[i].line_number, lineinfo[i].start_address, lineinfo[i].content
-            );
-        }
-
-        // by default, bind the global list pointer (i.e. the line number that is selected when no args are provided)
-        // to this current line number.
-        // in a hypothetical future, we can add a flag to make this an option
-        if lnum + 9 <= lineinfo.len() {
-            self.global_list_loc = lnum + 9;
-        } else {
-            self.global_list_loc = 5;
-        }
-    }
-
-    /// "b"
-    pub fn add_breakpoint(&mut self, lineinfo: &Vec<LineInfo>, db_args: &Vec<String>) -> Result<(), String>{
-        if db_args.len() != 2 {
-            return Err(format!("b expects 1 argument, received {}", db_args.len() - 1))
-        }
-        
-        let line_num: u32 = db_args[1]
-            .parse()
-            .expect("b takes 32-bit unsigned int as input");
-
-        if line_num > lineinfo.len().try_into().unwrap() { // something like that
-            return Err(format!("{} exceeds number of lines in program.", line_num))
-        }
-
-        self.global_bp_num += 1;
-        self.breakpoints.push(Breakpoint::new(self.global_bp_num, line_num, lineinfo));
-        println!(
-            "Successfully added breakpoint {} at line {}.",
-            self.global_bp_num, line_num
-        );
-        Ok(())
-    }
-
-    /// "del"
-    pub fn remove_breakpoint(&mut self, db_args: &Vec<String>) -> Result<(), String>{
-        if db_args.len() != 2 {
-            return Err(format!("del expects 1 argument, received {}", db_args.len() - 1))
-        }
-
-        let bp_num: u16 = db_args[1]
-            .parse()
-            .expect("del takes a 16-bit unsigned int as input");
-
-        if let Some(index) = self.breakpoints.iter().position(|brpt| brpt.bp_num == bp_num) {
-            let removed_element = self.breakpoints.remove(index);
-            println!("Removed {:?}", removed_element);
-            self.global_bp_num -= 1;
-            Ok(())
-        } else {
-            Err(format!("Breakpoint with bp_num {} not found", bp_num))
-        }
-    }
-}
 
 pub fn handle_breakpoint(program_state: &mut ProgramState, lineinfo: &Vec<LineInfo>) -> () {
     /* Needs to do the following:
@@ -129,39 +20,54 @@ pub fn handle_breakpoint(program_state: &mut ProgramState, lineinfo: &Vec<LineIn
      * Use the code in the break instruction to match injectively (:nerd:) to the instruction you replaced
      */
 
-    let line_num = program_state.cpu.pc;
-    println!("Breakpoint at address {} reached.", line_num); // change that into line num for now
-    register_dump(program_state);
-    match debugger(lineinfo, program_state) {
-        Ok(_) => {},
-        Err(e) => panic!("{e}"),
+    let line_addr = program_state.cpu.pc;
+    let line_num = match lineinfo.iter().find(|line| line.start_address == line_addr) {
+        Some(found_line) => found_line.line_number,
+        None => {
+            panic!(
+                    "Line number with associated breakpoint address 0x{:x} not found. Something has gone seriously wrong.", 
+                    line_addr
+                );
+        }
     };
+    println!("Breakpoint at line {} reached.", line_num); // use address for now...
+    register_dump(program_state);
     //TODO: ("Finish breakpoint handler implementation @Nick");
 }
+
+
+//
+// Everything below this point is function spam for the cli debugger.
+// Autocollapse is your best friend...
+//
+
 
 /// "s"
 // Also called by continuously_execute
 pub fn db_step(
-    lineinfo: &Vec<LineInfo>, 
-    program_state: &mut ProgramState, 
-    debugger_state: &mut DebuggerState
+    lineinfo: &Vec<LineInfo>,
+    program_state: &mut ProgramState,
+    os: &mut OperatingSystem,
+    debugger_state: &mut DebuggerState,
 ) -> Result<(), String> {
     single_step(lineinfo, program_state, debugger_state);
     if program_state.is_exception() {
-        todo!("Handle exception");
+        // todo!("Handle exception");
         // return Err("exceptionnnnnnnnn".to_string())
+        handle_exception(program_state, os, lineinfo);
     }
     Ok(())
 }
 
 /// "r", "c"
 pub fn continuously_execute(
-    lineinfo: &Vec<LineInfo>, 
-    program_state: &mut ProgramState, 
-    debugger_state: &mut DebuggerState
+    lineinfo: &Vec<LineInfo>,
+    program_state: &mut ProgramState,
+    os: &mut OperatingSystem,
+    debugger_state: &mut DebuggerState,
 ) -> Result<(), String> {
     loop {
-        match db_step(lineinfo, program_state, debugger_state) {
+        match db_step(lineinfo, program_state, os, debugger_state) {
             Ok(_) => continue,
             Err(e) => return Err(e),
         }
@@ -175,7 +81,7 @@ pub fn list_text(
     db_args: &Vec<String>,
 ) -> Result<(), String> {
     if db_args.len() == 1 {
-        debugger_state.list_lines(lineinfo, 0);
+        debugger_state.list_lines(lineinfo, debugger_state.global_list_loc);
         Ok(())
     } else if db_args.len() == 2 {
         if db_args[1] == "all" {
@@ -213,8 +119,8 @@ pub fn list_text(
 
 // "p"
 pub fn print_register(
-    program_state: &mut ProgramState, 
-    db_args: &Vec<String>
+    program_state: &mut ProgramState,
+    db_args: &Vec<String>,
 ) -> Result<(), String> {
     if db_args.len() < 2 {
         return Err(format!(
@@ -228,7 +134,9 @@ pub fn print_register(
     // (eventually expand the functionality of this method to also be able to print the value of memory addresses
     // and stuff like that)
     if db_args[1].chars().nth(0) != Some('$') {
-        return Err(format!("Congrats! You discovered an unimplemented feature... or you forgot the dollar sign on your register."));
+        return Err(format!(
+            "Congrats! You discovered an unimplemented feature... or you forgot the dollar sign on your register."
+        ));
     }
 
     for register in db_args[1..].to_vec() {
@@ -251,21 +159,26 @@ pub fn print_register(
 
 // "pa"
 pub fn print_all_registers(
-    program_state: &mut ProgramState, 
-    db_args: &Vec<String>
-) -> Result<(), String>{
-    if db_args.len() >= 1 {
+    program_state: &mut ProgramState,
+    db_args: &Vec<String>,
+) -> Result<(), String> {
+    if db_args.len() > 1 {
         // this outputs a lot so make sure the user actually meant to type pa and not pb or p or something
-        // made it >= so we can use this function to do register_dump()
-        return Err(format!("pa expects 0 arguments, received {}", db_args.len() - 1))
+        // made it > so we can use this function to do register_dump()
+        return Err(format!(
+            "pa expects 0 arguments, received {}",
+            db_args.len() - 1
+        ));
     }
 
+    // for register in Register.values() {
     for register in REGISTERS {
         // change this to loop through the enum in name-core::structs instead?
         let idx: usize = REGISTERS.iter().position(|&x| x == register).unwrap();
         println!(
             "{:>5}: {:08x}",
-            register, program_state.cpu.general_purpose_registers[idx]
+            register,
+            program_state.cpu.general_purpose_registers[idx] // register, program_state.cpu.general_purpose_registers[register]
         );
     }
     Ok(())
@@ -273,15 +186,15 @@ pub fn print_all_registers(
 
 fn register_dump(program_state: &mut ProgramState) {
     match print_all_registers(program_state, &Vec::new()) {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(e) => eprintln!("{e}"),
     };
 }
 
 // "m"
 pub fn modify_register(
-    program_state: &mut ProgramState, 
-    db_args: &Vec<String>
+    program_state: &mut ProgramState,
+    db_args: &Vec<String>,
 ) -> Result<(), String> {
     if db_args.len() != 3 {
         return Err(format!(
