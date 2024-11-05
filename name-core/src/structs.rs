@@ -8,7 +8,9 @@ use std::{
 use crate::{
     constants::{
         MIPS_DATA_START_ADDR, MIPS_HEAP_START_ADDR, MIPS_STACK_END_ADDR, MIPS_TEXT_START_ADDR,
-    }, exception::constants::EXCEPTION_BEING_HANDLED, syscalls::*
+    },
+    exception::constants::EXCEPTION_BEING_HANDLED,
+    syscalls::*,
 };
 
 /// Symbol is used for assembly -> ELF and ELF -> ProgramState construction.

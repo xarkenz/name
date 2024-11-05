@@ -437,7 +437,7 @@ pub fn sw(program_state: &mut ProgramState, args: IArgs) -> () {
         // Shift/mask value to get correct byte
         let new_byte: u8 = ((value >> (i * 8)) & 0xFF) as u8;
         // Write it to correct location
-        match program_state.memory.set_byte(temp + (3-i), new_byte) {
+        match program_state.memory.set_byte(temp + (3 - i), new_byte) {
             Ok(_) => (),
             Err(_) => {
                 // If write failed, trigger an exception
