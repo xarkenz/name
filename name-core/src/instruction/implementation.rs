@@ -252,10 +252,7 @@ pub fn bne(program_state: &mut ProgramState, args: IArgs) -> () {
 
     let temp = (program_state.cpu.pc as i32 + offset) as u32;
 
-    if !program_state
-        .memory
-        .allows_execution_of(temp)
-    {
+    if !program_state.memory.allows_execution_of(temp) {
         // TODO: Use a function which sets the proper values in cp0 for us
         program_state.set_exception(ExceptionType::AddressExceptionLoad);
         return;
@@ -275,10 +272,7 @@ pub fn blez(program_state: &mut ProgramState, args: IArgs) -> () {
 
     let temp = (program_state.cpu.pc as i32 + offset) as u32;
 
-    if !program_state
-        .memory
-        .allows_execution_of(temp)
-    {
+    if !program_state.memory.allows_execution_of(temp) {
         // TODO: Use a function which sets the proper values in cp0 for us
         program_state.set_exception(ExceptionType::AddressExceptionLoad);
         return;
@@ -299,10 +293,7 @@ pub fn bgtz(program_state: &mut ProgramState, args: IArgs) -> () {
 
     let temp = (program_state.cpu.pc as i32 + offset) as u32;
 
-    if !program_state
-        .memory
-        .allows_execution_of(temp)
-    {
+    if !program_state.memory.allows_execution_of(temp) {
         // TODO: Use a function which sets the proper values in cp0 for us
         program_state.set_exception(ExceptionType::AddressExceptionLoad);
         return;
@@ -392,7 +383,7 @@ pub fn lw(program_state: &mut ProgramState, args: IArgs) -> () {
     let mut result_word: u32 = 0;
     while i < 4 {
         match program_state.memory.read_byte(temp + i) {
-            Ok(b) => result_word |= (b as u32) << (24 - i * 8),
+            Ok(b) => result_word |= (b as u32) << (24 - (i * 8)),
             Err(_) => program_state.set_exception(ExceptionType::AddressExceptionLoad),
         }
         i += 1;
@@ -437,13 +428,19 @@ pub fn sw(program_state: &mut ProgramState, args: IArgs) -> () {
         return;
     }
 
+    // Retrieve value of rt from cpu
+    let value: u32 = program_state.cpu.general_purpose_registers[args.rt as usize];
+
     // Checks passed. Store word.
     let mut i = 0;
     while i < 4 {
-        let new_byte: u8 = (temp >> (i * 8) & 0xFF) as u8;
-        match program_state.memory.set_byte(temp + i, new_byte) {
+        // Shift/mask value to get correct byte
+        let new_byte: u8 = ((value >> (i * 8)) & 0xFF) as u8;
+        // Write it to correct location
+        match program_state.memory.set_byte(temp + (3-i), new_byte) {
             Ok(_) => (),
             Err(_) => {
+                // If write failed, trigger an exception
                 program_state.set_exception(ExceptionType::AddressExceptionStore);
                 return;
             }
