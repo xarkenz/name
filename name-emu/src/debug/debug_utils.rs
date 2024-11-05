@@ -33,11 +33,12 @@ pub fn single_step(
     // passing a breakpoints vector into this function is a very messy way of doing this, i'm aware,,,
     // ideally, a break instruction is physically injected into the code and everything works politely from there without extra shenaniganery.
     // however, for now, this will have to do
-    if program_state
+    if !program_state
         .memory
         .allows_execution_of(program_state.cpu.pc)
     {
         program_state.set_exception(ExceptionType::AddressExceptionLoad);
+        return;
     }
 
     // println!("{}", program_state.cpu.pc);

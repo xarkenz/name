@@ -254,7 +254,7 @@ pub fn bne(program_state: &mut ProgramState, args: IArgs) -> () {
 
     if !program_state
         .memory
-        .allows_execution_of(program_state.cpu.general_purpose_registers[args.rs as usize])
+        .allows_execution_of(temp)
     {
         // TODO: Use a function which sets the proper values in cp0 for us
         program_state.set_exception(ExceptionType::AddressExceptionLoad);
@@ -277,7 +277,7 @@ pub fn blez(program_state: &mut ProgramState, args: IArgs) -> () {
 
     if !program_state
         .memory
-        .allows_execution_of(program_state.cpu.general_purpose_registers[args.rs as usize])
+        .allows_execution_of(temp)
     {
         // TODO: Use a function which sets the proper values in cp0 for us
         program_state.set_exception(ExceptionType::AddressExceptionLoad);
@@ -301,7 +301,7 @@ pub fn bgtz(program_state: &mut ProgramState, args: IArgs) -> () {
 
     if !program_state
         .memory
-        .allows_execution_of(program_state.cpu.general_purpose_registers[args.rs as usize])
+        .allows_execution_of(temp)
     {
         // TODO: Use a function which sets the proper values in cp0 for us
         program_state.set_exception(ExceptionType::AddressExceptionLoad);
