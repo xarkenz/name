@@ -1,14 +1,11 @@
-use crate::conformity::relocatable_conformity_check;
-
 use name_core::constants::MIPS_TEXT_START_ADDR;
 use name_core::elf_def::{Elf, ET_EXEC};
 use name_core::elf_utils::{find_global_symbol_address, parse_elf_symbols};
 
-pub fn one_module_linker(et_rel: Elf) -> Result<Elf, String> {
-    let mut et_exec: Elf = match relocatable_conformity_check(&et_rel) {
-        Ok(_) => et_rel.clone(),
-        Err(e) => return Err(e),
-    };
+/// Note that this function is not fallible in the context we are using it.
+/// The et_rel parameter is pre-checked.
+pub fn update_header(et_rel: Elf) -> Elf {
+    let mut et_exec = et_rel.clone();
 
     // Update executable type (needed for name-emu to recognize file)
     et_exec.file_header.e_type = ET_EXEC;
@@ -31,5 +28,5 @@ pub fn one_module_linker(et_rel: Elf) -> Result<Elf, String> {
         None => MIPS_TEXT_START_ADDR,
     };
 
-    Ok(et_exec)
+    return et_exec;
 }

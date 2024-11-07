@@ -1,6 +1,30 @@
 use name_core::elf_def::*;
 
-pub fn relocatable_conformity_check(et_rel: &Elf) -> Result<(), String> {
+/// A wrapper over relocatable_conformity_check to simplify main()
+pub fn conformity_check(elfs: &Vec<Elf>) -> Result<(), String> {
+    let conformity_results: Vec<Result<(), String>> = elfs
+        .iter()
+        .map(|elf| relocatable_conformity_check(elf))
+        .collect();
+
+    let mut errors: Vec<String> = vec![];
+
+    for res in conformity_results {
+        match res {
+            Ok(_) => {}
+            Err(e) => errors.push(e),
+        }
+    }
+
+    if errors.len() > 0 {
+        let error_string: String = errors.iter().map(|err| format!("- {err}\n")).collect();
+        return Err(format!("Conformity checks failed:\n {error_string}"));
+    } else {
+        return Ok(());
+    }
+}
+
+fn relocatable_conformity_check(et_rel: &Elf) -> Result<(), String> {
     let fh = &et_rel.file_header;
 
     // Check everything in E_IDENT first
