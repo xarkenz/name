@@ -4,7 +4,7 @@ use name_core::elf_utils::{find_global_symbol_address, parse_elf_symbols};
 
 /// Note that this function is not fallible in the context we are using it.
 /// The et_rel parameter is pre-checked.
-pub fn update_header(et_rel: Elf) -> Elf {
+pub fn update_header(et_rel: &Elf) -> Elf {
     let mut et_exec = et_rel.clone();
 
     // Update executable type (needed for name-emu to recognize file)
