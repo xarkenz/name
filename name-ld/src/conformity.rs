@@ -81,12 +81,12 @@ fn relocatable_conformity_check(et_rel: &Elf) -> Result<(), String> {
         ));
     }
 
-    if fh.e_shnum != E_SHNUM_DEFAULT {
-        return Err(format!("Linker expected a very specific section layout. If you're making your own ELF, refer to documentation (bad e_shnum field, expected {}).", E_SHNUM_DEFAULT));
+    if fh.e_shnum != E_SHNUM_DEFAULT_REL {
+        return Err(format!("Linker expected a very specific section layout. If you're making your own ELF, refer to documentation (bad e_shnum field, expected {}).", E_SHNUM_DEFAULT_REL));
     }
 
-    if fh.e_shstrndx != E_SHSTRNDX_DEFAULT {
-        return Err(format!("Linker expected a very specific section layout. If you're making your own ELF, refer to documentation (bad e_shstrndx field, expected {}).", E_SHSTRNDX_DEFAULT));
+    if fh.e_shstrndx != E_SHSTRNDX_DEFAULT_REL {
+        return Err(format!("Linker expected a very specific section layout. If you're making your own ELF, refer to documentation (bad e_shstrndx field, expected {}).", E_SHSTRNDX_DEFAULT_REL));
     }
 
     Ok(())

@@ -9,13 +9,17 @@ pub fn linker(elfs: Vec<Elf>) -> Result<Elf, String> {
 
     // If just one file received, just need to perform trivial "relocation" and a header update
     if elfs.len() == 1 {
+        /*
         // Question mark used to propagate but in this instance is infallible
         let collected_globals: Vec<Symbol> = collect_global_symbols(&elfs)?;
         let collected_locals: Vec<Vec<Symbol>> = collect_local_symbols(&elfs);
 
         let relocated_elf: Elf = relocate(&elfs, &collected_globals, &collected_locals)?;
         return Ok(update_header(&relocated_elf));
+        */
+        return Ok(update_header(&elfs[0]));
     }
+    
     // Else, must perform actual linking.
 
     // Calculate base addresses for each ELF's sections

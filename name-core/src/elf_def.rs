@@ -19,11 +19,24 @@
 
 // Section setup for ET_REL files
 // These are the sections which should be present in each ET_REL constructed by the functions in this file.
-pub const NUM_OF_SECTIONS: usize = 7; // This is e_shnum.
-pub const SECTIONS: [&'static str; NUM_OF_SECTIONS] = [
+pub const NUM_OF_SECTIONS_REL: usize = 8; // This is e_shnum.
+pub const SECTIONS_REL: [&'static str; NUM_OF_SECTIONS_REL] = [
     "", // Null (reserved) section
-    ".text",
     ".data",
+    ".text",
+    ".rel",
+    ".symtab",
+    ".strtab",
+    ".line",
+    ".shstrtab",
+];
+
+// ET_EXEC files (output from linker) should look a little different.
+pub const NUM_OF_SECTIONS_EXEC: usize = 7; // This is e_shnum for ET_EXECs.
+pub const SECTIONS_EXEC: [&'static str; NUM_OF_SECTIONS_EXEC] = [
+    "",
+    ".data",
+    ".text",
     ".symtab",
     ".strtab",
     ".line",
@@ -70,6 +83,12 @@ pub const E_IDENT_DEFAULT: [u8; EI_NIDENT] = [
 pub const ET_REL: u16 = 1;
 pub const ET_EXEC: u16 = 2;
 // const ET_DYN: u16 = 3;
+
+#[derive(Clone)]
+pub enum ElfType {
+    Relocatable,
+    Executable,
+}
 
 // all ELFs will first be constructed with e_type set to ET_REL. The linker handles any changes.
 pub const E_TYPE_DEFAULT: u16 = ET_REL;
@@ -120,10 +139,12 @@ pub const E_SHENTSIZE_DEFAULT: u16 = 40;
 
 // For our use case, e_shnum is known.
 // Each object file we assemble needs all program header entries, along with 2 entries for .debug and .line (debug/lineinfo). (plus 1 for null)
-pub const E_SHNUM_DEFAULT: u16 = NUM_OF_SECTIONS as u16;
+pub const E_SHNUM_DEFAULT_REL: u16 = NUM_OF_SECTIONS_REL as u16;    // Relocatables have a different number
+pub const E_SHNUM_DEFAULT_EXEC: u16 = NUM_OF_SECTIONS_EXEC as u16;
 
 // By convention, e_shstrndx is set to the last value in the section header. The first index is reserved
-pub const E_SHSTRNDX_DEFAULT: u16 = E_SHNUM_DEFAULT - 1;
+pub const E_SHSTRNDX_DEFAULT_REL: u16 = E_SHNUM_DEFAULT_REL - 1;
+pub const E_SHSTRNDX_DEFAULT_EXEC: u16 = E_SHNUM_DEFAULT_EXEC - 1;
 
 // Program header consts
 
@@ -148,6 +169,7 @@ pub const SHT_NULL: u32 = 0;
 pub const SHT_PROGBITS: u32 = 1;
 pub const SHT_SYMTAB: u32 = 2;
 pub const SHT_STRTAB: u32 = 3;
+pub const SHT_REL: u32 = 9;
 
 // sh_flags  (unused commented out):
 pub const SHF_WRITE: u32 = 0x1; // writable
