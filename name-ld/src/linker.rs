@@ -17,7 +17,11 @@ pub fn linker(elfs: Vec<Elf>) -> Result<Elf, String> {
         let relocated_elf: Elf = relocate(&elfs, &collected_globals, &collected_locals)?;
         return Ok(update_header(&relocated_elf));
         */
-        return Ok(update_header(&elfs[0]));
+        
+        return Ok(update_header(&match relocate(&vec![elfs[0].clone()], &vec!(), &vec!()) {
+            Ok(elf) => elf,
+            Err(e) => panic!("{e}"),
+        }));
     }
     
     // Else, must perform actual linking.

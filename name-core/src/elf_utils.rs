@@ -88,6 +88,7 @@ pub fn create_new_elf(
     let symtab_section: Vec<u8>;
     let strtab_section: Vec<u8>;
     let line_section: Vec<u8>;
+
     match elf_type {
         ElfType::Relocatable => {
             rel_section = sections[2].clone();
@@ -96,7 +97,7 @@ pub fn create_new_elf(
             line_section = sections[5].clone();
         },
         ElfType::Executable => {
-            // rel_section should not be allocated
+            // rel_section should not be accounted for in args
             rel_section = vec!();
             symtab_section = sections[2].clone();
             strtab_section = sections[3].clone();
@@ -110,11 +111,10 @@ pub fn create_new_elf(
     let data_size: u32 = data_section.len() as u32;
     let text_size: u32 = text_section.len() as u32;
 
-    let rel_size: u32;
-    match elf_type {
-        ElfType::Relocatable => rel_size = rel_section.len() as u32,
-        ElfType::Executable => rel_size = 0,
-    }
+    let rel_size: u32 = match elf_type {
+        ElfType::Relocatable => rel_section.len() as u32,
+        ElfType::Executable => 0,
+    };
 
     let symtab_size: u32 = symtab_section.len() as u32;
     let strtab_size: u32 = strtab_section.len() as u32;
@@ -124,18 +124,12 @@ pub fn create_new_elf(
     let data_offset: u32 = E_PHOFF_DEFAULT + (E_PHNUM_DEFAULT * E_PHENTSIZE_DEFAULT) as u32;
     let text_offset: u32 = data_offset + data_size; // The program header entries are for the two loadable segments, .text and .data
 
-    let rel_offset: u32;
-    let symtab_offset: u32;
-    match elf_type {
-        ElfType::Relocatable => {
-            rel_offset = text_offset + text_size;
-            symtab_offset = rel_offset + rel_size;
-        },
-        ElfType::Executable => {
-            rel_offset = text_offset + text_size;
-            symtab_offset = text_offset + text_size;
-        },
-    }
+    let rel_offset: u32 = text_offset + text_size;
+
+    let symtab_offset: u32 = match elf_type {
+        ElfType::Relocatable => rel_offset + rel_size,
+        ElfType::Executable => text_offset + text_size,
+    };
 
     let strtab_offset: u32 = symtab_offset + symtab_size;
     let line_offset: u32 = strtab_offset + strtab_size;
@@ -239,10 +233,10 @@ pub fn create_new_elf(
                 sh_addr: 0,
                 sh_offset: rel_offset,
                 sh_size: rel_size,
-                sh_link: 3, // .symtab
-                sh_info: 1, // .text_sh
+                sh_link: 4, // .symtab
+                sh_info: 2, // .text_sh
                 sh_addralign: 0,
-                sh_entsize: 0,
+                sh_entsize: 8,
             });
 
             byte_offset_to_now += SECTIONS_REL[3].len() as u32 + 1;
@@ -258,7 +252,7 @@ pub fn create_new_elf(
         sh_addr: 0,
         sh_offset: symtab_offset,
         sh_size: symtab_size,
-        sh_link: 4, // Link to appropriate string table
+        sh_link: 5, // Link to appropriate string table
         sh_info: 0,
         sh_addralign: 0,
         sh_entsize: SH_ENTSIZE_SYMTAB,
@@ -321,11 +315,15 @@ pub fn create_new_elf(
         sh_entsize: 0,
     });
 
+    // Craft final sections
+    let mut final_sections: Vec<Vec<u8>> = sections.clone();
+    final_sections.push(shstrtab_section);
+
     // Final step is to create the final Elf struct
     return Elf {
         file_header: elf_file_header,
         program_header_table: complete_program_header_table,
-        sections: sections,
+        sections: final_sections,
         section_header_table: complete_section_header_table,
     };
 }
@@ -421,7 +419,7 @@ pub fn read_bytes_to_elf(file_contents: Vec<u8>) -> Result<Elf, String> {
     let section_header_table_bytes =
         &file_contents[(elf_header.e_shoff as usize)..file_contents.len()];
     let section_header_table: Vec<Elf32SectionHeader> =
-        parse_sh_table_bytes(section_header_table_bytes);
+        parse_sh_table_bytes(section_header_table_bytes).into_iter().filter(|entry| entry.sh_name != 0).collect();
 
     let mut sections: Vec<Vec<u8>> = vec![];
     for sh in &section_header_table {
@@ -534,7 +532,7 @@ fn get_string_from_strtab(strtab: &Vec<u8>, offset: u32) -> Option<&str> {
 }
 
 pub fn extract_lineinfo(elf: &Elf) -> Vec<LineInfo> {
-    let shstrtab = &elf.sections[elf.file_header.e_shstrndx as usize];
+    let shstrtab = &elf.sections[elf.file_header.e_shstrndx as usize - 1];
     let idx = match find_target_section_index(&elf.section_header_table, shstrtab, ".line") {
         Some(i) => i,
         None => unreachable!(),

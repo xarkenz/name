@@ -19,8 +19,8 @@ pub fn update_header(et_rel: &Elf) -> Elf {
     // If the global symbol "main" exists, that should be the entry address. It still needs to be global even in one module by convention.
 
     // Construct symbol table and corresponding string table from what was given
-    let symbol_table = parse_elf_symbols(&et_exec.sections[3]);
-    let str_table = &et_exec.sections[4];
+    let symbol_table = parse_elf_symbols(&et_exec.sections[2]);
+    let str_table = &et_exec.sections[3];
 
     et_exec.file_header.e_entry = match find_global_symbol_address(&symbol_table, str_table, "main")
     {

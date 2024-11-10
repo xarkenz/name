@@ -30,6 +30,7 @@ fn main() {
                 vec!(
                 assembler_environment.section_dot_data,
                 assembler_environment.section_dot_text,
+                vec!(), // Placeholder for .rel
                 section_dot_symtab,
                 section_dot_strtab,
                 assembler_environment.section_dot_line,

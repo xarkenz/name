@@ -8,7 +8,7 @@ pub fn extract_loadable_sections(elf: &Elf) -> (Vec<u8>, Vec<u8>) {
     // Search section header string table for '.text' and '.data'
     let text_section: Vec<u8> = match find_target_section_index(
         &elf.section_header_table,
-        &elf.sections[elf.file_header.e_shstrndx as usize],
+        &elf.sections[elf.file_header.e_shstrndx as usize -1],
         ".text",
     ) {
         Some(section_index) => elf.sections[section_index].clone(),
@@ -17,14 +17,14 @@ pub fn extract_loadable_sections(elf: &Elf) -> (Vec<u8>, Vec<u8>) {
 
     let data_section: Vec<u8> = match find_target_section_index(
         &elf.section_header_table,
-        &elf.sections[elf.file_header.e_shstrndx as usize],
+        &elf.sections[elf.file_header.e_shstrndx as usize -1],
         ".data",
     ) {
         Some(section_index) => elf.sections[section_index].clone(),
         None => vec![],
     };
 
-    (text_section, data_section)
+    (data_section, text_section)
 }
 
 pub fn generate_err(lineinfo: &Vec<LineInfo>, address: u32, message: &str) -> String {
