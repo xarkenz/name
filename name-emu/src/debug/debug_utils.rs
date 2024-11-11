@@ -2,9 +2,8 @@ use std::{collections::HashMap, sync::LazyLock};
 use std::io::{self, Write};
 
 use crate::debug::debugger_methods::*;
-use crate::fetch::fetch;
 
-use name_core::{
+use crate::{
     constants::MIPS_ADDRESS_ALIGNMENT,
     exception::definitions::ExceptionType,
     instruction::{information::InstructionInformation, instruction_set::INSTRUCTION_SET},
@@ -18,7 +17,6 @@ static INSTRUCTION_LOOKUP: LazyLock<HashMap<u32, &'static InstructionInformation
             .map(|instr| (instr.lookup_code(), instr))
             .collect()
     });
-
 
 pub fn single_step(
     _lineinfo: &Vec<LineInfo>,
@@ -72,6 +70,7 @@ pub fn single_step(
 
     program_state.cpu.general_purpose_registers[0] = 0;
 }
+    
 
 #[derive(Debug)]
 pub struct Breakpoint {

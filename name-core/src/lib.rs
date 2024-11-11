@@ -1,4 +1,5 @@
 pub mod constants;
+pub mod debug;
 pub mod elf_def;
 pub mod elf_utils;
 pub mod exception;

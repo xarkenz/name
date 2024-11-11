@@ -1,6 +1,10 @@
+use crate::constants::REGISTERS;
 use crate::exception::constants::*;
 use crate::structs::{Coprocessor0, LineInfo, Memory, Processor, ProgramState};
-// use name_emu::debug_utils::DebuggerState;
+// use crate::debug::{
+//     // debug_utils::*,
+//     debugger_methods::*,
+// };
 
 impl Processor {
     pub fn new(entry: u32) -> Self {
@@ -32,7 +36,7 @@ impl ProgramState {
         return self.cp0.get_exception_level() == EXCEPTION_BEING_HANDLED;
     }
 
-    pub fn insert_breakpoint(&mut self, address: u32, bp_num: u16) -> Result<u32, String> {
+    pub fn insert_breakpoint(&mut self, address: u32, bp_num: usize) -> Result<u32, String> {
         // least vulnerable code ever
 
         if !self.memory.allows_execution_of(address){
@@ -72,7 +76,42 @@ impl ProgramState {
         for i in 0..4 {
             old_instruction |= (old_instruction_word[i] << (24 - 8*i)) as u32;
         }
+        
         Ok(old_instruction)
+    }
+
+// "pa"
+    pub fn print_all_registers(
+        &mut self,
+        db_args: &Vec<String>,
+    ) -> Result<(), String> {
+        if db_args.len() > 1 {
+            // this outputs a lot so make sure the user actually meant to type pa and not pb or p or something
+            // made it > so we can use this function to do register_dump()
+            return Err(format!(
+                "pa expects 0 arguments, received {}",
+                db_args.len() - 1
+            ));
+        }
+
+        // for register in Register.values() {
+        for register in REGISTERS {
+            // change this to loop through the enum in name-core::structs instead?
+            let idx: usize = REGISTERS.iter().position(|&x| x == register).unwrap();
+            println!(
+                "{:>5}: {:08x}",
+                register,
+                self.cpu.general_purpose_registers[idx] // register, program_state.cpu.general_purpose_registers[register]
+            );
+        }
+        Ok(())
+    }
+
+    pub fn register_dump(&mut self) {
+        match self.print_all_registers(&Vec::new()) {
+            Ok(_) => {}
+            Err(e) => eprintln!("{e}"),
+        };
     }
 }
 

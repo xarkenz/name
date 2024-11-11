@@ -2,13 +2,14 @@
 /// It's gonna be quite a few definitions, so buckle up.
 use std::{
     fmt,
-    io::{stdin, stdout, Stdin, Stdout},
+    io::{/*self,*/ stdin, stdout, Stdin, Stdout, Write},
 };
 
 use crate::{
     constants::{
         MIPS_DATA_START_ADDR, MIPS_HEAP_START_ADDR, MIPS_STACK_END_ADDR, MIPS_TEXT_START_ADDR,
-    },
+    }, 
+    debug::{debug_utils::*, debugger_methods::*, /* implementations::* */}, 
     syscalls::*,
 };
 
@@ -351,4 +352,114 @@ impl OperatingSystem {
             _ => Err(format!("{} is not a recognized syscall.", syscall_num)),
         }
     }
+
+
+    pub fn handle_breakpoint(&mut self, program_state: &mut ProgramState, lineinfo: &Vec<LineInfo>) -> () {
+        /* Needs to do the following:
+         * Transfer control to the user
+         *      Register dump (pretty pa)
+         *      Type in a letter to get a hex dump of .data
+         * Note that cp0 should have flags for whether user ran c or s
+         * Idea: simply replace the instruction on bp.line_num with break
+         *      when done, rereplace the instruction and decrement pc by 4 :jadCensored:
+         * Use the code in the break instruction to match injectively (:nerd:) to the instruction you replaced
+         */
+    
+        let line_addr = program_state.cpu.pc;
+        let line_num = match lineinfo.iter().find(|line| line.start_address == line_addr) {
+            Some(found_line) => found_line.line_number,
+            None => {
+                panic!(
+                    "Line number with associated breakpoint address 0x{:x} not found. Something has gone seriously wrong.", 
+                    line_addr
+                );
+            }
+        };
+        println!("Breakpoint at line {} reached.", line_num);
+        program_state.register_dump();
+        self.cli_debugger(lineinfo, program_state);
+        //TODO: ("Finish breakpoint handler implementation @Nick");
+    }
+
+    // Pass control to the user upon hitting a breakpoint
+    pub fn cli_debugger(
+        &mut self,
+        lineinfo: &Vec<LineInfo>,
+        program_state: &mut ProgramState,
+    ) -> Result<(), String> {
+        let mut debugger_state = DebuggerState::new();
+
+        println!("Welcome to the NAME CLI debugger.");
+        println!("For a list of commands, type \"help\".");
+
+        loop {
+            print!("(name-db) ");
+            self.stdout.flush().expect("Failed to flush stdout");
+
+            // take in the command and split it up into arguments
+            let mut user_input = String::new();
+            match self.stdin.read_line(&mut user_input) {
+                Ok(_) => {}
+                Err(e) => eprintln!("stdin error: {e}"),
+            };
+            let db_args: Vec<String> = user_input
+                .trim()
+                .split(" ")
+                .map(|s| s.to_string())
+                .collect();
+
+            match db_args[0].as_str() {
+                "help" => match help_menu(db_args) {
+                    Ok(_) => continue,
+                    Err(e) => eprintln!("{e}"),
+                },
+                "q" => return Ok(()),
+                "exit" => return Ok(()),
+                "quit" => return Ok(()),
+                "r" => match continuously_execute(lineinfo, program_state, self, &mut debugger_state) {
+                    Ok(_) => continue,
+                    Err(e) => eprintln!("{e}"),
+                },
+                "c" => match continuously_execute(lineinfo, program_state, self, &mut debugger_state) {
+                    Ok(_) => continue,
+                    Err(e) => eprintln!("{e}"),
+                },
+                "s" => match db_step(lineinfo, program_state, self, &mut debugger_state) {
+                    Ok(_) => continue,
+                    Err(e) => eprintln!("{e}"),
+                },
+                "l" => match list_text(lineinfo, &mut debugger_state, &db_args) {
+                    Ok(_) => continue,
+                    Err(e) => eprintln!("{e}"),
+                },
+                "p" => match print_register(program_state, &db_args) {
+                    Ok(_) => continue,
+                    Err(e) => eprintln!("{e}"),
+                },
+                "pa" => match program_state.print_all_registers(&db_args) {
+                    Ok(_) => continue,
+                    Err(e) => eprintln!("{e}"),
+                },
+                "m" => match modify_register(program_state, &db_args) {
+                    Ok(_) => continue,
+                    Err(e) => eprintln!("{e}"),
+                },
+                "pb" => match debugger_state.print_all_breakpoints() {
+                    Ok(_) => continue,
+                    Err(e) => eprintln!("{e}"),
+                },
+                "b" => match debugger_state.add_breakpoint(lineinfo, &db_args, program_state) {
+                    Ok(_) => continue,
+                    Err(e) => eprintln!("{e}"),
+                },
+                // "del" => match debugger_state.remove_breakpoint(&db_args) {
+                //     Ok(_) => continue,
+                //     Err(e) => eprintln!("{e}"),
+                // },
+                _ => eprintln!("Option not recognized. Type \"help\" to view accepted options."),
+            };
+        }
+    }
+
+    
 }

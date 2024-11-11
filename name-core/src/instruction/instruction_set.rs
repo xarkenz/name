@@ -111,6 +111,15 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
             ],
             alt_args: None,
         },
+        // InstructionInformation {
+        //     mnemonic: "break",
+        //     op_code: 0x00,
+        //     funct_code: Some(0x06),
+        //     implementation: wrap_imp(),
+        //     instruction_type: InstructionType::RType,
+        //     args: None,
+        //     alt_args: None,
+        // },
         InstructionInformation {
             mnemonic: "j",
             op_code: 0x02,

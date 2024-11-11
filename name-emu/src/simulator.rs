@@ -24,7 +24,7 @@ pub fn simulate(elf: Elf, debug: bool) -> Result<(), String> {
 
     if debug {
         // Invoke the cli debugger if the user asked for it
-        cli_debugger(&lineinfo, &mut program_state, &mut operating_system)
+        operating_system.cli_debugger(&lineinfo, &mut program_state)
     } else {
         // Begin fetch/decode/execute cycle to run program normally
         while program_state.should_continue_execution {

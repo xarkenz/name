@@ -1,11 +1,12 @@
+use crate::constants::MIPS_ADDRESS_ALIGNMENT;
 // use std::collections::HashMap;
 use crate::debug::debug_utils::{Breakpoint, DebuggerState};
 use crate::structs::{LineInfo, ProgramState};
 
 impl Breakpoint {
-    pub fn new(bp_num: u16, line_address: u32, lineinfo: &Vec<LineInfo>) -> Self {
+    pub fn new(bp_num: usize, line_address: u32, lineinfo: &Vec<LineInfo>, program_state: &mut ProgramState) -> Self {
         Breakpoint {
-            bp_num,
+            // bp_num,
             line_num: {
                 match lineinfo
                     .iter()
@@ -18,6 +19,7 @@ impl Breakpoint {
                 }
             },
             address: line_address,
+            replaced_instruction: program_state.insert_breakpoint(line_address, bp_num).unwrap()
         }
     }
     // assembler::add_label is not the solution to male loneliness
@@ -26,9 +28,9 @@ impl Breakpoint {
 impl DebuggerState {
     pub fn new() -> Self {
         DebuggerState {
-            breakpoints: Vec::<Breakpoint>::new(),
             global_bp_num: 0,
-            replaced_instructions: Vec::<u32>::new(),
+            breakpoints: Vec::<Breakpoint>::new(),
+            // replaced_instructions: Vec::<u32>::new(),
             global_list_loc: 5,
         }
     }
@@ -39,10 +41,11 @@ impl DebuggerState {
     pub fn print_all_breakpoints(&self) -> Result<(), String> {
         println!("BP_NUM: LINE_NUM");
         // for (_address, bp) in &self.breakpoints {
-        for bp in &self.breakpoints {
-            println!("{:>6}: {}", bp.bp_num, bp.line_num);
+        // for bp in &self.breakpoints {
+        for bp_num in 0..self.breakpoints.len(){
+            println!("{:>6}: {}", bp_num, self.breakpoints[bp_num].line_num);
         }
-        Ok(())
+        return Ok(())
     }
 
     // This method is used to shorten list_text.
@@ -114,26 +117,19 @@ impl DebuggerState {
                 ))
             }
         };
-
-        let replaced_instruction =
-            // terrible method name. pls forgive
-            match program_state.insert_breakpoint(line_address, self.global_bp_num) {
-                Ok(old_inst) => old_inst,
-                Err(e) => {
-                    return Err(e);
-                }
-            };
         
-        self.replaced_instructions[self.global_bp_num as usize] = replaced_instruction;
+        self.breakpoints.insert(
+            self.global_bp_num as usize,
+            Breakpoint::new(self.global_bp_num, line_address, lineinfo, program_state),
+        );
 
-        self.global_bp_num += 1;
-        // self.breakpoints.insert(
-        //     line_address,
-        //     Breakpoint::new(self.global_bp_num, line_address, lineinfo),
-        // );
-        self.breakpoints.push(Breakpoint::new(self.global_bp_num, line_address, lineinfo));
+        // find the next empty space in the breakpoint vector
+        while let Some(_) = self.breakpoints.get(self.global_bp_num as usize){
+            self.global_bp_num += 1;
+        }
+        // self.breakpoints.push(Breakpoint::new(self.global_bp_num, line_address, lineinfo));
 
-        program_state.cpu.pc = program_state.cpu.pc;
+        program_state.cpu.pc = program_state.cpu.pc - MIPS_ADDRESS_ALIGNMENT;
 
         println!(
             "Successfully added breakpoint {} at line {}.",
@@ -142,32 +138,44 @@ impl DebuggerState {
         Ok(())
     }
 
-    ///// "del"
-    // pub fn remove_breakpoint(&mut self, db_args: &Vec<String>) -> Result<(), String> {
-    //     if db_args.len() != 2 {
-    //         return Err(format!(
-    //             "del expects 1 argument, received {}",
-    //             db_args.len() - 1
-    //         ));
-    //     }
+    /// "del"
+    pub fn remove_breakpoint(&mut self, db_args: &Vec<String>) -> Result<(), String> {
+        if db_args.len() != 2 {
+            return Err(format!(
+                "del expects 1 argument, received {}",
+                db_args.len() - 1
+            ));
+        }
 
-    //     let bp_num: u16 = match db_args[1].parse() {
-    //         Ok(num) => num,
-    //         Err(_) => {
-    //             return Err("del takes a 16-bit unsigned int as input".to_string());
-    //         }
-    //     };
+        let bp_num: usize = match db_args[1].parse() {
+            Ok(num) => num,
+            Err(_) => {
+                return Err("del takes an unsigned int as input".to_string());
+            }
+        };
 
-    //     if let Some(kvpair) = self.breakpoints
-    //         .iter()
-    //         .find(|brpt| brpt.1.bp_num == bp_num)
-    //     {
-    //         let removed_element = swag.remove(kvpair.0);
-    //         println!("Removed {:?}", removed_element);
-    //         self.global_bp_num -= 1;
-    //         Ok(())
-    //     } else {
-    //         Err(format!("Breakpoint with bp_num {} not found", bp_num))
-    //     }
-    // }
+        let _removed_breakpoint = match self.breakpoints.get(bp_num) {
+            Some(bp) => bp,
+            None => {
+                return Err(format!("Breakpoint {} not found.", bp_num))
+            }
+        };
+
+        self.breakpoints.remove(bp_num);
+        self.global_bp_num = bp_num;
+        Ok(())
+        // if memory.read_byte()
+
+        // if let Some(kvpair) = self.breakpoints
+        //     .iter()
+        //     .find(|brpt| brpt..bp_num == bp_num)
+        // {
+        //     let removed_element = swag.remove(kvpair.0);
+        //     println!("Removed {:?}", removed_element);
+        //     self.global_bp_num -= 1;
+        //     Ok(())
+        // } else {
+        //     Err(format!("Breakpoint with bp_num {} not found", bp_num))
+        // }
+    }
 }

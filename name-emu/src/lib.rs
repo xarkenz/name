@@ -1,5 +1,5 @@
 pub mod args;
-pub mod debug;
+// pub mod debug;
 pub mod exception_handler;
 pub mod fetch;
 pub mod simulator;

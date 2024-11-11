@@ -6,9 +6,9 @@ use crate::{
     structs::{LineInfo, OperatingSystem, ProgramState},
 };
 
-use crate::debug::debug_utils::{/*cli_debugger, /Breakpoint, */ DebuggerState};
+use crate::debug::debug_utils::{/*cli_debugger, Breakpoint, */ DebuggerState};
 
-use name_emu::exception_handler::handle_exception;
+// use name_emu::exception_handler::handle_exception;
 
 // pub fn handle_breakpoint(program_state: &mut ProgramState, lineinfo: &Vec<LineInfo>) -> () {
 //     /* Needs to do the following:
@@ -160,7 +160,7 @@ pub fn print_register(
 }
 
 fn register_dump(program_state: &mut ProgramState) {
-    match print_all_registers(program_state, &Vec::new()) {
+    match program_state.print_all_registers(&Vec::new()) {
         Ok(_) => {}
         Err(e) => eprintln!("{e}"),
     };
