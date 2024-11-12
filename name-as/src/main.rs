@@ -2,9 +2,11 @@ use std::path::PathBuf;
 
 use name_as::args::Cli;
 use name_as::assembler::assemble_file::assemble;
-use name_as::helpers::extract_symbol_table_to_sections;
 
-use name_core::{elf_def::ElfType, elf_utils::{create_new_elf, write_elf_to_file}};
+use name_core::{
+    elf_def::ElfType,
+    elf_utils::{create_new_elf, extract_symbol_table_to_sections, write_elf_to_file},
+};
 
 use clap::Parser;
 
@@ -27,16 +29,15 @@ fn main() {
                 extract_symbol_table_to_sections(assembler_environment.symbol_table);
 
             let et_rel = create_new_elf(
-                vec!(
-                assembler_environment.section_dot_data,
-                assembler_environment.section_dot_text,
-                vec!(), // Placeholder for .rel
-                section_dot_symtab,
-                section_dot_strtab,
-                assembler_environment.section_dot_line,
-                ),
-
-                ElfType::Relocatable
+                vec![
+                    assembler_environment.section_dot_data,
+                    assembler_environment.section_dot_text,
+                    vec![], // Placeholder for .rel
+                    section_dot_symtab,
+                    section_dot_strtab,
+                    assembler_environment.section_dot_line,
+                ],
+                ElfType::Relocatable,
             );
             match write_elf_to_file(&args.output_filename, &et_rel) {
                 Ok(()) => println!(

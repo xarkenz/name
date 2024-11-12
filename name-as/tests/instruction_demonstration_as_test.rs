@@ -2,9 +2,11 @@ use std::fs::read_to_string;
 use std::path::PathBuf;
 
 use name_as::assembler::assemble_file::assemble;
-use name_as::helpers::extract_symbol_table_to_sections;
 
-use name_core::{elf_def::ElfType, elf_utils::{create_new_elf, write_elf_to_file}};
+use name_core::{
+    elf_def::ElfType,
+    elf_utils::{create_new_elf, extract_symbol_table_to_sections, write_elf_to_file},
+};
 
 #[test]
 fn instruction_demonstration_as_test() {
@@ -28,15 +30,15 @@ fn instruction_demonstration_as_test() {
                 extract_symbol_table_to_sections(assembler_environment.symbol_table);
 
             let et_rel = create_new_elf(
-                vec!(
-                assembler_environment.section_dot_data,
-                assembler_environment.section_dot_text,
-                vec!(),
-                section_dot_symtab,
-                section_dot_strtab,
-                assembler_environment.section_dot_line
-                ),
-                ElfType::Relocatable
+                vec![
+                    assembler_environment.section_dot_data,
+                    assembler_environment.section_dot_text,
+                    vec![],
+                    section_dot_symtab,
+                    section_dot_strtab,
+                    assembler_environment.section_dot_line,
+                ],
+                ElfType::Relocatable,
             );
             match write_elf_to_file(&test_output_filename, &et_rel) {
                 Ok(()) => println!(

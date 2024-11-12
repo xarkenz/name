@@ -58,10 +58,7 @@ fn create_new_elf_header(passed_e_shoff: u32, elf_type: ElfType) -> Elf32Header 
 
 // This function combines all the previous to actually create a new object file.
 // This object file is specifically for ET_REL (relocatables, output by the assembler).
-pub fn create_new_elf(
-    sections: Vec<Vec<u8>>,
-    elf_type: ElfType
-) -> Elf {
+pub fn create_new_elf(sections: Vec<Vec<u8>>, elf_type: ElfType) -> Elf {
     // The section header string table entry requires some calculations.
     // Here we get the shstrtab as bytes from the constant defined at the top of the file.
     // We also get the size of the shstrtab.
@@ -72,7 +69,7 @@ pub fn create_new_elf(
                 shstrtab_section.extend_from_slice(item.as_bytes());
                 shstrtab_section.extend_from_slice(&[b'\0']);
             }
-        },
+        }
         ElfType::Executable => {
             for item in SECTIONS_EXEC {
                 shstrtab_section.extend_from_slice(item.as_bytes());
@@ -95,16 +92,16 @@ pub fn create_new_elf(
             symtab_section = sections[3].clone();
             strtab_section = sections[4].clone();
             line_section = sections[5].clone();
-        },
+        }
         ElfType::Executable => {
             // rel_section should not be accounted for in args
-            rel_section = vec!();
+            rel_section = vec![];
             symtab_section = sections[2].clone();
             strtab_section = sections[3].clone();
             line_section = sections[4].clone();
-        },
+        }
     }
-    
+
     let shstrtab_size: u32 = shstrtab_section.len() as u32;
 
     // Get size of each section to properly calculate offsets in result file
@@ -165,8 +162,7 @@ pub fn create_new_elf(
     // Construct program header table
     let complete_program_header_table: Vec<Elf32ProgramHeader> = vec![data_ph, text_ph];
 
-
-    let mut complete_section_header_table: Vec<Elf32SectionHeader> = vec!();
+    let mut complete_section_header_table: Vec<Elf32SectionHeader> = vec![];
     let mut byte_offset_to_now: u32 = 0;
     // Populate the section headers - indexes are in the same order as the struct (.data, .text, .debug, .line)
     // First field is SHT_NULL and reserved, but must be included.
@@ -240,8 +236,8 @@ pub fn create_new_elf(
             });
 
             byte_offset_to_now += SECTIONS_REL[3].len() as u32 + 1;
-        },
-        ElfType::Executable => {},
+        }
+        ElfType::Executable => {}
     }
 
     // .symtab
@@ -352,6 +348,31 @@ pub fn convert_symbol_to_elf32sym(symbol: &Symbol, strtab_index: u32) -> Elf32Sy
     }
 }
 
+// Extract symbol table and string table
+pub fn extract_symbol_table_to_sections(symbol_table: Vec<Symbol>) -> (Vec<u8>, Vec<u8>) {
+    let mut section_dot_symtab: Vec<u8> = Elf32Sym {
+        st_name: 0,
+        st_value: 0,
+        st_size: 0,
+        st_info: 0,
+        st_other: 0,
+        st_shndx: 0,
+    }
+    .to_bytes();
+    let mut section_dot_strtab: Vec<u8> = vec![0];
+
+    let mut strtab_index = 1;
+    for symbol in symbol_table {
+        section_dot_symtab.extend(convert_symbol_to_elf32sym(&symbol, strtab_index).to_bytes());
+        section_dot_strtab.extend_from_slice(symbol.identifier.as_bytes());
+        section_dot_strtab.push(0);
+
+        strtab_index += (symbol.identifier.len() + 1) as u32;
+    }
+
+    return (section_dot_symtab, section_dot_strtab);
+}
+
 // This function creates a new file with the passed name and writes all bytes in a RelocatableElf object
 pub fn write_elf_to_file(file_name: &PathBuf, et_rel: &Elf) -> Result<(), String> {
     // Declare file_bytes vector to push all these file bytes onto
@@ -419,7 +440,10 @@ pub fn read_bytes_to_elf(file_contents: Vec<u8>) -> Result<Elf, String> {
     let section_header_table_bytes =
         &file_contents[(elf_header.e_shoff as usize)..file_contents.len()];
     let section_header_table: Vec<Elf32SectionHeader> =
-        parse_sh_table_bytes(section_header_table_bytes).into_iter().filter(|entry| entry.sh_name != 0).collect();
+        parse_sh_table_bytes(section_header_table_bytes)
+            .into_iter()
+            .filter(|entry| entry.sh_name != 0)
+            .collect();
 
     let mut sections: Vec<Vec<u8>> = vec![];
     for sh in &section_header_table {
@@ -560,6 +584,8 @@ pub fn find_global_symbol_address(
     None
 }
 
+/// This returns the target section index + 1, since the null first section is unaccounted for in deserialization.
+/// It's the burden of the caller to not be off by one
 pub fn find_target_section_index(
     section_header_table: &Vec<Elf32SectionHeader>,
     strtab: &Vec<u8>,
@@ -573,6 +599,21 @@ pub fn find_target_section_index(
         }
     }
     None
+}
+
+impl Elf {
+    pub fn get_text_length(&self) -> u32 {
+        let text_index = match find_target_section_index(
+            &self.section_header_table,
+            &self.sections[(self.file_header.e_shstrndx - 1) as usize],
+            ".text",
+        ) {
+            Some(i) => i,
+            None => unreachable!(), // Will only be used after a separate check has passed
+        };
+
+        return self.section_header_table[text_index].sh_size;
+    }
 }
 
 fn deserialize_line_info(data: &Vec<u8>) -> Vec<LineInfo> {

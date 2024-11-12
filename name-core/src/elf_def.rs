@@ -139,7 +139,7 @@ pub const E_SHENTSIZE_DEFAULT: u16 = 40;
 
 // For our use case, e_shnum is known.
 // Each object file we assemble needs all program header entries, along with 2 entries for .debug and .line (debug/lineinfo). (plus 1 for null)
-pub const E_SHNUM_DEFAULT_REL: u16 = NUM_OF_SECTIONS_REL as u16;    // Relocatables have a different number
+pub const E_SHNUM_DEFAULT_REL: u16 = NUM_OF_SECTIONS_REL as u16; // Relocatables have a different number
 pub const E_SHNUM_DEFAULT_EXEC: u16 = NUM_OF_SECTIONS_EXEC as u16;
 
 // By convention, e_shstrndx is set to the last value in the section header. The first index is reserved
@@ -334,6 +334,10 @@ impl Elf32Sym {
         bytes.extend_from_slice(&self.st_shndx.to_be_bytes());
 
         bytes
+    }
+
+    pub fn get_bind(&self) -> u8 {
+        self.st_info >> 4
     }
 }
 
