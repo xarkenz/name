@@ -4,10 +4,11 @@ use std::{collections::HashMap, sync::LazyLock};
 // use crate::debug::debugger_methods::*;
 
 use crate::{
-    // constants::MIPS_ADDRESS_ALIGNMENT,
-    // exception::definitions::ExceptionType,
+    constants::MIPS_ADDRESS_ALIGNMENT,
+    debug::fetch::fetch,
+    exception::definitions::ExceptionType,
     instruction::{information::InstructionInformation, instruction_set::INSTRUCTION_SET},
-    // structs::{LineInfo, OperatingSystem, ProgramState},
+    structs::{LineInfo, /*OperatingSystem,*/ ProgramState},
 };
 
 static INSTRUCTION_LOOKUP: LazyLock<HashMap<u32, &'static InstructionInformation>> =
@@ -18,59 +19,47 @@ static INSTRUCTION_LOOKUP: LazyLock<HashMap<u32, &'static InstructionInformation
             .collect()
     });
 
-// pub fn single_step(
-//     _lineinfo: &Vec<LineInfo>,
-//     program_state: &mut ProgramState,
-//     debugger_state: &DebuggerState,
-// ) -> () {
-//     if !program_state
-//         .memory
-//         .allows_execution_of(program_state.cpu.pc)
-//     {
-//         program_state.set_exception(ExceptionType::AddressExceptionLoad);
-//         return;
-//     }
+pub fn single_step(
+    _lineinfo: &Vec<LineInfo>,
+    program_state: &mut ProgramState,
+) -> () {
+    if !program_state
+        .memory
+        .allows_execution_of(program_state.cpu.pc)
+    {
+        program_state.set_exception(ExceptionType::AddressExceptionLoad);
+        return;
+    }
 
-//     // println!("{}", program_state.cpu.pc);
+    // println!("{}", program_state.cpu.pc);
 
-//     // check if there's a breakpoint before instruction on the line is executed
-//     match debugger_state
-//         .breakpoints
-//         // .contains(&program_state.cpu.pc)
-//         .iter()
-//         .find(|bp| bp.address == program_state.cpu.pc)
-//     {
-//         // println!("Breakpoint at line {} reached. (This ran in single_step())", bp.line_num);
-//         Some(_) => program_state.set_exception(ExceptionType::Breakpoint),
-//         None => {},
-//     }
-//     //TODO: implement break instruction. check after fetch.
+    // check if there's a breakpoint before instruction on the line is executed
+    // TODO: implement break instruction. check after fetch.
 
-//     // Fetch
-//     let raw_instruction = fetch(program_state);
-//     let instr_info = match INSTRUCTION_LOOKUP.get(&raw_instruction.get_lookup()) {
-//         Some(info) => info,
-//         None => {
-//             program_state.set_exception(ExceptionType::ReservedInstruction);
-//             return;
-//         }
-//     };
+    // Fetch
+    let raw_instruction = fetch(program_state);
+    let instr_info = match INSTRUCTION_LOOKUP.get(&raw_instruction.get_lookup()) {
+        Some(info) => info,
+        None => {
+            program_state.set_exception(ExceptionType::ReservedInstruction);
+            return;
+        }
+    };
 
-//     program_state.cpu.pc += MIPS_ADDRESS_ALIGNMENT;
+    program_state.cpu.pc += MIPS_ADDRESS_ALIGNMENT;
 
-//     // Execute the instruction; program_state is modified.
-//     if false
-//     /* Allowing for some later verbose mode */
-//     {
-//         println!("Executing {}", instr_info.mnemonic);
-//     }
-//     let _ = (instr_info.implementation)(program_state, raw_instruction);
+    // Execute the instruction; program_state is modified.
+    if false
+    /* Allowing for some later verbose mode */
+    {
+        println!("Executing {}", instr_info.mnemonic);
+    }
+    let _ = (instr_info.implementation)(program_state, raw_instruction);
 
-//     // The $0 register should never have been permanently changed. Don't let it remain changed.
+    // The $0 register should never have been permanently changed. Don't let it remain changed.
 
-//     program_state.cpu.general_purpose_registers[0] = 0;
-// }
-    
+    program_state.cpu.general_purpose_registers[0] = 0;
+}
 
 #[derive(Debug)]
 pub struct Breakpoint {
@@ -82,7 +71,7 @@ pub struct Breakpoint {
 
 pub struct DebuggerState {
     pub global_bp_num: usize, // point to the first available empty space in the breakpoint vector
-    pub breakpoints: Vec<Breakpoint>,    // indexed by bp_num
+    pub breakpoints: Vec<Breakpoint>, // indexed by bp_num
     // pub replaced_instructions: Vec<u32>, // also indexed by bp num
     pub global_list_loc: usize, // for the l command; like the center of the output
 }

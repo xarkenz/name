@@ -84,6 +84,11 @@ pub fn syscall(program_state: &mut ProgramState, _args: RArgs) -> () {
     program_state.set_exception(ExceptionType::Syscall);
 }
 
+// 0x0D - break
+pub fn break_instr(program_state: &mut ProgramState, _args: RArgs) -> () {
+    program_state.set_exception(ExceptionType::Breakpoint);
+}
+
 // 0x20 - add
 pub fn add(program_state: &mut ProgramState, args: RArgs) -> () {
     program_state.cpu.general_purpose_registers[args.rd as usize] =
@@ -437,7 +442,7 @@ pub fn sw(program_state: &mut ProgramState, args: IArgs) -> () {
         // Shift/mask value to get correct byte
         let new_byte: u8 = ((value >> (i * 8)) & 0xFF) as u8;
         // Write it to correct location
-        match program_state.memory.set_byte(temp + (3-i), new_byte) {
+        match program_state.memory.set_byte(temp + (3 - i), new_byte) {
             Ok(_) => (),
             Err(_) => {
                 // If write failed, trigger an exception

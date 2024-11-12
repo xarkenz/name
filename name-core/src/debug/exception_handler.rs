@@ -1,9 +1,11 @@
-use name_core::{
+use crate::{
     exception::definitions::ExceptionType,
     structs::{LineInfo, OperatingSystem, ProgramState},
 };
 
-use crate::simulator_helpers::generate_err;
+use crate::debug::simulator_helpers::generate_err;
+
+use super::debug_utils::DebuggerState;
 //use name_core::debug::
 
 /// The exception handler is invoked whenever an exception has occurred.
@@ -13,6 +15,7 @@ pub fn handle_exception(
     program_state: &mut ProgramState,
     os: &mut OperatingSystem,
     lineinfo: &Vec<LineInfo>,
+    debugger_state: &mut DebuggerState,
 ) {
     // In order to invoke this function, certain values (like exception_level == 1) are already assumed.
 
@@ -61,7 +64,7 @@ pub fn handle_exception(
         }
         ExceptionType::Breakpoint => {
             // Invoke the breakpoint handler on program state and lineinfo
-            handle_breakpoint(program_state, lineinfo);
+            os.handle_breakpoint(program_state, lineinfo, debugger_state);
         }
         ExceptionType::ReservedInstruction => {
             panic!(

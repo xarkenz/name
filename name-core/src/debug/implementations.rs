@@ -1,10 +1,15 @@
-use crate::constants::MIPS_ADDRESS_ALIGNMENT;
+// use crate::constants::MIPS_ADDRESS_ALIGNMENT;
 // use std::collections::HashMap;
 use crate::debug::debug_utils::{Breakpoint, DebuggerState};
 use crate::structs::{LineInfo, ProgramState};
 
 impl Breakpoint {
-    pub fn new(bp_num: usize, line_address: u32, lineinfo: &Vec<LineInfo>, program_state: &mut ProgramState) -> Self {
+    pub fn new(
+        bp_num: usize,
+        line_address: u32,
+        lineinfo: &Vec<LineInfo>,
+        program_state: &mut ProgramState,
+    ) -> Self {
         Breakpoint {
             // bp_num,
             line_num: {
@@ -19,7 +24,9 @@ impl Breakpoint {
                 }
             },
             address: line_address,
-            replaced_instruction: program_state.insert_breakpoint(line_address, bp_num).unwrap()
+            replaced_instruction: program_state
+                .insert_breakpoint(line_address, bp_num)
+                .unwrap(), // creation of a breakpoint
         }
     }
     // assembler::add_label is not the solution to male loneliness
@@ -42,10 +49,10 @@ impl DebuggerState {
         println!("BP_NUM: LINE_NUM");
         // for (_address, bp) in &self.breakpoints {
         // for bp in &self.breakpoints {
-        for bp_num in 0..self.breakpoints.len(){
+        for bp_num in 0..self.breakpoints.len() {
             println!("{:>6}: {}", bp_num, self.breakpoints[bp_num].line_num);
         }
-        return Ok(())
+        return Ok(());
     }
 
     // This method is used to shorten list_text.
@@ -117,19 +124,19 @@ impl DebuggerState {
                 ))
             }
         };
-        
+
         self.breakpoints.insert(
             self.global_bp_num as usize,
             Breakpoint::new(self.global_bp_num, line_address, lineinfo, program_state),
         );
 
         // find the next empty space in the breakpoint vector
-        while let Some(_) = self.breakpoints.get(self.global_bp_num as usize){
+        while let Some(_) = self.breakpoints.get(self.global_bp_num as usize) {
             self.global_bp_num += 1;
         }
         // self.breakpoints.push(Breakpoint::new(self.global_bp_num, line_address, lineinfo));
 
-        program_state.cpu.pc = program_state.cpu.pc - MIPS_ADDRESS_ALIGNMENT;
+        // program_state.cpu.pc = program_state.cpu.pc - MIPS_ADDRESS_ALIGNMENT;
 
         println!(
             "Successfully added breakpoint {} at line {}.",
@@ -139,7 +146,11 @@ impl DebuggerState {
     }
 
     /// "del"
-    pub fn remove_breakpoint(&mut self, db_args: &Vec<String>) -> Result<(), String> {
+    pub fn remove_breakpoint(
+        &mut self, 
+        db_args: &Vec<String>, 
+        program_state: &mut ProgramState
+    ) -> Result<(), String> {
         if db_args.len() != 2 {
             return Err(format!(
                 "del expects 1 argument, received {}",
@@ -154,28 +165,33 @@ impl DebuggerState {
             }
         };
 
-        let _removed_breakpoint = match self.breakpoints.get(bp_num) {
+        let removed_breakpoint = match self.breakpoints.get(bp_num) {
             Some(bp) => bp,
-            None => {
-                return Err(format!("Breakpoint {} not found.", bp_num))
-            }
+            None => return Err(format!("Breakpoint {} not found.", bp_num)),
         };
 
-        self.breakpoints.remove(bp_num);
-        self.global_bp_num = bp_num;
-        Ok(())
-        // if memory.read_byte()
+        // replace the instruction 
+        let mut i = 0;
+        while i < 4 {
+            // Shift/mask value to get correct byte
+            let new_byte: u8 = ((removed_breakpoint.replaced_instruction >> (i * 8)) & 0xFF) as u8;
+            // Write it to correct location
+            match program_state.memory.set_byte(removed_breakpoint.address + (3 - i), new_byte) {
+                Ok(_) => (),
+                Err(e) => {
+                    return Err(format!("{e}"));
+                }
+            }
+            i += 1;
+        }
 
-        // if let Some(kvpair) = self.breakpoints
-        //     .iter()
-        //     .find(|brpt| brpt..bp_num == bp_num)
-        // {
-        //     let removed_element = swag.remove(kvpair.0);
-        //     println!("Removed {:?}", removed_element);
-        //     self.global_bp_num -= 1;
-        //     Ok(())
-        // } else {
-        //     Err(format!("Breakpoint with bp_num {} not found", bp_num))
-        // }
+        // remove the breakpoint from the universe of discourse
+        self.breakpoints.remove(bp_num);
+
+        // the index at bp_num is now empty. point our number there
+        if self.global_bp_num > bp_num {
+            self.global_bp_num = bp_num;
+        }
+        Ok(())
     }
 }

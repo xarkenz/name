@@ -6,43 +6,14 @@ use crate::{
     structs::{LineInfo, OperatingSystem, ProgramState},
 };
 
-use crate::debug::debug_utils::{/*cli_debugger, Breakpoint, */ DebuggerState};
+use crate::debug::debug_utils::{/*cli_debugger, Breakpoint, */ single_step, DebuggerState};
 
-// use name_emu::exception_handler::handle_exception;
-
-// pub fn handle_breakpoint(program_state: &mut ProgramState, lineinfo: &Vec<LineInfo>) -> () {
-//     /* Needs to do the following:
-//      * Transfer control to the user
-//      *      Register dump (pretty pa)
-//      *      Type in a letter to get a hex dump of .data
-//      * Note that cp0 should have flags for whether user ran c or s
-//      * Idea: simply replace the instruction on bp.line_num with break
-//      *      when done, rereplace the instruction and decrement pc by 4 :jadCensored:
-//      * Use the code in the break instruction to match injectively (:nerd:) to the instruction you replaced
-//      */
-
-//     let line_addr = program_state.cpu.pc;
-//     let line_num = match lineinfo.iter().find(|line| line.start_address == line_addr) {
-//         Some(found_line) => found_line.line_number,
-//         None => {
-//             panic!(
-//                 "Line number with associated breakpoint address 0x{:x} not found. Something has gone seriously wrong.", 
-//                 line_addr
-//             );
-//         }
-//     };
-//     println!("Breakpoint at line {} reached.", line_num);
-//     register_dump(program_state);
-//     // cli_debugger(lineinfo, program_state, os);
-//     //TODO: ("Finish breakpoint handler implementation @Nick");
-// }
-
+use crate::debug::exception_handler::handle_exception;
 
 //
 // Everything below this point is function spam for the cli debugger.
 // Autocollapse is your best friend...
 //
-
 
 /// "s"
 // Also called by continuously_execute
@@ -52,11 +23,11 @@ pub fn db_step(
     os: &mut OperatingSystem,
     debugger_state: &mut DebuggerState,
 ) -> Result<(), String> {
-    single_step(lineinfo, program_state, debugger_state);
+    single_step(lineinfo, program_state);
     if program_state.is_exception() {
         // todo!("Handle exception");
         // return Err("exceptionnnnnnnnn".to_string())
-        handle_exception(program_state, os, lineinfo);
+        handle_exception(program_state, os, lineinfo, debugger_state);
     }
     Ok(())
 }
@@ -68,12 +39,14 @@ pub fn continuously_execute(
     os: &mut OperatingSystem,
     debugger_state: &mut DebuggerState,
 ) -> Result<(), String> {
-    loop {
+    // TODO: make a reinitializer
+    while program_state.should_continue_execution {
         match db_step(lineinfo, program_state, os, debugger_state) {
             Ok(_) => continue,
             Err(e) => return Err(e),
         }
-    }
+    };
+    Ok(())
 }
 
 /// "l"
@@ -157,13 +130,6 @@ pub fn print_register(
         }
     }
     Ok(())
-}
-
-fn register_dump(program_state: &mut ProgramState) {
-    match program_state.print_all_registers(&Vec::new()) {
-        Ok(_) => {}
-        Err(e) => eprintln!("{e}"),
-    };
 }
 
 // "m"

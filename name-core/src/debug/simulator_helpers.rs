@@ -1,7 +1,7 @@
-use name_core::elf_utils::find_target_section_index;
+use crate::elf_utils::find_target_section_index;
 
-use name_core::elf_def::Elf;
-use name_core::structs::LineInfo;
+use crate::elf_def::Elf;
+use crate::structs::LineInfo;
 
 // Extract section .text and section .data from the ELF
 pub fn extract_loadable_sections(elf: &Elf) -> (Vec<u8>, Vec<u8>) {
@@ -35,7 +35,7 @@ pub fn generate_err(lineinfo: &Vec<LineInfo>, address: u32, message: &str) -> St
     {
         Some(info) => info,
         // If no lineinfo was found, just give a general message
-        None => return format!("[*] At pc 0x{:x}:\n - {}", address, message),
+        None => return format!("[*] At pc 0x{:8x}:\n - {}", address, message),
     };
 
     // If lineinfo was retrieved, print a well-formed error message

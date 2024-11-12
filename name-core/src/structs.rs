@@ -8,8 +8,8 @@ use std::{
 use crate::{
     constants::{
         MIPS_DATA_START_ADDR, MIPS_HEAP_START_ADDR, MIPS_STACK_END_ADDR, MIPS_TEXT_START_ADDR,
-    }, 
-    debug::{debug_utils::*, debugger_methods::*, /* implementations::* */}, 
+    },
+    debug::{debug_utils::*, debugger_methods::* /* implementations::* */},
     syscalls::*,
 };
 
@@ -164,6 +164,7 @@ impl Memory {
         }
     }
 
+    /// The burden of alignment checking rests on each set_<type> function.
     /// set_byte performs address translation on the provided address and sets the value at that address to value.
     pub fn set_byte(&mut self, address: u32, value: u8) -> Result<(), MemoryError> {
         // Obtain values for segment boundaries:
@@ -327,7 +328,6 @@ pub struct OperatingSystem {
     stdin: Stdin,
     stdout: Stdout,
 }
-
 impl OperatingSystem {
     pub fn new() -> OperatingSystem {
         OperatingSystem {
@@ -353,8 +353,12 @@ impl OperatingSystem {
         }
     }
 
-
-    pub fn handle_breakpoint(&mut self, program_state: &mut ProgramState, lineinfo: &Vec<LineInfo>) -> () {
+    pub fn handle_breakpoint(
+        &mut self,
+        program_state: &mut ProgramState,
+        lineinfo: &Vec<LineInfo>,
+        debugger_state: &mut DebuggerState,
+    ) -> () {
         /* Needs to do the following:
          * Transfer control to the user
          *      Register dump (pretty pa)
@@ -364,20 +368,25 @@ impl OperatingSystem {
          *      when done, rereplace the instruction and decrement pc by 4 :jadCensored:
          * Use the code in the break instruction to match injectively (:nerd:) to the instruction you replaced
          */
-    
+
         let line_addr = program_state.cpu.pc;
         let line_num = match lineinfo.iter().find(|line| line.start_address == line_addr) {
             Some(found_line) => found_line.line_number,
             None => {
                 panic!(
-                    "Line number with associated breakpoint address 0x{:x} not found. Something has gone seriously wrong.", 
+                    "Line number with associated breakpoint address 0x{:8x} not found. Something has gone seriously wrong.", 
                     line_addr
                 );
             }
         };
         println!("Breakpoint at line {} reached.", line_num);
         program_state.register_dump();
-        self.cli_debugger(lineinfo, program_state);
+        match self.cli_debugger(lineinfo, program_state, debugger_state) {
+            Ok(_) => {}
+            Err(e) => {
+                eprintln!("{e}");
+            }
+        }
         //TODO: ("Finish breakpoint handler implementation @Nick");
     }
 
@@ -386,9 +395,8 @@ impl OperatingSystem {
         &mut self,
         lineinfo: &Vec<LineInfo>,
         program_state: &mut ProgramState,
+        debugger_state: &mut DebuggerState,
     ) -> Result<(), String> {
-        let mut debugger_state = DebuggerState::new();
-
         println!("Welcome to the NAME CLI debugger.");
         println!("For a list of commands, type \"help\".");
 
@@ -416,19 +424,19 @@ impl OperatingSystem {
                 "q" => return Ok(()),
                 "exit" => return Ok(()),
                 "quit" => return Ok(()),
-                "r" => match continuously_execute(lineinfo, program_state, self, &mut debugger_state) {
+                "r" => match continuously_execute(lineinfo, program_state, self, debugger_state) {
                     Ok(_) => continue,
                     Err(e) => eprintln!("{e}"),
                 },
-                "c" => match continuously_execute(lineinfo, program_state, self, &mut debugger_state) {
+                "c" => match continuously_execute(lineinfo, program_state, self, debugger_state) {
                     Ok(_) => continue,
                     Err(e) => eprintln!("{e}"),
                 },
-                "s" => match db_step(lineinfo, program_state, self, &mut debugger_state) {
+                "s" => match db_step(lineinfo, program_state, self, debugger_state) {
                     Ok(_) => continue,
                     Err(e) => eprintln!("{e}"),
                 },
-                "l" => match list_text(lineinfo, &mut debugger_state, &db_args) {
+                "l" => match list_text(lineinfo, debugger_state, &db_args) {
                     Ok(_) => continue,
                     Err(e) => eprintln!("{e}"),
                 },
@@ -452,14 +460,12 @@ impl OperatingSystem {
                     Ok(_) => continue,
                     Err(e) => eprintln!("{e}"),
                 },
-                // "del" => match debugger_state.remove_breakpoint(&db_args) {
-                //     Ok(_) => continue,
-                //     Err(e) => eprintln!("{e}"),
-                // },
+                "del" => match debugger_state.remove_breakpoint(&db_args, program_state) {
+                    Ok(_) => continue,
+                    Err(e) => eprintln!("{e}"),
+                },
                 _ => eprintln!("Option not recognized. Type \"help\" to view accepted options."),
             };
         }
     }
-
-    
 }
