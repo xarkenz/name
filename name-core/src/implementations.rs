@@ -14,7 +14,10 @@ impl Processor {
 // TODO: Fill any default values for cp0 fields
 impl Coprocessor0 {
     pub fn new() -> Self {
-        Coprocessor0 { registers: [0; 32] }
+        Coprocessor0 { 
+            registers: [0; 32], 
+            debug_mode: false, 
+        }
     }
 }
 
@@ -77,7 +80,7 @@ impl ProgramState {
         Ok(old_instruction)
     }
 
-    // "pa"
+    /// Prints the values of all registers at once. Invoked by "pa" in the CLI.
     pub fn print_all_registers(
         &mut self,
         db_args: &Vec<String>,
@@ -90,6 +93,8 @@ impl ProgramState {
                 db_args.len() - 1
             ));
         }
+
+        println!("{:>5}: {:08x}", "$pc", self.cpu.pc);
 
         // for register in Register.values() {
         for register in REGISTERS {

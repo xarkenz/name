@@ -7,7 +7,7 @@ use std::{
 
 use crate::{
     constants::{
-        MIPS_DATA_START_ADDR, MIPS_HEAP_START_ADDR, MIPS_STACK_END_ADDR, MIPS_TEXT_START_ADDR,
+        MIPS_ADDRESS_ALIGNMENT, MIPS_DATA_START_ADDR, MIPS_HEAP_START_ADDR, MIPS_STACK_END_ADDR, MIPS_TEXT_START_ADDR
     },
     debug::{debug_utils::*, debugger_methods::* /* implementations::* */},
     syscalls::*,
@@ -45,6 +45,7 @@ impl Default for Processor {
 #[derive(Debug, Default)]
 pub struct Coprocessor0 {
     pub registers: [u32; 32],
+    pub debug_mode: bool, // TODO: implement EJTAG
 }
 
 /// Memory is a conglomerate of program text, program data, the heap, the stack, and other segments.
@@ -328,6 +329,7 @@ pub struct OperatingSystem {
     stdin: Stdin,
     stdout: Stdout,
 }
+
 impl OperatingSystem {
     pub fn new() -> OperatingSystem {
         OperatingSystem {
@@ -369,18 +371,19 @@ impl OperatingSystem {
          * Use the code in the break instruction to match injectively (:nerd:) to the instruction you replaced
          */
 
-        let line_addr = program_state.cpu.pc;
-        let line_num = match lineinfo.iter().find(|line| line.start_address == line_addr) {
-            Some(found_line) => found_line.line_number,
-            None => {
-                panic!(
-                    "Line number with associated breakpoint address 0x{:8x} not found. Something has gone seriously wrong.", 
-                    line_addr
-                );
-            }
+        // grab the breakpoint number and other breakpoint information in one fell swoop
+        let bp_tuple = match debugger_state.breakpoints.iter().enumerate().find(|bp| bp.1.address == program_state.cpu.pc) {
+            Some(toupee) => toupee,
+            None => { panic!("Breakpoint not found in breakpoint vector. (How.)"); }
         };
-        println!("Breakpoint at line {} reached.", line_num);
+
+        println!("Breakpoint {} at line {} reached.", bp_tuple.0, bp_tuple.1.line_num);
         program_state.register_dump();
+
+        // program counter is now pointing to the instruction AFTER the breakpoint
+        // once we begin executing code again, execute the breakpoint's replaced_instruction instead of the actual breakpoint
+        
+
         match self.cli_debugger(lineinfo, program_state, debugger_state) {
             Ok(_) => {}
             Err(e) => {

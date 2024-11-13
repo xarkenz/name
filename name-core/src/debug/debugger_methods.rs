@@ -1,38 +1,22 @@
 // use std::os;
 
 use crate::{
-    constants::REGISTERS,
+    constants::{/*MIPS_ADDRESS_ALIGNMENT,*/ MIPS_ADDRESS_ALIGNMENT, REGISTERS},
     // structs::Register,
     structs::{LineInfo, OperatingSystem, ProgramState},
+    // exception::definitions::ExceptionType,
 };
 
-use crate::debug::debug_utils::{/*cli_debugger, Breakpoint, */ single_step, DebuggerState};
-
-use crate::debug::exception_handler::handle_exception;
+use crate::debug::debug_utils::{DebuggerState, db_step};
+// use crate::debug::exception_handler::handle_exception;
+// use crate::debug::fetch::fetch;
 
 //
 // Everything below this point is function spam for the cli debugger.
 // Autocollapse is your best friend...
 //
 
-/// "s"
-// Also called by continuously_execute
-pub fn db_step(
-    lineinfo: &Vec<LineInfo>,
-    program_state: &mut ProgramState,
-    os: &mut OperatingSystem,
-    debugger_state: &mut DebuggerState,
-) -> Result<(), String> {
-    single_step(lineinfo, program_state);
-    if program_state.is_exception() {
-        // todo!("Handle exception");
-        // return Err("exceptionnnnnnnnn".to_string())
-        handle_exception(program_state, os, lineinfo, debugger_state);
-    }
-    Ok(())
-}
-
-/// "r", "c"
+/// Executes program normally until otherwise noted. Invoked by "r" or "c" in the CLI.
 pub fn continuously_execute(
     lineinfo: &Vec<LineInfo>,
     program_state: &mut ProgramState,
@@ -49,7 +33,7 @@ pub fn continuously_execute(
     Ok(())
 }
 
-/// "l"
+/// Lists the text surrounding a given line number. Invoked by "l" in the CLI.
 pub fn list_text(
     lineinfo: &Vec<LineInfo>,
     debugger_state: &mut DebuggerState,
@@ -92,7 +76,7 @@ pub fn list_text(
     }
 }
 
-// "p"
+/// Prints the value at a given register. Invoked by "p" in the CLI.
 pub fn print_register(
     program_state: &mut ProgramState,
     db_args: &Vec<String>,
@@ -115,6 +99,11 @@ pub fn print_register(
     }
 
     for register in db_args[1..].to_vec() {
+        if register == "$pc" {
+            println!("Value in register {} is {:08x}", register, program_state.cpu.pc);
+            continue
+        }
+
         match REGISTERS.iter().position(|&x| x == register) {
             Some(found_register) => {
                 // should we continue printing the actual number of the register?
@@ -132,7 +121,7 @@ pub fn print_register(
     Ok(())
 }
 
-// "m"
+/// Modifies the value inside a given register. Invoked by "m" in the CLI.
 pub fn modify_register(
     program_state: &mut ProgramState,
     db_args: &Vec<String>,

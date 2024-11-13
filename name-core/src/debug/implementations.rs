@@ -9,8 +9,15 @@ impl Breakpoint {
         line_address: u32,
         lineinfo: &Vec<LineInfo>,
         program_state: &mut ProgramState,
-    ) -> Self {
-        Breakpoint {
+    ) -> Result<Self, String> {
+        let old_instr = match program_state.insert_breakpoint(line_address, bp_num) {
+            Ok(instr) => instr,
+            Err(_e) => {
+                return Err(format!("Attempted breakpoint insertion at invalid address 0x{:#08x} - please stick to .text.", line_address))
+            }
+        };
+
+        let bp = Breakpoint {
             // bp_num,
             line_num: {
                 match lineinfo
@@ -19,17 +26,21 @@ impl Breakpoint {
                 {
                     Some(line) => line.line_number,
                     None => {
-                        panic!("Breakpoint not found in memory.");
+                        panic!("Breakpoint not found in memory. (Something has gone seriously wrong.)");
                     }
                 }
             },
             address: line_address,
-            replaced_instruction: program_state
-                .insert_breakpoint(line_address, bp_num)
-                .unwrap(), // creation of a breakpoint
-        }
+            replaced_instruction: old_instr,
+        };
+
+        Ok(bp)
     }
-    // assembler::add_label is not the solution to male loneliness
+
+    // pub fn get_bp_num() -> u32 {
+    //     return 0;
+    // }
+
 }
 
 impl DebuggerState {
@@ -37,14 +48,13 @@ impl DebuggerState {
         DebuggerState {
             global_bp_num: 0,
             breakpoints: Vec::<Breakpoint>::new(),
-            // replaced_instructions: Vec::<u32>::new(),
             global_list_loc: 5,
         }
     }
 
     /* These are all functions that only impact the debugger and not the state of the program. */
 
-    /// "pb"
+    /// Prints all breakpoints that have been created. Invoked by "pb" in the CLI.
     pub fn print_all_breakpoints(&self) -> Result<(), String> {
         println!("BP_NUM: LINE_NUM");
         // for (_address, bp) in &self.breakpoints {
@@ -67,6 +77,7 @@ impl DebuggerState {
         let begin = lnum.saturating_sub(5);
         let end = std::cmp::min(lnum.saturating_add(3), lineinfo.len() - 1);
         for i in begin..=end {
+            // let arrow = self.pc_is_on_this_address(lineinfo[i].start_address,);
             println!(
                 "{:>3} #{:08x}  {}",
                 lineinfo[i].line_number, lineinfo[i].start_address, lineinfo[i].content
@@ -83,7 +94,7 @@ impl DebuggerState {
         }
     }
 
-    /// "b"
+    /// Adds a breakpoint at the given line number. Invoked by "b" in the CLI.
     pub fn add_breakpoint(
         &mut self,
         lineinfo: &Vec<LineInfo>,
@@ -125,17 +136,22 @@ impl DebuggerState {
             }
         };
 
+        let new_bp = match Breakpoint::new(self.global_bp_num, line_address, lineinfo, program_state) {
+            Ok(bp) => bp,
+            Err(e) => return Err(format!("{e}")),
+        };
+
         self.breakpoints.insert(
             self.global_bp_num as usize,
-            Breakpoint::new(self.global_bp_num, line_address, lineinfo, program_state),
+            new_bp,
         );
 
         // find the next empty space in the breakpoint vector
         while let Some(_) = self.breakpoints.get(self.global_bp_num as usize) {
             self.global_bp_num += 1;
         }
-        // self.breakpoints.push(Breakpoint::new(self.global_bp_num, line_address, lineinfo));
 
+        // play around with this if you're getting weird pc related logic errors.
         // program_state.cpu.pc = program_state.cpu.pc - MIPS_ADDRESS_ALIGNMENT;
 
         println!(
@@ -145,7 +161,7 @@ impl DebuggerState {
         Ok(())
     }
 
-    /// "del"
+    /// Zoinks a breakpoint. Invoked by "del" in the CLI.
     pub fn remove_breakpoint(
         &mut self, 
         db_args: &Vec<String>, 
