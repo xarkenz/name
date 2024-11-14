@@ -285,7 +285,7 @@ pub struct Elf32SectionHeader {
     pub(crate) sh_flags: u32, // Identifies section attributes: see const definitions
     pub(crate) sh_addr: u32, // Vaddr of section in memory (for loaded sections)
     pub(crate) sh_offset: u32, // Offset of the section in file image
-    pub(crate) sh_size: u32, // Size in bytes of the section in the file image
+    pub sh_size: u32,        // Size in bytes of the section in the file image
     pub(crate) sh_link: u32, // Section index of section
     pub(crate) sh_info: u32, // Extra info on section
     pub(crate) sh_addralign: u32, // Required alignment of section. Must be a power of two
