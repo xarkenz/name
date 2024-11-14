@@ -24,11 +24,8 @@ pub fn linker(elfs: Vec<Elf>) -> Result<Elf, String> {
     // Using offsets, consolidate each section. Update appropriate indices (think .strtab, etc)
     // Takes in the list of checked ELFs (consumed) along with the start offsets for each section (borrowed)
     // Returns a Result<Vec<Vec<u8>>>, with Ok(_) representing the consolidated sections for use in relocation and construction of the final executable.
-    // Fallible due to issues like attempting to define a global symbol twice
-    let consolidated_sections: Vec<Vec<u8>> = match consolidate_sections(elfs, &offsets) {
-        Ok(sections) => sections,
-        Err(e) => return Err(e),
-    };
+    // Infallible because this stage represents a naive concatenation with pad.
+    let consolidated_sections: Vec<Vec<u8>> = consolidate_sections(elfs, &offsets);
 
     // Now that final segments are constructed, use relocation information in .rel to complete the relocation process.
     // Takes in the consolidated sections (consumed) and offsets (consumed)

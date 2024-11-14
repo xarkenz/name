@@ -26,7 +26,18 @@ pub fn calculate_offsets(elfs: &Vec<Elf>) -> Vec<Vec<u32>> {
 
             while j < 6 {
                 // j+1 is due to the NULL section existing in the section table but being disregarded by the Elf deserializer.
-                next_offsets.push(return_data[idx][j] + elf.section_header_table[j + 1].sh_size);
+                next_offsets.push(
+                    // Match on the section, as .data must remain aligned.
+                    match j {
+                        1 => {
+                            // Word-align .data's offset
+                            ((return_data[idx][j] + elf.section_header_table[j + 1].sh_size + 3) >> 2) << 2
+                        },
+                        _ => {
+                            return_data[idx][j] + elf.section_header_table[j + 1].sh_size
+                        }
+                    }
+                );
                 j += 1;
             }
 
@@ -41,7 +52,9 @@ pub fn calculate_offsets(elfs: &Vec<Elf>) -> Vec<Vec<u32>> {
 #[test]
 fn verify_calculate_offsets() {
     // Mock sections are just test_num 0's per section, causing the new offsets to be test_num.
-    let test_num: usize = 42;
+    let test_num: usize = 63;
+    // Data must be aligned.
+    let data_num: usize = (test_num + 3) >> 2 << 2;
     let mock_sections: Vec<Vec<u8>> = vec![vec![0u8; test_num]; 7];
     let elf1: Elf = name_core::elf_utils::create_new_elf(
         mock_sections,
@@ -50,5 +63,10 @@ fn verify_calculate_offsets() {
     let elf2: Elf = elf1.clone();
 
     let res = calculate_offsets(&vec![elf1, elf2]);
-    assert_eq!(res, vec![vec![0u32; 6], vec![test_num as u32; 6]]);
+
+    // Offsets calculated properly
+    assert_eq!(res, vec![vec![0u32; 6], vec![test_num as u32, data_num as u32, test_num as u32, test_num as u32, test_num as u32, test_num as u32]]);
+    
+    // Data alignment performed properly
+    assert_eq!(data_num, 64);
 }
