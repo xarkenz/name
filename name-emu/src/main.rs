@@ -19,6 +19,4 @@ pub fn main() {
     };
 
     let _ = simulate(executable, args.debug);
-
-    // println!("ploink");
 }

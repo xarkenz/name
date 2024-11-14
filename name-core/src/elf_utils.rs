@@ -602,11 +602,11 @@ pub fn find_target_section_index(
 }
 
 impl Elf {
-    pub fn get_text_length(&self) -> u32 {
+    pub fn get_section_length(&self, target: &'static str) -> u32 {
         let text_index = match find_target_section_index(
             &self.section_header_table,
             &self.sections[(self.file_header.e_shstrndx - 1) as usize],
-            ".text",
+            target,
         ) {
             Some(i) => i,
             None => unreachable!(), // Will only be used after a separate check has passed

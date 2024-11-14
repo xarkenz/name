@@ -339,6 +339,10 @@ impl Elf32Sym {
     pub fn get_bind(&self) -> u8 {
         self.st_info >> 4
     }
+
+    pub fn get_type(&self) -> u8 {
+        self.st_info & 0xf
+    }
 }
 
 // To construct an ET_REL ELF file, we'll use the following struct:
