@@ -343,6 +343,10 @@ impl Elf32Sym {
     pub fn get_type(&self) -> u8 {
         self.st_info & 0xf
     }
+
+    pub fn get_linked_name(&self, strtab: &Vec<u8>) -> String {
+        return strtab.iter().skip(self.st_name as usize).take_while(|&&b| b != 0).map(|&b| b as char).collect::<String>();
+    }
 }
 
 // To construct an ET_REL ELF file, we'll use the following struct:

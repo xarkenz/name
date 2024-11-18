@@ -31,12 +31,12 @@ pub fn calculate_offsets(elfs: &Vec<Elf>) -> Vec<Vec<u32>> {
                     match j {
                         1 => {
                             // Word-align .data's offset
-                            ((return_data[idx][j] + elf.section_header_table[j + 1].sh_size + 3) >> 2) << 2
-                        },
-                        _ => {
-                            return_data[idx][j] + elf.section_header_table[j + 1].sh_size
+                            ((return_data[idx][j] + elf.section_header_table[j + 1].sh_size + 3)
+                                >> 2)
+                                << 2
                         }
-                    }
+                        _ => return_data[idx][j] + elf.section_header_table[j + 1].sh_size,
+                    },
                 );
                 j += 1;
             }
@@ -65,8 +65,21 @@ fn verify_calculate_offsets() {
     let res = calculate_offsets(&vec![elf1, elf2]);
 
     // Offsets calculated properly
-    assert_eq!(res, vec![vec![0u32; 6], vec![test_num as u32, data_num as u32, test_num as u32, test_num as u32, test_num as u32, test_num as u32]]);
-    
+    assert_eq!(
+        res,
+        vec![
+            vec![0u32; 6],
+            vec![
+                test_num as u32,
+                data_num as u32,
+                test_num as u32,
+                test_num as u32,
+                test_num as u32,
+                test_num as u32
+            ]
+        ]
+    );
+
     // Data alignment performed properly
     assert_eq!(data_num, 64);
 }
