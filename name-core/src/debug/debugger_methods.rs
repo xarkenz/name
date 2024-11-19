@@ -1,7 +1,7 @@
 // use std::os;
 
 use crate::{
-    constants::{/*MIPS_ADDRESS_ALIGNMENT,*/ MIPS_ADDRESS_ALIGNMENT, REGISTERS},
+    constants::{/*MIPS_ADDRESS_ALIGNMENT,*/ REGISTERS},
     // structs::Register,
     structs::{LineInfo, OperatingSystem, ProgramState},
     // exception::definitions::ExceptionType,
@@ -92,30 +92,45 @@ pub fn print_register(
     // assume the user isn't referring to a register
     // (eventually expand the functionality of this method to also be able to print the value of memory addresses
     // and stuff like that)
-    if db_args[1].chars().nth(0) != Some('$') {
-        return Err(format!(
-            "Congrats! You discovered an unimplemented feature... or you forgot the dollar sign on your register."
-        ));
-    }
 
-    for register in db_args[1..].to_vec() {
-        if register == "$pc" {
-            println!("Value in register {} is {:08x}", register, program_state.cpu.pc);
-            continue
-        }
+    for arg in db_args[1..].to_vec() {
+        if arg.chars().nth(0) == Some('$') {
+            let register = arg;
+            if register == "$pc" {
+                println!("Value in register {} is {:08x}", register, program_state.cpu.pc);
+                continue
+            }
 
-        match REGISTERS.iter().position(|&x| x == register) {
-            Some(found_register) => {
-                // should we continue printing the actual number of the register?
-                // this will all eventually be a table or something anyways :^)
-                println!(
-                    "Value in register {} is {:08x}",
-                    found_register, program_state.cpu.general_purpose_registers[found_register]
-                );
+            match REGISTERS.iter().position(|&x| x == register) {
+                Some(found_register) => {
+                    // should we continue printing the actual number of the register?
+                    // this will all eventually be a table or something anyways :^)
+                    println!(
+                        "Value in register {} is {:08x}",
+                        found_register, program_state.cpu.general_purpose_registers[found_register]
+                    );
+                }
+                None => {
+                    return Err(format!("{} is not a valid register.", db_args[1]));
+                }
             }
-            None => {
-                return Err(format!("{} is not a valid register.", db_args[1]));
-            }
+        } else if arg.chars().nth(0) == Some('#') {
+            // there's a method in the assembler to convert a word into a line
+            let address = match u32::from_str_radix(&arg[1..], 16) {
+                Ok(addy) => addy,
+                Err(e) => return Err(format!("{e}")),
+            };
+
+            let value = match program_state.memory.read_byte(address) {
+                Ok(v) => v,
+                Err(e) => return Err(format!("{e}")),
+            };
+
+            println!("Value in address {:08x} is {:08b}", address, value);
+        } else {
+            return Err(format!(
+                "Congrats! You discovered an unimplemented feature... or you forgot the dollar sign on your register, or the hashtag in your memory address."
+            ));
         }
     }
     Ok(())

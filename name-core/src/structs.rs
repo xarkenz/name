@@ -371,8 +371,14 @@ impl OperatingSystem {
          * Use the code in the break instruction to match injectively (:nerd:) to the instruction you replaced
          */
 
+        // program_state.cpu.pc -= MIPS_ADDRESS_ALIGNMENT;
+
         // grab the breakpoint number and other breakpoint information in one fell swoop
-        let bp_tuple = match debugger_state.breakpoints.iter().enumerate().find(|bp| bp.1.address == program_state.cpu.pc) {
+        let bp_tuple = match debugger_state.breakpoints
+            .iter()
+            .enumerate()
+            .find(|bp| bp.1.address == program_state.cpu.pc - MIPS_ADDRESS_ALIGNMENT) 
+        {
             Some(toupee) => toupee,
             None => { panic!("Breakpoint not found in breakpoint vector. (How.)"); }
         };
@@ -383,12 +389,18 @@ impl OperatingSystem {
         // program counter is now pointing to the instruction AFTER the breakpoint
         // once we begin executing code again, execute the breakpoint's replaced_instruction instead of the actual breakpoint
         
-
-        match self.cli_debugger(lineinfo, program_state, debugger_state) {
-            Ok(_) => {}
-            Err(e) => {
-                eprintln!("{e}");
+        if program_state.cp0.is_debug_mode() {
+            // terminate existing debugger process????
+            // what
+            match self.cli_debugger(lineinfo, program_state, debugger_state) {
+                Ok(_) => {}
+                Err(e) => {
+                    eprintln!("{e}");
+                }
             }
+            // return;
+        } else {
+            return;
         }
         //TODO: ("Finish breakpoint handler implementation @Nick");
     }
@@ -437,7 +449,13 @@ impl OperatingSystem {
                 },
                 "s" => match db_step(lineinfo, program_state, self, debugger_state) {
                     Ok(_) => continue,
-                    Err(e) => eprintln!("{e}"),
+                    Err(e) => {
+                        if e == "Breakpoint reached." {
+                            continue;
+                        } else {
+                            eprintln!("{e}");
+                        }
+                    }
                 },
                 "l" => match list_text(lineinfo, debugger_state, &db_args) {
                     Ok(_) => continue,

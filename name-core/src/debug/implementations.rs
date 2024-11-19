@@ -32,14 +32,19 @@ impl Breakpoint {
             },
             address: line_address,
             replaced_instruction: old_instr,
+            already_executed: false,
         };
 
         Ok(bp)
     }
 
-    // pub fn get_bp_num() -> u32 {
-    //     return 0;
-    // }
+    pub fn already_executed(&self) -> bool {
+        return self.already_executed;
+    }
+
+    pub fn flip_execution_status(&mut self) {
+        self.already_executed = !self.already_executed;
+    }
 
 }
 
@@ -110,7 +115,7 @@ impl DebuggerState {
 
         if self.breakpoints.len() > ((1 << 20) - 1) {
             return Err(format!(
-                "Reached maximum number of breakpoints - cannot add anymore."
+                "Reached maximum number of breakpoints - cannot add any more."
             ));
         }
 
