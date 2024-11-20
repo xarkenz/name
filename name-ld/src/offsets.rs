@@ -31,9 +31,9 @@ pub fn calculate_offsets(elfs: &Vec<Elf>) -> Vec<Vec<u32>> {
                     match j {
                         1 => {
                             // Word-align .data's offset
-                            ((return_data[idx][j] + elf.section_header_table[j + 1].sh_size + 3)
-                                >> 2)
-                                << 2
+                            ((return_data[idx][j] + elf.section_header_table[j + 1].sh_size + 4)
+                                >> 3)
+                                << 3
                         }
                         _ => return_data[idx][j] + elf.section_header_table[j + 1].sh_size,
                     },
@@ -54,7 +54,7 @@ fn verify_calculate_offsets() {
     // Mock sections are just test_num 0's per section, causing the new offsets to be test_num.
     let test_num: usize = 63;
     // Data must be aligned.
-    let data_num: usize = (test_num + 3) >> 2 << 2;
+    let data_num: usize = (test_num + 4) >> 3 << 3;
     let mock_sections: Vec<Vec<u8>> = vec![vec![0u8; test_num]; 7];
     let elf1: Elf = name_core::elf_utils::create_new_elf(
         mock_sections,

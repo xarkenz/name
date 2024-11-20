@@ -40,10 +40,9 @@ pub fn consolidate_sections(elfs: Vec<Elf>, offsets: &Vec<Vec<u32>>) -> Vec<Vec<
                 let padded_datas: Vec<u8> = elfs
                     .iter()
                     .enumerate()
-                    .map(|(idx, elf)| {
+                    .flat_map(|(idx, elf)| {
                         vec![elf.sections[current_section].clone(), vec![0u8; pads[idx]]]
                     })
-                    .flatten()
                     .flatten()
                     .collect();
                 return_vector.push(padded_datas);
@@ -52,8 +51,7 @@ pub fn consolidate_sections(elfs: Vec<Elf>, offsets: &Vec<Vec<u32>>) -> Vec<Vec<
                 // Anything else -> one-liner.
                 return_vector.push(
                     elfs.iter()
-                        .map(|elf| elf.sections[current_section].clone())
-                        .flatten()
+                        .flat_map(|elf| elf.sections[current_section].clone())
                         .collect(),
                 );
             }

@@ -13,56 +13,6 @@ use crate::{
     syscalls::*,
 };
 
-/// Relocation entry: For assembly -> linking pipeline
-#[derive(Clone, Copy, Debug)]
-pub struct RelocationEntry {
-    pub r_offset: u32,               // Address of instruction to relocate
-    pub r_sym: u32,                  // Symbol table index
-    pub r_type: RelocationEntryType, // Type of relocation entry
-}
-
-/// Enumerate the types of relocation entry
-#[repr(u32)]
-#[derive(Clone, Copy, Debug)]
-pub enum RelocationEntryType {
-    /// No relocation; often used as a placeholder or for unsupported relocations.
-    None = 0,
-    /// Direct 16-bit relocation; used for small values or short jumps.
-    R16 = 1,
-    /// Direct 32-bit relocation; used for absolute addresses.
-    R32 = 2,
-    /// PC-relative 32-bit relocation; used for position-independent code adjustments.
-    Rel32 = 3,
-    /// Direct 26-bit shifted relocation; used for jump instructions within a 26-bit range.
-    R26 = 4,
-    /// High 16 bits of a 32-bit symbol; paired with Lo16 to handle larger addresses.
-    Hi16 = 5,
-    /// Low 16 bits of a 32-bit symbol; typically follows Hi16 for full address construction.
-    Lo16 = 6,
-    /// 16-bit offset from the Global Pointer (GP); used for accessing data in the global area.
-    GpRel16 = 7,
-    /// 16-bit literal entry; often used with specific load instructions.
-    Literal = 8,
-    /// 16-bit Global Offset Table (GOT) entry; used for dynamic linking and symbol access.
-    Got16 = 9,
-    /// PC-relative 16-bit relocation; used for branch instructions.
-    Pc16 = 10,
-    /// 16-bit GOT entry for function calls; used in dynamic linking to resolve function addresses.
-    Call16 = 11,
-    /// 32-bit offset from the Global Pointer (GP); used for larger data accesses in the global area.
-    GpRel32 = 12,
-}
-
-/// Allow for to/from ELF section
-impl RelocationEntry {
-    pub fn to_bytes(&self) -> Vec<u8> {
-        let mut bytes: Vec<u8> = vec![];
-        bytes.extend_from_slice(&self.r_offset.to_be_bytes());
-        bytes.extend_from_slice(&((self.r_sym << 8) | (self.r_type as u32)).to_be_bytes());
-        return bytes;
-    }
-}
-
 /// Symbol is used for assembly -> ELF, ET_REL -> ET_EXEC, and ELF -> ProgramState construction.
 /// Its definition is provided in the ELF TIS: https://refspecs.linuxfoundation.org/elf/elf.pdf
 #[derive(Debug)]

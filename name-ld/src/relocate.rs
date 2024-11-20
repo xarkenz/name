@@ -6,9 +6,10 @@ use name_core::{
     elf_utils::create_new_elf,
 };
 
-use crate::{relocate_helpers::{
-    check_duplicate_symbols, relocate_links
-}, text_relocation::relocate_text_entries};
+use crate::{
+    relocate_helpers::{check_duplicate_symbols, relocate_links},
+    text_relocation::relocate_text_entries,
+};
 
 pub fn relocate(sections: Vec<Vec<u8>>, offsets: Vec<Vec<u32>>) -> Result<Elf, String> {
     // Relocation is the process of putting things where they ought to go.
@@ -37,11 +38,12 @@ pub fn relocate(sections: Vec<Vec<u8>>, offsets: Vec<Vec<u32>>) -> Result<Elf, S
         .iter()
         .enumerate()
         .filter_map(|(idx, section)| match idx {
-            0 | 2 => None,
+            2 => None,
             _ => Some(section.clone()),
         })
         .collect();
 
     // Create a new executable ELF with those sections
+    // TODO: Parameterize ET_VERSION
     return Ok(create_new_elf(new_sections, ElfType::Executable));
 }

@@ -532,6 +532,22 @@ fn parse_sh_table_bytes(section_header_table_bytes: &[u8]) -> Vec<Elf32SectionHe
         .collect()
 }
 
+pub fn parse_rel_info(rel_section: &Vec<u8>) -> Vec<RelocationEntry> {
+    rel_section
+        .chunks(8)
+        .map(|entry| RelocationEntry {
+            r_offset: u32::from_be_bytes(entry[0..4].try_into().unwrap()),
+            r_sym: u32::from_be_bytes(entry[4..8].try_into().unwrap()) >> 8,
+            r_type: match RelocationEntryType::try_from(
+                u32::from_be_bytes(entry[4..8].try_into().unwrap()) & 0xFF,
+            ) {
+                Ok(rt) => rt,
+                Err(e) => panic!("{e}"),
+            },
+        })
+        .collect()
+}
+
 pub fn parse_elf_symbols(symbol_table: &Vec<u8>) -> Vec<Elf32Sym> {
     symbol_table
         .chunks(16)
