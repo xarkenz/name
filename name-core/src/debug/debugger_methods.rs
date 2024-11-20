@@ -7,7 +7,7 @@ use crate::{
     // exception::definitions::ExceptionType,
 };
 
-use crate::debug::debug_utils::{DebuggerState, db_step};
+use crate::debug::debug_utils::{db_step, DebuggerState};
 // use crate::debug::exception_handler::handle_exception;
 // use crate::debug::fetch::fetch;
 
@@ -29,7 +29,7 @@ pub fn continuously_execute(
             Ok(_) => continue,
             Err(e) => return Err(e),
         }
-    };
+    }
     Ok(())
 }
 
@@ -97,8 +97,11 @@ pub fn print_register(
         if arg.chars().nth(0) == Some('$') {
             let register = arg;
             if register == "$pc" {
-                println!("Value in register {} is {:08x}", register, program_state.cpu.pc);
-                continue
+                println!(
+                    "Value in register {} is {:08x}",
+                    register, program_state.cpu.pc
+                );
+                continue;
             }
 
             match REGISTERS.iter().position(|&x| x == register) {

@@ -26,7 +26,9 @@ impl Breakpoint {
                 {
                     Some(line) => line.line_number,
                     None => {
-                        panic!("Breakpoint not found in memory. (Something has gone seriously wrong.)");
+                        panic!(
+                            "Breakpoint not found in memory. (Something has gone seriously wrong.)"
+                        );
                     }
                 }
             },
@@ -45,7 +47,6 @@ impl Breakpoint {
     pub fn flip_execution_status(&mut self) {
         self.already_executed = !self.already_executed;
     }
-
 }
 
 impl DebuggerState {
@@ -141,15 +142,13 @@ impl DebuggerState {
             }
         };
 
-        let new_bp = match Breakpoint::new(self.global_bp_num, line_address, lineinfo, program_state) {
-            Ok(bp) => bp,
-            Err(e) => return Err(format!("{e}")),
-        };
+        let new_bp =
+            match Breakpoint::new(self.global_bp_num, line_address, lineinfo, program_state) {
+                Ok(bp) => bp,
+                Err(e) => return Err(format!("{e}")),
+            };
 
-        self.breakpoints.insert(
-            self.global_bp_num as usize,
-            new_bp,
-        );
+        self.breakpoints.insert(self.global_bp_num as usize, new_bp);
 
         // find the next empty space in the breakpoint vector
         while let Some(_) = self.breakpoints.get(self.global_bp_num as usize) {
@@ -168,9 +167,9 @@ impl DebuggerState {
 
     /// Zoinks a breakpoint. Invoked by "del" in the CLI.
     pub fn remove_breakpoint(
-        &mut self, 
-        db_args: &Vec<String>, 
-        program_state: &mut ProgramState
+        &mut self,
+        db_args: &Vec<String>,
+        program_state: &mut ProgramState,
     ) -> Result<(), String> {
         if db_args.len() != 2 {
             return Err(format!(
@@ -191,13 +190,16 @@ impl DebuggerState {
             None => return Err(format!("Breakpoint {} not found.", bp_num)),
         };
 
-        // replace the instruction 
+        // replace the instruction
         let mut i = 0;
         while i < 4 {
             // Shift/mask value to get correct byte
             let new_byte: u8 = ((removed_breakpoint.replaced_instruction >> (i * 8)) & 0xFF) as u8;
             // Write it to correct location
-            match program_state.memory.set_byte(removed_breakpoint.address + (3 - i), new_byte) {
+            match program_state
+                .memory
+                .set_byte(removed_breakpoint.address + (3 - i), new_byte)
+            {
                 Ok(_) => (),
                 Err(e) => {
                     return Err(format!("{e}"));

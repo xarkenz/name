@@ -24,55 +24,33 @@ pub fn simulate(elf: Elf, debug: bool) -> Result<(), String> {
     // Setup a new operating system
     let mut operating_system: OperatingSystem = OperatingSystem::new();
 
-    // // Invoke the cli debugger if the user asked for it
     if program_state.cp0.is_debug_mode() {
-        return operating_system.cli_debugger(&lineinfo, &mut program_state, &mut DebuggerState::new())
-    }
-    // Begin fetch/decode/execute cycle to run program normally
-    else { 
+        // Invoke the cli debugger if the user asked for it
+        // When VSCode extension is implemented, add a flag here to determine whether to
+        // run the CLI debugger right away or to engage in soon-to-be-defined behavior
+        // depending on whether the user ran this from the command line or from the nice little VSCode button
+        return operating_system.cli_debugger(
+            &lineinfo,
+            &mut program_state,
+            &mut DebuggerState::new(),
+        );
+    } else {
+        // Begin fetch/decode/execute cycle to run program normally
         while program_state.should_continue_execution {
             // Run the next instruction
             single_step(&lineinfo, &mut program_state);
             // If an exception occurred, handle it
             if program_state.is_exception() {
-                handle_exception(&mut program_state, &mut operating_system, &lineinfo, &mut DebuggerState::new());
-                if program_state.cp0.is_debug_mode() {
-                    
-                }
+                handle_exception(
+                    &mut program_state,
+                    &mut operating_system,
+                    &lineinfo,
+                    &mut DebuggerState::new(),
+                );
+                if program_state.cp0.is_debug_mode() {}  // ooops you have to put the cd in the computer
             }
         }
     }
-
-    Ok(())
-}
-
-pub fn debug_simulate(elf: Elf) -> Result<(), String> {
-    // Set up simulation environment from information in ELF
-    let cpu: Processor = Processor::new(elf.file_header.e_entry);
-
-    let (data, text) = extract_loadable_sections(&elf);
-
-    let lineinfo: Vec<LineInfo> = extract_lineinfo(&elf);
-
-    let memory: Memory = Memory::new(data, text);
-
-    // Create program state
-    let mut program_state: ProgramState = ProgramState::new(cpu, memory);
-    // Setup a new operating system
-    let mut operating_system: OperatingSystem = OperatingSystem::new();
-
-    // Invoke the cli debugger if the user asked for it
-    let _ = operating_system.cli_debugger(&lineinfo, &mut program_state, &mut DebuggerState::new());
-    // // Begin fetch/decode/execute cycle to run program normally
-    // while program_state.should_continue_execution {
-    //     // Run the next instruction
-    //     single_step(&lineinfo, &mut program_state);
-    //     // If an exception occurred, handle it
-    //     if program_state.is_exception() {
-    //         handle_exception(&mut program_state, &mut operating_system, &lineinfo, &mut DebuggerState::new());
-            
-    //     }
-    // }
 
     Ok(())
 }

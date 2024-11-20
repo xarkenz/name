@@ -44,7 +44,7 @@ macro_rules! getset {
 /// The implementations below are used to perform bit-level accesses.
 impl Coprocessor0 {
     // TODO: Implement EJTAG
-    pub fn set_debug_mode(&mut self, thing: bool){
+    pub fn set_debug_mode(&mut self, thing: bool) {
         self.debug_mode = thing;
     }
 

@@ -1,6 +1,8 @@
 use crate::constants::REGISTERS;
 use crate::exception::constants::*;
-use crate::structs::{Coprocessor0, LineInfo, Memory, Processor, ProgramState/*, OperatingSystem*/};
+use crate::structs::{
+    Coprocessor0, LineInfo, Memory, Processor, ProgramState, /*, OperatingSystem*/
+};
 // use crate::instruction::instruction_set;
 impl Processor {
     pub fn new(entry: u32) -> Self {
@@ -14,9 +16,9 @@ impl Processor {
 // TODO: Fill any default values for cp0 fields
 impl Coprocessor0 {
     pub fn new() -> Self {
-        Coprocessor0 { 
-            registers: [0; 32], 
-            debug_mode: false, 
+        Coprocessor0 {
+            registers: [0; 32],
+            debug_mode: false,
         }
     }
 }
@@ -38,7 +40,7 @@ impl ProgramState {
     pub fn insert_breakpoint(&mut self, address: u32, bp_num: usize) -> Result<u32, String> {
         // least vulnerable code ever
 
-        if !self.memory.allows_execution_of(address){
+        if !self.memory.allows_execution_of(address) {
             return Err(format!(" - Address 0x{:x} is out of bounds.", address));
         }
 
@@ -58,33 +60,34 @@ impl ProgramState {
             // make that into a byte and store it in the data.
             // shift the instruction to the right so that we can take the second-to-last byte.
             // so on so forth
-            let break_inst_byte: u8 = (break_inst >> (24 - 8*i)) as u8;
+            let break_inst_byte: u8 = (break_inst >> (24 - 8 * i)) as u8;
             // nab the original instruction that was there before to be returned
             old_instruction_word[i] = match self.memory.read_byte(address + i as u32) {
                 Ok(byte) => byte,
-                Err(e) => { return Err(format!("{e}")); }
-            }; 
-            // replace it with the break instruction 
+                Err(e) => {
+                    return Err(format!("{e}"));
+                }
+            };
+            // replace it with the break instruction
             match self.memory.set_byte(address + i as u32, break_inst_byte) {
                 Ok(_) => continue,
-                Err(e) => { return Err(format!("{e}")); }
+                Err(e) => {
+                    return Err(format!("{e}"));
+                }
             };
         }
 
         let mut old_instruction: u32 = 0;
         for i in 0..4 {
-            old_instruction |= ((old_instruction_word[i] as u32) << (24 - 8*i)) as u32;
+            old_instruction |= ((old_instruction_word[i] as u32) << (24 - 8 * i)) as u32;
             // println!("{:x}", old_instruction_word[i]);
         }
-        
+
         Ok(old_instruction)
     }
 
     /// Prints the values of all registers at once. Invoked by "pa" in the CLI.
-    pub fn print_all_registers(
-        &mut self,
-        db_args: &Vec<String>,
-    ) -> Result<(), String> {
+    pub fn print_all_registers(&mut self, db_args: &Vec<String>) -> Result<(), String> {
         if db_args.len() > 1 {
             // this outputs a lot so make sure the user actually meant to type pa and not pb or p or something
             // made it > so we can use this function to do register_dump()
@@ -129,5 +132,3 @@ impl LineInfo {
         bytes
     }
 }
-
-

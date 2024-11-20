@@ -5,11 +5,11 @@ use std::{collections::HashMap, sync::LazyLock};
 
 use crate::{
     constants::{MIPS_ADDRESS_ALIGNMENT, MIPS_TEXT_START_ADDR},
-    debug::{
-        exception_handler::handle_exception, fetch::fetch
-    },
+    debug::{exception_handler::handle_exception, fetch::fetch},
     exception::definitions::ExceptionType,
-    instruction::{information::InstructionInformation, instruction_set::INSTRUCTION_SET, RawInstruction},
+    instruction::{
+        information::InstructionInformation, instruction_set::INSTRUCTION_SET, RawInstruction,
+    },
     structs::{LineInfo, OperatingSystem, ProgramState},
 };
 
@@ -21,10 +21,7 @@ static INSTRUCTION_LOOKUP: LazyLock<HashMap<u32, &'static InstructionInformation
             .collect()
     });
 
-pub fn single_step(
-    _lineinfo: &Vec<LineInfo>,
-    program_state: &mut ProgramState,
-) -> () {
+pub fn single_step(_lineinfo: &Vec<LineInfo>, program_state: &mut ProgramState) -> () {
     if !program_state
         .memory
         .allows_execution_of(program_state.cpu.pc)
@@ -86,16 +83,15 @@ pub fn db_step(
     if prev_funct_code == 0b001101 {
         let bp_num = match get_bp_num(program_state) {
             Ok(idx) => idx,
-            Err(e) => return Err(format!("{e}"))
+            Err(e) => return Err(format!("{e}")),
         };
 
-        let mut bp: &mut Breakpoint = match debugger_state.breakpoints.get(bp_num as usize).clone() {
+        let bp: &mut Breakpoint = match debugger_state.breakpoints.get_mut(bp_num as usize) {
             Some(bp) => bp,
             None => {
                 return Err(format!("Breakpoint {} not found in memory.", bp_num));
             }
         };
-
 
         /* This is just copy paste from single_step with edits to make it make sense for our case */
 
@@ -114,7 +110,7 @@ pub fn db_step(
                     return Err(format!("Reserved instruction reached. (My code is bad so the program state has been changed as a result. Lord help us)"));
                 }
             };
-                // Execute the instruction; program_state is modified.
+            // Execute the instruction; program_state is modified.
             if true
             /* Allowing for some later verbose mode */
             {
@@ -129,15 +125,13 @@ pub fn db_step(
 
             bp.flip_execution_status();
 
-
             // The $0 register should never have been permanently changed. Don't let it remain changed.
             program_state.cpu.general_purpose_registers[0] = 0;
 
-            return Ok(())
+            return Ok(());
         }
     }
 
-         
     single_step(lineinfo, program_state);
     if program_state.is_exception() {
         // todo!("Handle exception");
@@ -157,25 +151,25 @@ fn get_bp_num(program_state: &ProgramState) -> Result<u32, String> {
     let mut bp_num = 0;
 
     for i in 0..4 {
-        let mut word_portion = match program_state.memory.read_byte(dbg!(program_state.cpu.pc - MIPS_ADDRESS_ALIGNMENT + i)){
+        let mut word_portion = match program_state
+            .memory
+            .read_byte(program_state.cpu.pc - MIPS_ADDRESS_ALIGNMENT + i)
+        {
             Ok(byte) => byte as u32,
-            Err(e) => {
-                return Err(format!("{e}"))
-            }
+            Err(e) => return Err(format!("{e}")),
         };
 
-        word_portion &= (bitmask >> (24 - 8*i)) & 0xff;
+        word_portion &= (bitmask >> (24 - 8 * i)) & 0xff;
 
-        bp_num |= word_portion << 24 - 8*i;
+        bp_num |= word_portion << 24 - 8 * i;
     }
 
     // we have the break instruction with the code field filtered out.
     // shift it to the right by the number of bits in the funct code to get the actual breakpoint number :^)
-    bp_num >>= 6; 
+    bp_num >>= 6;
 
     return Ok(bp_num);
 }
-
 
 #[derive(Debug)]
 pub struct Breakpoint {
