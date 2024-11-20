@@ -29,21 +29,8 @@ pub fn relocate(sections: Vec<Vec<u8>>, offsets: Vec<Vec<u32>>) -> Result<Elf, S
 
     // Now, each entry in .rel needs to be reconciled.
     // This is a complex process, so it's also been extracted to a function.
-    let relocated = relocate_text_entries(relocated_symtab, &offsets);
+    let relocated = relocate_text_entries(relocated_symtab, &offsets).map_err(|e| e.to_string())?;
 
-    // Now that each entry in .rel has been reconciled, and the symtab adjusted appropriately, there's nothing left to do.
-    // Extract the sections from the new ELF, and create an executable out of them.
-    let new_sections: Vec<Vec<u8>> = relocated
-        .sections
-        .iter()
-        .enumerate()
-        .filter_map(|(idx, section)| match idx {
-            2 => None,
-            _ => Some(section.clone()),
-        })
-        .collect();
-
-    // Create a new executable ELF with those sections
-    // TODO: Parameterize ET_VERSION
-    return Ok(create_new_elf(new_sections, ElfType::Executable));
+    // Now that each entry in .rel has been reconciled, there's nothing left to do.
+    Ok(relocated)
 }

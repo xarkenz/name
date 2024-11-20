@@ -58,6 +58,7 @@ fn create_new_elf_header(passed_e_shoff: u32, elf_type: ElfType) -> Elf32Header 
 
 // This function combines all the previous to actually create a new object file.
 // This object file is specifically for ET_REL (relocatables, output by the assembler).
+// TODO: Parameterize ET_VERSION
 pub fn create_new_elf(sections: Vec<Vec<u8>>, elf_type: ElfType) -> Elf {
     // The section header string table entry requires some calculations.
     // Here we get the shstrtab as bytes from the constant defined at the top of the file.
