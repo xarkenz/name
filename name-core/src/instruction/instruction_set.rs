@@ -85,7 +85,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
                 ArgumentType::BranchLabel,
             ],
             alt_args: None,
-            relocation_type: Some(RelocationEntryType::R16),
+            relocation_type: Some(RelocationEntryType::Pc16),
         },
         InstructionInformation {
             mnemonic: "bgtz",
@@ -95,7 +95,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
             instruction_type: InstructionType::IType,
             args: &[ArgumentType::Rs, ArgumentType::BranchLabel],
             alt_args: None,
-            relocation_type: Some(RelocationEntryType::R16),
+            relocation_type: Some(RelocationEntryType::Pc16),
         },
         InstructionInformation {
             mnemonic: "blez",
@@ -105,7 +105,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
             instruction_type: InstructionType::IType,
             args: &[ArgumentType::Rs, ArgumentType::BranchLabel],
             alt_args: None,
-            relocation_type: Some(RelocationEntryType::R16),
+            relocation_type: Some(RelocationEntryType::Pc16),
         },
         InstructionInformation {
             mnemonic: "bne",
@@ -119,7 +119,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
                 ArgumentType::BranchLabel,
             ],
             alt_args: None,
-            relocation_type: Some(RelocationEntryType::R16),
+            relocation_type: Some(RelocationEntryType::Pc16),
         },
         InstructionInformation {
             mnemonic: "j",

@@ -331,11 +331,11 @@ pub enum RelocationEntryType {
     R32 = 2,
     /// PC-relative 32-bit relocation; used for position-independent code adjustments.
     Rel32 = 3,
-    /// Direct 26-bit shifted relocation; used for jump instructions within a 26-bit range.
+    /// Direct 26-bit shifted relocation; used for jump instructions within a 26-bit range. This is used in J-Type instructions.
     R26 = 4,
-    /// High 16 bits of a 32-bit symbol; paired with Lo16 to handle larger addresses.
+    /// High 16 bits of a 32-bit symbol; paired with Lo16 to handle larger addresses. This is the replacement for BackpatchType::Upper.
     Hi16 = 5,
-    /// Low 16 bits of a 32-bit symbol; typically follows Hi16 for full address construction.
+    /// Low 16 bits of a 32-bit symbol; typically follows Hi16 for full address construction. This is the replacement for BackpatchType::Lower.
     Lo16 = 6,
     /// 16-bit offset from the Global Pointer (GP); used for accessing data in the global area.
     GpRel16 = 7,
@@ -343,7 +343,7 @@ pub enum RelocationEntryType {
     Literal = 8,
     /// 16-bit Global Offset Table (GOT) entry; used for dynamic linking and symbol access.
     Got16 = 9,
-    /// PC-relative 16-bit relocation; used for branch instructions.
+    /// PC-relative 16-bit relocation; used for branch instructions. This is used in I-Type Branch instructions.
     Pc16 = 10,
     /// 16-bit GOT entry for function calls; used in dynamic linking to resolve function addresses.
     Call16 = 11,
