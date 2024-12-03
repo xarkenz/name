@@ -119,7 +119,11 @@ pub fn print_register(
             }
         } else if arg.chars().nth(0) == Some('#') {
             // there's a method in the assembler to convert a word into a line
-            let address = match u32::from_str_radix(&arg[1..], 16) {
+            // for future reference
+
+            // TODO: add feature to print value in binary, decimal, or hex
+            // TODO: add feature to print word of start address instead of just the byte (also in binary, dec, or hex)
+            let address = match u32::from_str_radix(&arg[2..], 16) {
                 Ok(addy) => addy,
                 Err(e) => return Err(format!("{e}")),
             };
@@ -186,7 +190,7 @@ pub fn help_menu(db_args: Vec<String>) -> Result<(), String> {
         println!("c - Continue program execution until the next breakpoint.");
         println!("s - Execute only the next instruction.");
         println!("l - Print the entire program. (this functionality will be much improved later)");
-        println!("p - Print the value of a register (or registers) at the current place in program execution (please include the dollar sign).");
+        println!("p - Print the value of provided registers and memory addresses at the current place in program execution (please include the dollar sign).");
         println!("pa - Print value of ALL registers at once.");
         println!("pb - Print all breakpoints.");
         println!("b [N] - Insert a breakpoint at line number N.");
@@ -209,13 +213,14 @@ pub fn help_menu(db_args: Vec<String>) -> Result<(), String> {
                 println!("When provided the argument \"all\": print the entire program.");
             }
             "p" => {
-                println!("Print the value stored in the provided register.");
+                println!("Print the value stored in the provided registers ($) and/or memory addresses (#b or #x).");
+                println!("Please provide memory addresses in hexadecimal.");
             }
             "pa" => {
                 println!("Print each register and the value stored therein.");
             }
             "pb" => {
-                println!("Print all user-created breakpoints.");
+                println!("Print all user-created breakpoints. (This does not include break instructions that already existed in the code.)");
             }
             "b" => {
                 println!("Insert a breakpoint at the line number provided. Note that this line will be executed before the break occurs.");
