@@ -213,7 +213,7 @@ pub fn help_menu(db_args: Vec<String>) -> Result<(), String> {
                 println!("When provided the argument \"all\": print the entire program.");
             }
             "p" => {
-                println!("Print the value stored in the provided registers ($) and/or memory addresses (#b or #x).");
+                println!("Print the value stored in the provided registers ($) and/or memory addresses (#).");
                 println!("Please provide memory addresses in hexadecimal.");
             }
             "pa" => {
