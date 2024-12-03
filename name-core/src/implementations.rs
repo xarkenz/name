@@ -1,9 +1,19 @@
-use crate::constants::REGISTERS;
+use crate::constants::{REGISTERS, MIPS_TEXT_START_ADDR};
 use crate::exception::constants::*;
 use crate::structs::{
     Coprocessor0, LineInfo, Memory, Processor, ProgramState, /*, OperatingSystem*/
 };
 // use crate::instruction::instruction_set;
+
+impl Default for Processor {
+    fn default() -> Self {
+        Self {
+            pc: MIPS_TEXT_START_ADDR,
+            general_purpose_registers: [0u32; 32],
+        }
+    }
+}
+
 impl Processor {
     pub fn new(entry: u32) -> Self {
         Processor {

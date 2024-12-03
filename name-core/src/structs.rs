@@ -33,15 +33,6 @@ pub struct Processor {
     pub general_purpose_registers: [u32; 32],
 }
 
-impl Default for Processor {
-    fn default() -> Self {
-        Self {
-            pc: MIPS_TEXT_START_ADDR,
-            general_purpose_registers: [0u32; 32],
-        }
-    }
-}
-
 /// Coprocessor 0 is for communication with the OS. Look in name-core/exception for more.
 #[derive(Debug, Default)]
 pub struct Coprocessor0 {
