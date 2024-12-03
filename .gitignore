@@ -33,3 +33,4 @@ tests/samples/*
 !test/samples/*.asm
 
 */launch.json
+.vscode
