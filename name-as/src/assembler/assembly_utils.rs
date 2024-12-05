@@ -182,50 +182,9 @@ pub fn assign_i_type_arguments(
 
 */
 
-pub fn assemble_j_type(opcode: u32, target: Option<u32>) -> Result<Option<u32>, String> {
-    let address: u32;
-
-    match target {
-        Some(addr) => {
-            if addr & 0xFC000000 == 0 {
-                address = addr;
-            } else {
-                return Err("Target address out of range for J-Type instruction.".to_string());
-            }
-        }
-        None => {
-            return Ok(None);
-        }
-    }
-
-    Ok(Some((opcode << 26) | (address)))
-}
-
-pub fn assign_j_type_arguments(
-    arguments: &Vec<LineComponent>,
-    args_to_use: &[ArgumentType],
-) -> Result<String, String> {
-    let mut identifier: Option<String> = None;
-
-    for (i, passed) in arguments.iter().enumerate() {
-        if let LineComponent::Identifier(ident) = passed {
-            match args_to_use[i] {
-                ArgumentType::BranchLabel => identifier = Some(ident.clone()),
-                _ => {
-                    return Err(
-                        " - Improper type of arguments provided for instruction.".to_string()
-                    )
-                }
-            }
-        } else {
-            return Err(" - Malformed argument.".to_string());
-        }
-    }
-
-    match identifier {
-        Some(ident) => Ok(ident),
-        None => Err(" - No identifier provided for J-Type instruction.".to_string()),
-    }
+/// "Assemble" a j-type instruction. Since the immediate won't be known until relocation, only have to shift opcode.
+pub fn assemble_j_type(opcode: u32) -> u32 {
+    return opcode << 26;
 }
 
 #[cfg(test)]
@@ -246,10 +205,9 @@ mod tests {
     #[test]
     fn assemble_j_type_test() {
         let opcode: u32 = 3;
-        let target: u32 = 0x40BEE0;
 
-        let assembled_output = assemble_j_type(opcode, Some(target));
-        assert_eq!(assembled_output, Ok(Some(0x0c40BEE0)));
+        let assembled_output = assemble_j_type(opcode);
+        assert_eq!(assembled_output, 0x0c40000);
     }
 
     #[test]

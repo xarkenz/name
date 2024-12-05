@@ -11,8 +11,7 @@ use crate::assembler::assembly_helpers::{
     generate_pseudo_instruction_hashmap, pretty_print_instruction,
 };
 
-use crate::definitions::constants::BACKPATCH_PLACEHOLDER;
-use crate::definitions::structs::{Backpatch, BackpatchType, LineComponent, PseudoInstruction};
+use crate::definitions::structs::{LineComponent, PseudoInstruction};
 
 // This file contains the struct definition and extracted functions used in the assembler_logic file. There was far too much inlined, so I have extracted it.
 
@@ -21,11 +20,11 @@ pub struct Assembler {
     pub(crate) pseudo_instruction_table: HashMap<&'static str, &'static PseudoInstruction>,
     pub section_dot_text: Vec<u8>,
     pub section_dot_data: Vec<u8>,
+    pub section_dot_rel: Vec<u8>,
     pub section_dot_line: Vec<u8>,
     pub symbol_table: Vec<Symbol>,
     pub(crate) equivalences: HashMap<String, String>,
     pub(crate) errors: Vec<String>,
-    pub(crate) backpatches: Vec<Backpatch>,
     pub(crate) current_section: Section,
     pub(crate) current_address: u32,
     pub(crate) current_dir: PathBuf,
@@ -43,11 +42,11 @@ impl Assembler {
             pseudo_instruction_table: generate_pseudo_instruction_hashmap(),
             section_dot_text: vec![],
             section_dot_data: vec![],
+            section_dot_rel: vec![],
             section_dot_line: vec![],
             symbol_table: vec![],
             equivalences: HashMap::new(),
             errors: vec![],
-            backpatches: vec![],
             current_section: Section::Null,
             current_address: 0,
             current_dir: PathBuf::new(),
@@ -67,40 +66,6 @@ impl Assembler {
             .iter()
             .find(|symbol| symbol.identifier == ident)
             .is_some()
-    }
-
-    // Add a backpatch to the backpatches list. Used if a forward reference was detected to signal that it must be resolved later.
-    pub(crate) fn add_backpatch(
-        &mut self,
-        instruction_info: &'static InstructionInformation,
-        args: &Vec<LineComponent>,
-        ident: String,
-        backpatch_type: BackpatchType,
-    ) {
-        match backpatch_type {
-            BackpatchType::Standard | BackpatchType::Upper => {
-                self.backpatches.push(Backpatch {
-                    instruction_info: instruction_info,
-                    backpatch_type: backpatch_type,
-                    arguments: args.clone(),
-                    undiscovered_identifier: ident,
-                    backpatch_address: self.current_address,
-                    byte_offset: self.section_dot_text.len(),
-                    line_number: self.line_number,
-                });
-            }
-            BackpatchType::Lower => {
-                self.backpatches.push(Backpatch {
-                    instruction_info: instruction_info,
-                    backpatch_type: backpatch_type,
-                    arguments: args.clone(),
-                    undiscovered_identifier: ident,
-                    backpatch_address: self.current_address + MIPS_ADDRESS_ALIGNMENT,
-                    byte_offset: self.section_dot_text.len() + MIPS_ADDRESS_ALIGNMENT as usize,
-                    line_number: self.line_number,
-                });
-            }
-        }
     }
 
     // Add a label to the symbol table.
@@ -129,101 +94,6 @@ impl Assembler {
         self.most_recent_label = ident.clone();
     }
 
-    // Resolve all backpatches attached to a label. Used once a forward-reference label has been discovered and defined.
-    // FIXME: Needs to be updated to work properly with the Upper/Lower vairants of the backpatch struct.
-    pub(crate) fn resolve_backpatches(&mut self, ident: &String) {
-        let label: String = ident.clone();
-
-        loop {
-            let backpatch_found = self
-                .backpatches
-                .iter()
-                .find(|backpatch| backpatch.undiscovered_identifier == label);
-            let backpatch: &Backpatch;
-
-            if backpatch_found.is_none() {
-                break;
-            } else {
-                backpatch = backpatch_found.unwrap();
-            }
-
-            let backpatch_address: u32 = backpatch.backpatch_address;
-
-            let assembled_result: Result<Option<u32>, String>;
-            match backpatch.backpatch_type {
-                BackpatchType::Standard => {
-                    assembled_result = assemble_instruction(
-                        backpatch.instruction_info,
-                        &backpatch.arguments,
-                        &self.symbol_table,
-                        &backpatch_address,
-                    )
-                }
-                BackpatchType::Upper => {
-                    assembled_result = Ok(Some(
-                        // Get previously assembled instruction bytes from section .text
-                        u32::from_be_bytes(self.section_dot_text[backpatch.byte_offset..backpatch.byte_offset+4].try_into().unwrap())
-                        // OR in the newly found symbol's upper portion
-                        | (self.symbol_table.iter().find(|symbol| symbol.identifier == label).unwrap().value >> 16),
-                    ))
-                }
-                BackpatchType::Lower => {
-                    assembled_result = Ok(Some(
-                        // Get previously assembled instruction bytes from section .text
-                        u32::from_be_bytes(self.section_dot_text[backpatch.byte_offset..backpatch.byte_offset+4].try_into().unwrap())
-                        // OR in the newly found symbol's lower portion
-                        | (self.symbol_table.iter().find(|symbol| symbol.identifier == label).unwrap().value & 0xFFFF),
-                    ))
-                }
-            }
-
-            match assembled_result {
-                Ok(assembled_instruction) => match assembled_instruction {
-                    Some(word) => {
-                        let insert_offset = backpatch.byte_offset;
-                        let bytes_to_insert = word.to_be_bytes();
-
-                        self.section_dot_text.splice(
-                            insert_offset..insert_offset + 4,
-                            bytes_to_insert.iter().cloned(),
-                        );
-
-                        let label = backpatch.undiscovered_identifier.clone();
-                        let line = backpatch.line_number.clone();
-                        println!(" - Backpatch resolved for label {label} on line {line}:");
-                        pretty_print_instruction(&backpatch.backpatch_address, &word);
-
-                        let found_index = self
-                            .backpatches
-                            .iter()
-                            .position(|bp| bp == backpatch)
-                            .expect("Literally impossible to get this error.");
-
-                        self.backpatches.remove(found_index);
-                    }
-                    None => {
-                        unreachable!("Backpatch unable to be resolved. This indicates a stupidly difficult extension error that is likely not your fault unless you contribute to the source code.");
-                    }
-                },
-                Err(e) => {
-                    let found_index = self
-                        .backpatches
-                        .iter()
-                        .position(|bp| bp == backpatch)
-                        .expect("Literally impossible to get this error.");
-
-                    self.errors.push(format!(
-                        "[*] While resolving backpatch on line {}:",
-                        backpatch.line_number
-                    ));
-                    self.errors.push(e);
-
-                    self.backpatches.remove(found_index);
-                }
-            }
-        }
-    }
-
     // Expand a line. Try replacing all instances of equivalences.
     pub fn expand_line(&self, line: &str) -> String {
         let mut expanded_line = String::new();
@@ -249,21 +119,15 @@ impl Assembler {
         args: &Vec<LineComponent>,
     ) {
         let assembled_instruction_result =
-            assemble_instruction(info, &args, &self.symbol_table, &self.current_address);
+            assemble_instruction(info, &args, &self.symbol_table, &mut self.section_dot_rel, &self.current_address);
 
         match assembled_instruction_result {
             Ok(assembled_instruction) => match assembled_instruction {
-                Some(packed) => {
+                packed => {
                     self.section_dot_text
                         .extend_from_slice(&packed.to_be_bytes());
 
                     pretty_print_instruction(&self.current_address, &packed);
-                }
-                None => {
-                    self.section_dot_text
-                        .extend_from_slice(&BACKPATCH_PLACEHOLDER.to_be_bytes());
-
-                    println!(" - Placeholder bytes appended to section .text.\n");
                 }
             },
             Err(e) => {

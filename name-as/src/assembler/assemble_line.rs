@@ -1,7 +1,7 @@
 use crate::assembler::assembler::Assembler;
 
 use crate::assembler::assembly_helpers::{reverse_format_instruction, search_mnemonic};
-use crate::definitions::structs::{BackpatchType, LineComponent, PseudoInstruction};
+use crate::definitions::structs::{LineComponent, PseudoInstruction};
 
 use name_core::instruction::information::InstructionInformation;
 
@@ -9,13 +9,15 @@ use crate::parser::parse_components;
 
 /*
 
-I can understand that this assemble function may at first seem to be kind of a behemoth.
+I can understand that this assemble function may at first seem to be kind of a behemoth. This is because you are right and it is.
 
 The logic is as follows:
 - Break each line into its components and specify by type what needs to happen for each component
 - If an instruction was present, retrieve its information from the constant table
 - If registers/immediates/identifiers are provided, push them to an arguments vector
-- If symbols are encountered, attempt to resolve them. If unresolvable, save them to the environment's backpatches for fixing later.
+- If symbols are encountered, there are two cases. In the case that the symbols are defined, create a relocation entry with 
+    the appropriate index into the symbol table; else, if the symbol represents a forward or global reference, create a 
+    new symbol with the placeholder value, and create the relocation entry by referencing that symbol.
 - After all this is said and done, call the assemble_instruction helper with the arguments and symbol table if an instruction was present
 - Instead, if a directive was present, call the appropriate handler.
 - Update tracking variables (line_number, current_address, etc.) appropriately
@@ -62,31 +64,13 @@ pub fn assemble_line(environment: &mut Assembler, line: &str, expanded_line: Str
             LineComponent::Identifier(content) => {
                 arguments.push(LineComponent::Identifier(content.clone()));
 
-                // If the symbol does not exist in the symbol table, a backpatch must be created.
+                // If the symbol does not exist in the symbol table, a new symbol must be created.
                 if !environment.symbol_exists(&content) {
-                    match instruction_information {
-                        Some(instruction_info) => {
-                            environment.add_backpatch(
-                                instruction_info,
-                                &arguments,
-                                content,
-                                BackpatchType::Standard,
-                            );
-                            println!(
-                                " - Forward reference detected (line {}{}).",
-                                environment.line_prefix, environment.line_number
-                            );
-                        }
-                        None => {
-                            // If there's no instruction information on this line, the identifier is likely associated with a preprocessor macro.
-                            // Nothing else needs to be done at this time.
-                        }
-                    }
+                    todo!("Make placeholder symbol");
                 }
             }
             LineComponent::Label(content) => {
                 environment.add_label(&content);
-                environment.resolve_backpatches(&content);
             }
             LineComponent::Directive(content) => {
                 found_directive = Some(content.clone());

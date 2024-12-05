@@ -3,9 +3,6 @@ use crate::assembler::assembly_helpers::translate_identifier_to_address;
 use crate::definitions::{constants::INSTRUCTION_TABLE, structs::LineComponent};
 use name_core::instruction::information::InstructionInformation;
 
-use super::constants::BACKPATCH_PLACEHOLDER;
-use super::structs::BackpatchType;
-
 /*
 Each pseudo instruction must implement its own `expand` fn. This function expands the pseudoinstruction's content into its respective instructions.
 
@@ -164,9 +161,7 @@ pub(crate) fn expand_la(
 
     // This is where things get ludicrous. Backpatching needs to be accounted for here.
     // A more sophisticated version of backpatching is necessary for this exact reason.
-
-    let mut resolved_symbol_value: u32 = BACKPATCH_PLACEHOLDER;
-    let mut must_backpatch: bool = false;
+    let mut resolved_symbol_value: u32 = 0;
     let identifier: String;
 
     match label {
@@ -175,7 +170,6 @@ pub(crate) fn expand_la(
             match translate_identifier_to_address(&identifier, &environment.symbol_table) {
                 Some(addr) => resolved_symbol_value = addr,
                 None => {
-                    must_backpatch = true;
                 }
             }
         }
@@ -184,21 +178,6 @@ pub(crate) fn expand_la(
 
     let upper = LineComponent::Immediate((resolved_symbol_value >> 16) as i32);
     let lower = LineComponent::Immediate((resolved_symbol_value & 0xFFFF) as i32);
-
-    if must_backpatch {
-        environment.add_backpatch(
-            lui_info,
-            &vec![rd.clone(), upper.clone()],
-            identifier.clone(),
-            BackpatchType::Upper,
-        );
-        environment.add_backpatch(
-            &lui_info,
-            &vec![rd.clone(), rd.clone(), lower.clone()],
-            identifier.clone(),
-            BackpatchType::Lower,
-        );
-    }
 
     Ok(vec![
         // lui  $rd, UPPER

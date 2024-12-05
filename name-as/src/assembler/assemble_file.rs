@@ -61,35 +61,6 @@ pub fn assemble(
         environment.line_number += 1;
     }
 
-    if environment.backpatches.len() > 0 {
-        let undefined_symbols: Vec<String> = environment
-            .backpatches
-            .iter()
-            .map(|backpatch| backpatch.undiscovered_identifier.to_owned())
-            .collect();
-        let line_numbers: Vec<usize> = environment
-            .backpatches
-            .iter()
-            .map(|backpatch| backpatch.line_number)
-            .collect();
-
-        let err_string: String = undefined_symbols
-            .iter()
-            .zip(line_numbers.iter())
-            .map(|(symbol, &line_number)| {
-                format!(
-                    " - {}: line {}{}",
-                    symbol, environment.line_prefix, line_number
-                )
-            })
-            .collect::<Vec<String>>()
-            .join("\n");
-
-        environment.errors.push(format!(
-            "[*] Symbols referenced but undefined:\n{err_string}"
-        ));
-    }
-
     if environment.errors.len() == 0 {
         return Ok(environment);
     } else {
