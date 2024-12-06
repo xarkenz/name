@@ -29,7 +29,8 @@ pub fn relocate(sections: Vec<Vec<u8>>, offsets: Vec<Vec<u32>>) -> Result<Elf, S
 
     // Now, each entry in .rel needs to be reconciled.
     // This is a complex process, so it's also been extracted to a function.
-    let relocated: Elf = relocate_text_entries(relocated_symtab, &offsets).map_err(|e| e.to_string())?;
+    let relocated: Elf =
+        relocate_text_entries(relocated_symtab, &offsets).map_err(|e| e.to_string())?;
 
     // Now that each entry in .rel has been reconciled, there's nothing left to do.
     Ok(relocated)

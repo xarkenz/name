@@ -21,7 +21,6 @@ fn main() {
     // Preprocessor would do its work here
 
     // Allowing assemble to take ownership of the source file contents, because this is the end of its utility in this function.
-    // TODO: these fields on the Assembler type probably shouldn't be public, maybe clean this up
     let assembled_result = assemble(file_contents, base_path, None);
     match assembled_result {
         Ok(assembler_environment) => {
@@ -32,7 +31,7 @@ fn main() {
                 vec![
                     assembler_environment.section_dot_data,
                     assembler_environment.section_dot_text,
-                    vec![], // Placeholder for .rel
+                    assembler_environment.section_dot_rel, // Placeholder for .rel
                     section_dot_symtab,
                     section_dot_strtab,
                     assembler_environment.section_dot_line,

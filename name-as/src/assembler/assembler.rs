@@ -118,8 +118,13 @@ impl Assembler {
         info: &InstructionInformation,
         args: &Vec<LineComponent>,
     ) {
-        let assembled_instruction_result =
-            assemble_instruction(info, &args, &self.symbol_table, &mut self.section_dot_rel, &self.current_address);
+        let assembled_instruction_result = assemble_instruction(
+            info,
+            &args,
+            &self.symbol_table,
+            &mut self.section_dot_rel,
+            &self.current_address,
+        );
 
         match assembled_instruction_result {
             Ok(assembled_instruction) => match assembled_instruction {

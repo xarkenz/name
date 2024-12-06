@@ -1,6 +1,6 @@
 use crate::assembler::assembler::Assembler;
-use crate::assembler::assembly_helpers::translate_identifier_to_address;
 use crate::definitions::{constants::INSTRUCTION_TABLE, structs::LineComponent};
+use name_core::elf_def::{RelocationEntry, RelocationEntryType, SYMBOL_TABLE_ENTRY_SIZE};
 use name_core::instruction::information::InstructionInformation;
 
 /*
@@ -148,42 +148,44 @@ pub(crate) fn expand_la(
     let rd = args[0].clone();
     let label = args[1].clone();
 
-    // let zero = LineComponent::Register(String::from("$0"));
+    let symbol_ident: String = label.to_string();
+
+    let symbol_byte_offset = match environment.symbol_table.iter().position(|sym| sym.identifier == symbol_ident) {
+        Some(idx) => idx*(SYMBOL_TABLE_ENTRY_SIZE as usize),
+        None => {
+            todo!("Create new symbol for forward reference, and probably abstract ts to a function");
+        }
+    };
 
     let lui_info =  match INSTRUCTION_TABLE.get("lui") {
             Some(info) => info,
             None => return Err(format!(" - Failed to expand `la` pseudoinstruction. Its expansion was likely defined incorrectly (go use git blame on https://github.com/cameron-b63/name to find out who's at fault).")),
-        };
+    };
     let ori_info = match INSTRUCTION_TABLE.get("ori") {
             Some(info) => info,
             None => return Err(format!(" - Failed to expand `la` pseudoinstruction. Its expansion was likely defined incorrectly (go use git blame on https://github.com/cameron-b63/name to find out who's at fault).")),
-        };
+    };
 
-    // This is where things get ludicrous. Backpatching needs to be accounted for here.
-    // A more sophisticated version of backpatching is necessary for this exact reason.
-    let mut resolved_symbol_value: u32 = 0;
-    let identifier: String;
 
-    match label {
-        LineComponent::Identifier(ident) => {
-            identifier = ident;
-            match translate_identifier_to_address(&identifier, &environment.symbol_table) {
-                Some(addr) => resolved_symbol_value = addr,
-                None => {
-                }
-            }
-        }
-        _ => return Err(format!("`la` expected a label, got {:?}", label)),
-    }
+    // Create appropriate relocation entries:
+    let entries: Vec<RelocationEntry> = vec![
+        RelocationEntry { r_offset: environment.text_address, r_sym: symbol_byte_offset as u32, r_type: RelocationEntryType::Hi16 },
+        RelocationEntry { r_offset: environment.text_address+4, r_sym: symbol_byte_offset as u32, r_type: RelocationEntryType::Lo16 }
+    ];
 
-    let upper = LineComponent::Immediate((resolved_symbol_value >> 16) as i32);
-    let lower = LineComponent::Immediate((resolved_symbol_value & 0xFFFF) as i32);
+    let new_bytes: Vec<u8> = entries.iter().flat_map(|entry| entry.to_bytes()).collect();
 
+    environment.section_dot_rel.extend(new_bytes);
+
+    // Placeholder zeros since this will be filled in during linking.
+    let null_component = LineComponent::Immediate(0i32);
+
+    // Prepare for assembly.
     Ok(vec![
-        // lui  $rd, UPPER
-        (lui_info, vec![rd.clone(), upper]),
-        // ori  $rd, $rd, LOWER
-        (ori_info, vec![rd.clone(), rd.clone(), lower]),
+        // lui  $rd, 0
+        (lui_info, vec![rd.clone(), null_component.clone()]),
+        // ori  $rd, $rd, 0
+        (ori_info, vec![rd.clone(), rd.clone(), null_component]),
     ])
 }
 

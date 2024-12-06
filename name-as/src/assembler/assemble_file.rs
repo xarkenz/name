@@ -39,8 +39,10 @@ pub fn assemble(
         // Pre-process line (expand pseudoinstructions, macros, and .eqv values here)
         let expanded_line = environment.expand_line(line);
 
+        // Assemble the line (changes environment)
         assemble_line(&mut environment, line, expanded_line);
 
+        // Extend section .line to include the new line
         environment.section_dot_line.extend(
             LineInfo {
                 content: line.to_string(),

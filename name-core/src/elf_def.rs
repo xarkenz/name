@@ -183,6 +183,9 @@ pub const SHF_STRINGS: u32 = 0x20; // contains null-term strings
                                    // const SHF_GROUP: u32 = 0x200;        // section is a member of a group
                                    // const SHF_TLS: u32 = 0x400;          // section holds thread-local data
 
+// Other constants
+pub const SYMBOL_TABLE_ENTRY_SIZE: u32 = 8;
+
 /*
 
    _____ _______ _____  _    _  _____ _______ _____

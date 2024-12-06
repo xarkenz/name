@@ -233,7 +233,7 @@ pub fn create_new_elf(sections: Vec<Vec<u8>>, elf_type: ElfType) -> Elf {
                 sh_link: 4, // .symtab
                 sh_info: 2, // .text_sh
                 sh_addralign: 0,
-                sh_entsize: 8,
+                sh_entsize: SYMBOL_TABLE_ENTRY_SIZE,
             });
 
             byte_offset_to_now += SECTIONS_REL[3].len() as u32 + 1;

@@ -15,8 +15,8 @@ The logic is as follows:
 - Break each line into its components and specify by type what needs to happen for each component
 - If an instruction was present, retrieve its information from the constant table
 - If registers/immediates/identifiers are provided, push them to an arguments vector
-- If symbols are encountered, there are two cases. In the case that the symbols are defined, create a relocation entry with 
-    the appropriate index into the symbol table; else, if the symbol represents a forward or global reference, create a 
+- If symbols are encountered, there are two cases. In the case that the symbols are defined, create a relocation entry with
+    the appropriate index into the symbol table; else, if the symbol represents a forward or global reference, create a
     new symbol with the placeholder value, and create the relocation entry by referencing that symbol.
 - After all this is said and done, call the assemble_instruction helper with the arguments and symbol table if an instruction was present
 - Instead, if a directive was present, call the appropriate handler.
@@ -25,11 +25,14 @@ The logic is as follows:
 */
 
 pub fn assemble_line(environment: &mut Assembler, line: &str, expanded_line: String) {
+    
+    // Print the line (with expansions)
     println!(
         "{}{}: {}",
         environment.line_prefix, environment.line_number, line
     );
 
+    // Parse the line into its components
     let line_components_result = parse_components(expanded_line.to_string());
 
     // Unpack the line_components_result so we can process the line properly.
@@ -46,6 +49,7 @@ pub fn assemble_line(environment: &mut Assembler, line: &str, expanded_line: Str
         }
     }
 
+    // If the line was empty, move right along
     if Option::is_none(&line_components) {
         return;
     }
@@ -55,9 +59,13 @@ pub fn assemble_line(environment: &mut Assembler, line: &str, expanded_line: Str
     let mut found_directive: Option<String> = None;
     let mut arguments: Vec<LineComponent> = vec![];
 
+    // Process components one by one
     for component in line_components.unwrap() {
+
+        // match on each component by variant
         match component {
             LineComponent::Mnemonic(mnemonic) => {
+                // Found mnemonics should specify either instruction or pseudoinstruction information
                 (instruction_information, pseudo_instruction_information) =
                     search_mnemonic(mnemonic, environment);
             }
@@ -70,15 +78,18 @@ pub fn assemble_line(environment: &mut Assembler, line: &str, expanded_line: Str
                 }
             }
             LineComponent::Label(content) => {
+                // duplicate symbols will not yet be caught.
                 environment.add_label(&content);
             }
             LineComponent::Directive(content) => {
+                // Save info out to directive handler for later
                 found_directive = Some(content.clone());
             }
             LineComponent::Register(_)
             | LineComponent::Immediate(_)
             | LineComponent::DoubleQuote(_)
             | LineComponent::Colon => {
+                // Anything else should just get pushed on (enumerating the actual variants instead of using _ for my own benefit)
                 arguments.push(component);
             }
         }

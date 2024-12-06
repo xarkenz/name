@@ -1,4 +1,6 @@
-use crate::{elf_def::RelocationEntryType, instruction::instruction::RawInstruction, structs::ProgramState};
+use crate::{
+    elf_def::RelocationEntryType, instruction::instruction::RawInstruction, structs::ProgramState,
+};
 use std::fmt::Debug;
 
 pub struct InstructionInformation {

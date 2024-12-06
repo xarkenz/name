@@ -1,7 +1,10 @@
-use crate::{elf_def::RelocationEntryType, instruction::{
-    implementation,
-    information::{wrap_imp, ArgumentType, InstructionInformation, InstructionType},
-}};
+use crate::{
+    elf_def::RelocationEntryType,
+    instruction::{
+        implementation,
+        information::{wrap_imp, ArgumentType, InstructionInformation, InstructionType},
+    },
+};
 
 use std::sync::LazyLock;
 
@@ -150,7 +153,6 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
             args: &[ArgumentType::Rd, ArgumentType::Rs],
             alt_args: Some(&[&[ArgumentType::Rs]]),
             relocation_type: None,
-
         },
         InstructionInformation {
             mnemonic: "jr",

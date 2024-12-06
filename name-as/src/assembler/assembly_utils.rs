@@ -204,10 +204,10 @@ mod tests {
 
     #[test]
     fn assemble_j_type_test() {
-        let opcode: u32 = 3;
+        let opcode: u32 = 2;
 
         let assembled_output = assemble_j_type(opcode);
-        assert_eq!(assembled_output, 0x0c40000);
+        assert_eq!(assembled_output, 0x08000000);
     }
 
     #[test]
