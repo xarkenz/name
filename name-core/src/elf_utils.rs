@@ -63,18 +63,27 @@ pub fn create_new_elf(sections: Vec<Vec<u8>>, elf_type: ElfType) -> Elf {
     // The section header string table entry requires some calculations.
     // Here we get the shstrtab as bytes from the constant defined at the top of the file.
     // We also get the size of the shstrtab.
+    
+    // TODO: temp fix here
+    let test_value: usize = match elf_type {
+        ElfType::Executable => 5,
+        ElfType::Relocatable => 6,
+    };
+    
     let mut shstrtab_section: Vec<u8> = vec![];
-    match elf_type {
-        ElfType::Relocatable => {
-            for item in SECTIONS_REL {
-                shstrtab_section.extend_from_slice(item.as_bytes());
-                shstrtab_section.extend_from_slice(&[b'\0']);
+    if test_value == sections.len() {
+        match elf_type {
+            ElfType::Relocatable => {
+                for item in SECTIONS_REL {
+                    shstrtab_section.extend_from_slice(item.as_bytes());
+                    shstrtab_section.extend_from_slice(&[b'\0']);
+                }
             }
-        }
-        ElfType::Executable => {
-            for item in SECTIONS_EXEC {
-                shstrtab_section.extend_from_slice(item.as_bytes());
-                shstrtab_section.extend_from_slice(&[b'\0']);
+            ElfType::Executable => {
+                for item in SECTIONS_EXEC {
+                    shstrtab_section.extend_from_slice(item.as_bytes());
+                    shstrtab_section.extend_from_slice(&[b'\0']);
+                }
             }
         }
     }
@@ -314,7 +323,11 @@ pub fn create_new_elf(sections: Vec<Vec<u8>>, elf_type: ElfType) -> Elf {
 
     // Craft final sections
     let mut final_sections: Vec<Vec<u8>> = sections.clone();
-    final_sections.push(shstrtab_section);
+    
+    // TODO: temp fix
+    if sections.len() == test_value {
+        final_sections.push(shstrtab_section);
+    }
 
     // Final step is to create the final Elf struct
     return Elf {

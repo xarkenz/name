@@ -31,7 +31,7 @@ pub fn relocate_text_entries(
     _offsets: &Vec<Vec<u32>>,
 ) -> Result<Elf, TextRelocationError> {
     // For each relocation entry in .rel, match on the type and perform the necessary relocation in .text.
-    let mut new_text_section: Vec<u8> = adjusted_checked_elf.sections[0].clone();
+    let mut new_text_section: Vec<u8> = adjusted_checked_elf.sections[1].clone();
     let symbol_table: Vec<Elf32Sym> = parse_elf_symbols(&adjusted_checked_elf.sections[3]);
     let string_table: Vec<u8> = adjusted_checked_elf.sections[4].clone();
 
@@ -40,11 +40,11 @@ pub fn relocate_text_entries(
         parse_rel_info(&adjusted_checked_elf.sections[2]);
     for entry in relocation_entries {
         let linked_symbol: Elf32Sym =
-            match get_linked_symbol(&symbol_table, &string_table, entry.r_sym as usize >> 5) {
+            match get_linked_symbol(&symbol_table, &string_table, entry.r_sym as usize) {
                 Some(sym) => sym,
                 None => {
                     return Err(TextRelocationError::UndefinedSymbol(
-                        symbol_table[entry.r_sym as usize >> 5]
+                        symbol_table[entry.r_sym as usize]
                             .get_linked_name(&adjusted_checked_elf.sections[4]),
                     ))
                 }
@@ -52,6 +52,18 @@ pub fn relocate_text_entries(
 
         // Match on the relocation type and perform the corresponding relocation.
         match entry.r_type {
+            RelocationEntryType::R26 => {
+                // For jump instructions:
+                let address_to_pack: u32 = linked_symbol.st_value >> 2;
+                let text_offset: usize = entry.r_offset as usize;
+                let old_value: u32 = u32::from_be_bytes(
+                    new_text_section[text_offset..(text_offset + 4)]
+                        .try_into()
+                        .unwrap(),
+                );
+                let new_value: u32 = old_value | address_to_pack;
+                new_text_section.splice(text_offset..(text_offset + 4), new_value.to_be_bytes());
+            },
             RelocationEntryType::Pc16 => {
                 // For branch instructions:
                 let symbol_address: u32 = linked_symbol.st_value;
@@ -60,25 +72,43 @@ pub fn relocate_text_entries(
                     (((symbol_address as i32) - (pc_rel as i32)) as u32) >> 2;
                 let text_offset: usize = entry.r_offset as usize;
                 let old_value: u32 = u32::from_be_bytes(
-                    new_text_section[text_offset..(text_offset + 3)]
+                    new_text_section[text_offset..(text_offset + 4)]
                         .try_into()
                         .unwrap(),
                 );
                 let new_value: u32 = old_value | relocation_value;
-                new_text_section.splice(text_offset..(text_offset + 3), new_value.to_be_bytes());
-            }
-            RelocationEntryType::R26 => {
-                // For jump instructions:
-                let address_to_pack: u32 = linked_symbol.st_value >> 2;
+                new_text_section.splice(text_offset..(text_offset + 4), new_value.to_be_bytes());
+            },
+            RelocationEntryType::Hi16 => {
+                let symbol_value: u32 = linked_symbol.st_value;
+                let relocation_value = symbol_value >> 16;
+
                 let text_offset: usize = entry.r_offset as usize;
+
                 let old_value: u32 = u32::from_be_bytes(
-                    new_text_section[text_offset..(text_offset + 3)]
-                        .try_into()
-                        .unwrap(),
+                    new_text_section[text_offset..(text_offset+4)]
+                    .try_into()
+                    .unwrap(),
                 );
-                let new_value: u32 = old_value | address_to_pack;
-                new_text_section.splice(text_offset..(text_offset + 3), new_value.to_be_bytes());
+
+                let new_value: u32 = old_value | relocation_value;
+                new_text_section.splice(text_offset..(text_offset+4), new_value.to_be_bytes());
             }
+            RelocationEntryType::Lo16 => {
+                let symbol_value: u32 = linked_symbol.st_value;
+                let relocation_value = symbol_value & 0xFFFF;
+
+                let text_offset: usize = entry.r_offset as usize;
+
+                let old_value: u32 = u32::from_be_bytes(
+                    new_text_section[text_offset..(text_offset+4)]
+                    .try_into()
+                    .unwrap(),
+                );
+
+                let new_value: u32 = old_value | relocation_value;
+                new_text_section.splice(text_offset..(text_offset+4), new_value.to_be_bytes());
+            },
             _ => return Err(TextRelocationError::UnimplementedRelType(entry.r_type)),
         }
     }

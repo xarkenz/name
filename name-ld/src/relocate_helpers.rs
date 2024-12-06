@@ -41,7 +41,7 @@ pub fn relocate_links(elf: Elf, offsets: &Vec<Vec<u32>>) -> Elf {
 
     // Perform the same process as before, but this time two adjustments at once.
     let symtab_offsets: Vec<u32> = offsets.iter().map(|set| set[3].clone()).collect();
-    let text_offsets: Vec<u32> = offsets.iter().map(|set| set[0].clone()).collect();
+    let text_offsets: Vec<u32> = offsets.iter().map(|set| set[1].clone()).collect();
     let mut current_symtab_adjustment: u32 = 0;
     let mut current_text_adjustment: u32 = 0;
     current_offset_idx = 0;

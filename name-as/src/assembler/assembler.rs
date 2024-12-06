@@ -165,7 +165,7 @@ impl Assembler {
             let symbol_offset: u32 = self.get_symbol_offset(symbol_ident);
 
             let new_bytes: Vec<u8> = RelocationEntry {
-                r_offset: self.current_address,
+                r_offset: self.current_address - MIPS_TEXT_START_ADDR,
                 r_sym: symbol_offset,
                 r_type: info.relocation_type.unwrap().clone(),
             }

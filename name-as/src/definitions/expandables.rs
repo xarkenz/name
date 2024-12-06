@@ -1,5 +1,6 @@
 use crate::assembler::assembler::Assembler;
 use crate::definitions::{constants::INSTRUCTION_TABLE, structs::LineComponent};
+use name_core::constants::MIPS_TEXT_START_ADDR;
 use name_core::elf_def::{RelocationEntry, RelocationEntryType};
 use name_core::instruction::information::InstructionInformation;
 
@@ -164,12 +165,12 @@ pub(crate) fn expand_la(
     // Create appropriate relocation entries:
     let entries: Vec<RelocationEntry> = vec![
         RelocationEntry {
-            r_offset: environment.current_address,
+            r_offset: environment.current_address - MIPS_TEXT_START_ADDR,
             r_sym: symbol_offset as u32,
             r_type: RelocationEntryType::Hi16,
         },
         RelocationEntry {
-            r_offset: environment.current_address + 4,
+            r_offset: environment.current_address + 4 - MIPS_TEXT_START_ADDR,
             r_sym: symbol_offset as u32,
             r_type: RelocationEntryType::Lo16,
         },
