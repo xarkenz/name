@@ -2,15 +2,11 @@ use crate::assembler::assembly_helpers::arg_configuration_is_ok;
 use crate::assembler::assembly_utils::*;
 use crate::definitions::structs::LineComponent;
 use name_core::instruction::information::{ArgumentType, InstructionInformation, InstructionType};
-use name_core::structs::Symbol;
 
 // Big logic for instruction assembly - this is the main driver code for actual packing of instructions once parsed.
 pub fn assemble_instruction(
     info: &InstructionInformation,
     arguments: &Vec<LineComponent>,
-    symbol_table: &Vec<Symbol>,
-    _relocation_entries: &mut Vec<u8>,
-    current_address: &u32,
 ) -> Result<u32, String> {
     let has_alternate_configurations: bool = info.alt_args.is_some();
 
@@ -53,12 +49,7 @@ pub fn assemble_instruction(
         InstructionType::IType => {
             let opcode: u32 = info.op_code as u32;
 
-            let (rs, rt, imm) = match assign_i_type_arguments(
-                arguments,
-                configuration_to_use,
-                symbol_table,
-                current_address,
-            ) {
+            let (rs, rt, imm) = match assign_i_type_arguments(arguments, configuration_to_use) {
                 Ok((rs, rt, imm)) => (rs, rt, imm),
                 Err(e) => return Err(e),
             };

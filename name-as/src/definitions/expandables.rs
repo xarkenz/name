@@ -1,6 +1,6 @@
 use crate::assembler::assembler::Assembler;
 use crate::definitions::{constants::INSTRUCTION_TABLE, structs::LineComponent};
-use name_core::elf_def::{RelocationEntry, RelocationEntryType, SYMBOL_TABLE_ENTRY_SIZE};
+use name_core::elf_def::{RelocationEntry, RelocationEntryType};
 use name_core::instruction::information::InstructionInformation;
 
 /*
@@ -150,12 +150,7 @@ pub(crate) fn expand_la(
 
     let symbol_ident: String = label.to_string();
 
-    let symbol_byte_offset = match environment.symbol_table.iter().position(|sym| sym.identifier == symbol_ident) {
-        Some(idx) => idx*(SYMBOL_TABLE_ENTRY_SIZE as usize),
-        None => {
-            todo!("Create new symbol for forward reference, and probably abstract ts to a function");
-        }
-    };
+    let symbol_byte_offset: u32 = environment.get_symbol_offset(symbol_ident);
 
     let lui_info =  match INSTRUCTION_TABLE.get("lui") {
             Some(info) => info,
@@ -166,11 +161,18 @@ pub(crate) fn expand_la(
             None => return Err(format!(" - Failed to expand `la` pseudoinstruction. Its expansion was likely defined incorrectly (go use git blame on https://github.com/cameron-b63/name to find out who's at fault).")),
     };
 
-
     // Create appropriate relocation entries:
     let entries: Vec<RelocationEntry> = vec![
-        RelocationEntry { r_offset: environment.text_address, r_sym: symbol_byte_offset as u32, r_type: RelocationEntryType::Hi16 },
-        RelocationEntry { r_offset: environment.text_address+4, r_sym: symbol_byte_offset as u32, r_type: RelocationEntryType::Lo16 }
+        RelocationEntry {
+            r_offset: environment.text_address,
+            r_sym: symbol_byte_offset as u32,
+            r_type: RelocationEntryType::Hi16,
+        },
+        RelocationEntry {
+            r_offset: environment.text_address + 4,
+            r_sym: symbol_byte_offset as u32,
+            r_type: RelocationEntryType::Lo16,
+        },
     ];
 
     let new_bytes: Vec<u8> = entries.iter().flat_map(|entry| entry.to_bytes()).collect();

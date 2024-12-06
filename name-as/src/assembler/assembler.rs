@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use name_core::constants::{MIPS_ADDRESS_ALIGNMENT, MIPS_DATA_START_ADDR, MIPS_TEXT_START_ADDR};
-use name_core::elf_def::{STT_FUNC, STT_OBJECT};
+use name_core::elf_def::{RelocationEntry, STT_FUNC, STT_OBJECT, SYMBOL_TABLE_ENTRY_SIZE};
 use name_core::instruction::information::InstructionInformation;
 use name_core::structs::{Section, Symbol, Visibility};
 
@@ -58,18 +58,32 @@ impl Assembler {
         }
     }
 
-    // Check if a target symbol exists in the symbol table.
-    // Returns a boolean representing if the symbol is present.
-    pub(crate) fn symbol_exists(&self, symbol_identifier: &String) -> bool {
-        let ident = symbol_identifier.clone();
-        self.symbol_table
-            .iter()
-            .find(|symbol| symbol.identifier == ident)
-            .is_some()
-    }
+    /// Add a label to the symbol table with the corresponding value. If a double update was attempted, errors vector will be extended.
+    pub(crate) fn add_label(&mut self, ident: &String, value: u32) {
+        // If symbol exists but with placeholder, we'll just want to update it.
+        let existing_symbol = self
+            .symbol_table
+            .iter_mut()
+            .find(|sym| &sym.identifier == ident);
 
-    // Add a label to the symbol table.
-    pub(crate) fn add_label(&mut self, ident: &String) {
+        match existing_symbol {
+            Some(sym) => {
+                if sym.value != 0 {
+                    self.errors
+                        .push(format!("[*] On line {}:", self.line_number));
+                    self.errors.push(format!(
+                        " - Duplicate symbol definition for {}",
+                        ident.clone()
+                    ));
+                    return;
+                } else {
+                    sym.value = value;
+                    return;
+                }
+            }
+            None => {} // Fall through
+        }
+
         self.symbol_table.push(Symbol {
             symbol_type: match self.current_section {
                 Section::Null => {
@@ -83,7 +97,7 @@ impl Assembler {
                 Section::Data => STT_OBJECT,
             },
             identifier: ident.to_owned(),
-            value: self.current_address,
+            value: value,
             size: 4,
             visibility: Visibility::Local,
             section: self.current_section.clone(),
@@ -112,19 +126,13 @@ impl Assembler {
         expanded_line.trim_end().to_string()
     }
 
-    // Attempt to assemble a parsed line. If successful, add bytes to section .text - else, extend errors and keep it pushing.
+    /// Attempt to assemble a parsed line. If successful, add bytes to section .text - else, extend errors and keep it pushing.
     pub fn handle_assemble_instruction(
         &mut self,
         info: &InstructionInformation,
         args: &Vec<LineComponent>,
     ) {
-        let assembled_instruction_result = assemble_instruction(
-            info,
-            &args,
-            &self.symbol_table,
-            &mut self.section_dot_rel,
-            &self.current_address,
-        );
+        let assembled_instruction_result = assemble_instruction(info, &args);
 
         match assembled_instruction_result {
             Ok(assembled_instruction) => match assembled_instruction {
@@ -144,6 +152,41 @@ impl Assembler {
             }
         }
 
+        // If a relocation entry needs to be added, work with it.
+        if info.relocation_type.is_some() {
+            // There can be only one.
+            let symbol_ident = args
+                .iter()
+                .filter_map(|arg| match arg {
+                    LineComponent::Identifier(identifier) => Some(identifier.clone()),
+                    _ => None,
+                })
+                .collect();
+            let symbol_byte_offset: u32 = self.get_symbol_offset(symbol_ident);
+
+            let new_bytes: Vec<u8> = RelocationEntry {
+                r_offset: self.current_address,
+                r_sym: symbol_byte_offset,
+                r_type: info.relocation_type.unwrap().clone(),
+            }
+            .to_bytes();
+            self.section_dot_rel.extend(new_bytes);
+        }
+
         self.current_address += MIPS_ADDRESS_ALIGNMENT;
+    }
+
+    pub fn get_symbol_offset(&mut self, ident: String) -> u32 {
+        match self
+            .symbol_table
+            .iter()
+            .position(|sym| sym.identifier == ident)
+        {
+            Some(idx) => return (idx as u32) * SYMBOL_TABLE_ENTRY_SIZE as u32,
+            None => {
+                self.add_label(&ident, 0);
+                return (self.symbol_table.len() as u32 - 1) * SYMBOL_TABLE_ENTRY_SIZE as u32;
+            }
+        };
     }
 }

@@ -25,7 +25,6 @@ The logic is as follows:
 */
 
 pub fn assemble_line(environment: &mut Assembler, line: &str, expanded_line: String) {
-    
     // Print the line (with expansions)
     println!(
         "{}{}: {}",
@@ -61,7 +60,6 @@ pub fn assemble_line(environment: &mut Assembler, line: &str, expanded_line: Str
 
     // Process components one by one
     for component in line_components.unwrap() {
-
         // match on each component by variant
         match component {
             LineComponent::Mnemonic(mnemonic) => {
@@ -73,13 +71,29 @@ pub fn assemble_line(environment: &mut Assembler, line: &str, expanded_line: Str
                 arguments.push(LineComponent::Identifier(content.clone()));
 
                 // If the symbol does not exist in the symbol table, a new symbol must be created.
-                if !environment.symbol_exists(&content) {
-                    todo!("Make placeholder symbol");
+                // Match on instruction information to ensure the "symbol" needs an entry.
+                match instruction_information {
+                    // If the symbol is not defined, and the placeholder symbol does not exist, create the placeholder symbol.
+                    Some(_) => {
+                        if environment
+                            .symbol_table
+                            .iter()
+                            .find(|s| s.identifier == content)
+                            .is_none()
+                        {
+                            environment.add_label(&content, 0);
+                        }
+                    }
+                    None => {
+                        // There's no instruction information on this line, so the identifier corresponds to
+                        // something which does not need to go into the symbol table, but instead will be
+                        // handled by other code.
+                    }
                 }
             }
             LineComponent::Label(content) => {
-                // duplicate symbols will not yet be caught.
-                environment.add_label(&content);
+                // duplicate symbol definitions will be caught in this function.
+                environment.add_label(&content, environment.current_address);
             }
             LineComponent::Directive(content) => {
                 // Save info out to directive handler for later
