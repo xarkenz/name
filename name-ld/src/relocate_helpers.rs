@@ -10,7 +10,9 @@ use name_core::{
 /// This function is responsible for adjusting link indices for .symtab -> .strtab, .rel -> .symtab, and .rel -> .text.
 /// It will also embed information on the scope of origin in the st_other field. It's a surprise tool that will help us later!
 pub fn relocate_links(elf: Elf, offsets: &Vec<Vec<u32>>) -> Elf {
-    let strtab_offsets: Vec<u32> = offsets[4].clone();
+    // dbg!(&offsets);
+    // panic!();
+    let strtab_offsets: Vec<u32> = offsets.iter().map(|set| set[4].clone()).collect();
     let mut current_strtab_adjustment: u32 = 0;
     let mut current_offset_idx: usize = 0;
     let mut previous_st_name: u32 = 0xDEADBEEF; // Just had to initalize to an impossible value, so I went with old reliable
@@ -38,8 +40,8 @@ pub fn relocate_links(elf: Elf, offsets: &Vec<Vec<u32>>) -> Elf {
         .collect();
 
     // Perform the same process as before, but this time two adjustments at once.
-    let symtab_offsets: Vec<u32> = offsets[3].clone();
-    let text_offsets: Vec<u32> = offsets[0].clone();
+    let symtab_offsets: Vec<u32> = offsets.iter().map(|set| set[3].clone()).collect();
+    let text_offsets: Vec<u32> = offsets.iter().map(|set| set[0].clone()).collect();
     let mut current_symtab_adjustment: u32 = 0;
     let mut current_text_adjustment: u32 = 0;
     current_offset_idx = 0;
@@ -154,12 +156,8 @@ fn validate_link_relocation() {
     ];
 
     let offsets = vec![
-        vec![0, 8],
-        vec![0, 4],
-        vec![0, 8],
-        vec![0, 32],
-        vec![0, 4],
-        vec![0, 16],
+        vec![0, 0, 0, 0, 0, 0,],
+        vec![8, 4, 8, 32, 4, 16],
     ];
 
     let mock_consolidated_elf: Elf = create_new_elf(mock_sections, ElfType::Relocatable);

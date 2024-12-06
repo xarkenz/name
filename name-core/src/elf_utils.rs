@@ -374,7 +374,7 @@ pub fn extract_symbol_table_to_sections(symbol_table: Vec<Symbol>) -> (Vec<u8>, 
     return (section_dot_symtab, section_dot_strtab);
 }
 
-// This function creates a new file with the passed name and writes all bytes in a RelocatableElf object
+// This function creates a new file with the passed name and writes all bytes into an Elf object
 pub fn write_elf_to_file(file_name: &PathBuf, et_rel: &Elf) -> Result<(), String> {
     // Declare file_bytes vector to push all these file bytes onto
     // Concatenate all bytes in file header
@@ -534,6 +534,12 @@ fn parse_sh_table_bytes(section_header_table_bytes: &[u8]) -> Vec<Elf32SectionHe
 }
 
 pub fn parse_rel_info(rel_section: &Vec<u8>) -> Vec<RelocationEntry> {
+    
+    // Handle edge case where user wrote a file with no relocation
+    if rel_section.len() < 4 {
+        return vec![];
+    }
+
     rel_section
         .chunks(8)
         .map(|entry| RelocationEntry {
@@ -550,6 +556,11 @@ pub fn parse_rel_info(rel_section: &Vec<u8>) -> Vec<RelocationEntry> {
 }
 
 pub fn parse_elf_symbols(symbol_table: &Vec<u8>) -> Vec<Elf32Sym> {
+    // Handle edge case where user wrote a file with no symbols
+    if symbol_table.len() < 4 {
+        return vec![];
+    }
+
     symbol_table
         .chunks(16)
         .map(|entry| Elf32Sym {

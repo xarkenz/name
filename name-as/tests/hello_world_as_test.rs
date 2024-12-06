@@ -33,7 +33,7 @@ fn hello_world_as_test() {
                 vec![
                     assembler_environment.section_dot_data,
                     assembler_environment.section_dot_text,
-                    vec![],
+                    assembler_environment.section_dot_rel,
                     section_dot_symtab,
                     section_dot_strtab,
                     assembler_environment.section_dot_line,

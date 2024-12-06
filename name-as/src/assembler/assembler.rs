@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use name_core::constants::{MIPS_ADDRESS_ALIGNMENT, MIPS_DATA_START_ADDR, MIPS_TEXT_START_ADDR};
-use name_core::elf_def::{RelocationEntry, STT_FUNC, STT_OBJECT, SYMBOL_TABLE_ENTRY_SIZE};
+use name_core::elf_def::{RelocationEntry, STT_FUNC, STT_OBJECT};
 use name_core::instruction::information::InstructionInformation;
 use name_core::structs::{Section, Symbol, Visibility};
 
@@ -162,11 +162,11 @@ impl Assembler {
                     _ => None,
                 })
                 .collect();
-            let symbol_byte_offset: u32 = self.get_symbol_offset(symbol_ident);
+            let symbol_offset: u32 = self.get_symbol_offset(symbol_ident);
 
             let new_bytes: Vec<u8> = RelocationEntry {
                 r_offset: self.current_address,
-                r_sym: symbol_byte_offset,
+                r_sym: symbol_offset,
                 r_type: info.relocation_type.unwrap().clone(),
             }
             .to_bytes();
@@ -182,10 +182,10 @@ impl Assembler {
             .iter()
             .position(|sym| sym.identifier == ident)
         {
-            Some(idx) => return (idx as u32) * SYMBOL_TABLE_ENTRY_SIZE as u32,
+            Some(idx) => return (idx as u32) + 1,
             None => {
                 self.add_label(&ident, 0);
-                return (self.symbol_table.len() as u32 - 1) * SYMBOL_TABLE_ENTRY_SIZE as u32;
+                return self.symbol_table.len() as u32;
             }
         };
     }

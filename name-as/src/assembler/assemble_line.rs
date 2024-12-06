@@ -149,7 +149,7 @@ pub fn assemble_line(environment: &mut Assembler, line: &str, expanded_line: Str
             environment.line_number = 1;
 
             for (instr_info, args) in resulting_tuples {
-                let reverse_formatted_instruction = reverse_format_instruction(instr_info, &args);
+                let reverse_formatted_instruction: String = reverse_format_instruction(instr_info, &args);
                 println!(
                     "{}{}: {}",
                     environment.line_prefix, environment.line_number, reverse_formatted_instruction

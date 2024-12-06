@@ -33,7 +33,7 @@ fn fib_as_test() {
                 vec![
                     assembler_environment.section_dot_data,
                     assembler_environment.section_dot_text,
-                    vec![0u8],
+                    assembler_environment.section_dot_rel,
                     section_dot_symtab,
                     section_dot_strtab,
                     assembler_environment.section_dot_line,

@@ -150,7 +150,7 @@ pub(crate) fn expand_la(
 
     let symbol_ident: String = label.to_string();
 
-    let symbol_byte_offset: u32 = environment.get_symbol_offset(symbol_ident);
+    let symbol_offset: u32 = environment.get_symbol_offset(symbol_ident);
 
     let lui_info =  match INSTRUCTION_TABLE.get("lui") {
             Some(info) => info,
@@ -164,13 +164,13 @@ pub(crate) fn expand_la(
     // Create appropriate relocation entries:
     let entries: Vec<RelocationEntry> = vec![
         RelocationEntry {
-            r_offset: environment.text_address,
-            r_sym: symbol_byte_offset as u32,
+            r_offset: environment.current_address,
+            r_sym: symbol_offset as u32,
             r_type: RelocationEntryType::Hi16,
         },
         RelocationEntry {
-            r_offset: environment.text_address + 4,
-            r_sym: symbol_byte_offset as u32,
+            r_offset: environment.current_address + 4,
+            r_sym: symbol_offset as u32,
             r_type: RelocationEntryType::Lo16,
         },
     ];
@@ -204,11 +204,9 @@ pub(crate) fn expand_move(
 
     let zero: LineComponent = LineComponent::Register(String::from("$0"));
 
-    // let add_info: &'static InstructionInformation;
-
     let add_info = match INSTRUCTION_TABLE.get("add") {
         Some(info) => info,
-        None => return Err(format!(" - Failed to expand `la` pseudoinstruction. Its expansion was likely defined incorrectly (go use git blame on https://github.com/cameron-b63/name to find out who's at fault).")),
+        None => return Err(format!(" - Failed to expand `move` pseudoinstruction. Its expansion was likely defined incorrectly (go use git blame on https://github.com/cameron-b63/name to find out who's at fault).")),
     };
 
     Ok(vec![
