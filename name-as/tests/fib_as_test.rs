@@ -39,6 +39,7 @@ fn fib_as_test() {
                     assembler_environment.section_dot_line,
                 ],
                 ElfType::Relocatable,
+                true,
             );
             match write_elf_to_file(&test_output_filename, &et_rel) {
                 Ok(()) => println!(

@@ -2,6 +2,8 @@
 
 use name_core::elf_def::Elf;
 
+use crate::constants::DATA;
+
 /// Consolidate the ELF sections that will appear in the final ET_EXEC.
 /// No relocation is performed at this time.
 /// No further destructuring is performed at this time.
@@ -16,9 +18,9 @@ pub fn consolidate_sections(elfs: Vec<Elf>, offsets: &Vec<Vec<u32>>) -> Vec<Vec<
     // For each section, match on the section:
     let mut current_section: usize = 0;
 
-    while current_section < 6 {
+    while current_section < offsets[0].len() {
         match current_section {
-            1 => {
+            DATA => {
                 // Data -> Consolidate the .data bytes. This means that the vector to extend by will be padded with zeros.
                 let data_offsets: Vec<u32> = offsets
                     .iter()
@@ -46,7 +48,7 @@ pub fn consolidate_sections(elfs: Vec<Elf>, offsets: &Vec<Vec<u32>>) -> Vec<Vec<
                     .flatten()
                     .collect();
                 return_vector.push(padded_datas);
-            }
+            },
             _ => {
                 // Anything else -> one-liner.
                 return_vector.push(
@@ -68,6 +70,7 @@ fn validate_consolidation() {
     let elf1: Elf = name_core::elf_utils::create_new_elf(
         vec![vec![0u8; 37]; 6],
         name_core::elf_def::ElfType::Relocatable,
+        true,
     );
     let elf2: Elf = elf1.clone();
 

@@ -2,6 +2,8 @@
 
 use name_core::elf_def::Elf;
 
+use crate::constants::DATA;
+
 /// Calculate the offsets of each ELF's section in the final ET_EXEC executable.
 /// The return vector is essentially just ELF -> section -> offset.
 /// The return vector's sections (the inner vector) are going to be formatted as follows:
@@ -24,12 +26,12 @@ pub fn calculate_offsets(elfs: &Vec<Elf>) -> Vec<Vec<u32>> {
             let mut next_offsets: Vec<u32> = vec![];
             let mut j: usize = 0;
 
-            while j < 6 {
+            while j < return_data[0].len() {
                 // j+1 is due to the NULL section existing in the section table but being disregarded by the Elf deserializer.
                 next_offsets.push(
                     // Match on the section, as .data must remain aligned.
                     match j {
-                        1 => {
+                        DATA => {
                             // Word-align .data's offset
                             ((return_data[idx][j] + elf.section_header_table[j + 1].sh_size + 4)
                                 >> 3)
@@ -55,10 +57,12 @@ fn verify_calculate_offsets() {
     let test_num: usize = 63;
     // Data must be aligned.
     let data_num: usize = (test_num + 4) >> 3 << 3;
+    
     let mock_sections: Vec<Vec<u8>> = vec![vec![0u8; test_num]; 7];
     let elf1: Elf = name_core::elf_utils::create_new_elf(
         mock_sections,
         name_core::elf_def::ElfType::Relocatable,
+        true,
     );
     let elf2: Elf = elf1.clone();
 

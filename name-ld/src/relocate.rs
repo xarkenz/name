@@ -14,7 +14,7 @@ use crate::{
 pub fn relocate(sections: Vec<Vec<u8>>, offsets: Vec<Vec<u32>>) -> Result<Elf, String> {
     // Relocation is the process of putting things where they ought to go.
     // The first thing to do is create a mutable ELF (it will still be relocatable). Now that the sections have been consolidated, we just need to operate on the structured data.
-    let new_elf: Elf = create_new_elf(sections, ElfType::Relocatable);
+    let new_elf: Elf = create_new_elf(sections, ElfType::Relocatable, true);
 
     // Now that the ELF is mutable, the first thing to do is fix the offsets for the .symtab links into .strtab.
     // We'll also need to fix the .rel links into .text - as well as the .rel links into .symtab.

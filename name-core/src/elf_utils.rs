@@ -37,7 +37,10 @@ fn create_new_elf_header(passed_e_shoff: u32, elf_type: ElfType) -> Elf32Header 
         e_type: E_TYPE_DEFAULT,
         e_machine: E_MACHINE_DEFAULT,
         e_version: E_VERSION_DEFAULT,
-        e_entry: E_ENTRY_DEFAULT,
+        e_entry: match elf_type {
+            ElfType::Executable(addr) => addr,
+            ElfType::Relocatable => E_ENTRY_DEFAULT,
+        },
         e_phoff: E_PHOFF_DEFAULT,
         e_shoff: passed_e_shoff,
         e_flags: E_FLAGS_DEFAULT,
@@ -47,11 +50,11 @@ fn create_new_elf_header(passed_e_shoff: u32, elf_type: ElfType) -> Elf32Header 
         e_shentsize: E_SHENTSIZE_DEFAULT,
         e_shnum: match elf_type {
             ElfType::Relocatable => E_SHNUM_DEFAULT_REL,
-            ElfType::Executable => E_SHNUM_DEFAULT_EXEC,
+            ElfType::Executable(_) => E_SHNUM_DEFAULT_EXEC,
         },
         e_shstrndx: match elf_type {
             ElfType::Relocatable => E_SHSTRNDX_DEFAULT_REL,
-            ElfType::Executable => E_SHSTRNDX_DEFAULT_EXEC,
+            ElfType::Executable(_) => E_SHSTRNDX_DEFAULT_EXEC,
         },
     }
 }
@@ -59,19 +62,15 @@ fn create_new_elf_header(passed_e_shoff: u32, elf_type: ElfType) -> Elf32Header 
 // This function combines all the previous to actually create a new object file.
 // This object file is specifically for ET_REL (relocatables, output by the assembler).
 // TODO: Parameterize ET_VERSION
-pub fn create_new_elf(sections: Vec<Vec<u8>>, elf_type: ElfType) -> Elf {
+pub fn create_new_elf(sections: Vec<Vec<u8>>, elf_type: ElfType, create_shstrtab: bool) -> Elf {
     // The section header string table entry requires some calculations.
     // Here we get the shstrtab as bytes from the constant defined at the top of the file.
     // We also get the size of the shstrtab.
     
-    // TODO: temp fix here
-    let test_value: usize = match elf_type {
-        ElfType::Executable => 5,
-        ElfType::Relocatable => 6,
-    };
-    
     let mut shstrtab_section: Vec<u8> = vec![];
-    if test_value == sections.len() {
+    let shstrtab_size: u32;
+
+    if create_shstrtab {
         match elf_type {
             ElfType::Relocatable => {
                 for item in SECTIONS_REL {
@@ -79,13 +78,17 @@ pub fn create_new_elf(sections: Vec<Vec<u8>>, elf_type: ElfType) -> Elf {
                     shstrtab_section.extend_from_slice(&[b'\0']);
                 }
             }
-            ElfType::Executable => {
+            ElfType::Executable(_) => {
                 for item in SECTIONS_EXEC {
                     shstrtab_section.extend_from_slice(item.as_bytes());
                     shstrtab_section.extend_from_slice(&[b'\0']);
                 }
             }
         }
+
+        shstrtab_size = shstrtab_section.len() as u32;
+    } else {
+        shstrtab_size = sections[sections.len() - 1].len() as u32;
     }
 
     // Create section variables for use later
@@ -103,7 +106,7 @@ pub fn create_new_elf(sections: Vec<Vec<u8>>, elf_type: ElfType) -> Elf {
             strtab_section = sections[4].clone();
             line_section = sections[5].clone();
         }
-        ElfType::Executable => {
+        ElfType::Executable(_) => {
             // rel_section should not be accounted for in args
             rel_section = vec![];
             symtab_section = sections[2].clone();
@@ -112,15 +115,13 @@ pub fn create_new_elf(sections: Vec<Vec<u8>>, elf_type: ElfType) -> Elf {
         }
     }
 
-    let shstrtab_size: u32 = shstrtab_section.len() as u32;
-
     // Get size of each section to properly calculate offsets in result file
     let data_size: u32 = data_section.len() as u32;
     let text_size: u32 = text_section.len() as u32;
 
     let rel_size: u32 = match elf_type {
         ElfType::Relocatable => rel_section.len() as u32,
-        ElfType::Executable => 0,
+        ElfType::Executable(_) => 0,
     };
 
     let symtab_size: u32 = symtab_section.len() as u32;
@@ -135,7 +136,7 @@ pub fn create_new_elf(sections: Vec<Vec<u8>>, elf_type: ElfType) -> Elf {
 
     let symtab_offset: u32 = match elf_type {
         ElfType::Relocatable => rel_offset + rel_size,
-        ElfType::Executable => text_offset + text_size,
+        ElfType::Executable(_) => text_offset + text_size,
     };
 
     let strtab_offset: u32 = symtab_offset + symtab_size;
@@ -207,7 +208,7 @@ pub fn create_new_elf(sections: Vec<Vec<u8>>, elf_type: ElfType) -> Elf {
 
     byte_offset_to_now += match elf_type {
         ElfType::Relocatable => SECTIONS_REL[1].len() as u32 + 1,
-        ElfType::Executable => SECTIONS_EXEC[1].len() as u32 + 1,
+        ElfType::Executable(_) => SECTIONS_EXEC[1].len() as u32 + 1,
     };
 
     // .text
@@ -226,7 +227,7 @@ pub fn create_new_elf(sections: Vec<Vec<u8>>, elf_type: ElfType) -> Elf {
 
     byte_offset_to_now += match elf_type {
         ElfType::Relocatable => SECTIONS_REL[2].len() as u32 + 1,
-        ElfType::Executable => SECTIONS_EXEC[2].len() as u32 + 1,
+        ElfType::Executable(_) => SECTIONS_EXEC[2].len() as u32 + 1,
     };
 
     // .rel
@@ -247,7 +248,7 @@ pub fn create_new_elf(sections: Vec<Vec<u8>>, elf_type: ElfType) -> Elf {
 
             byte_offset_to_now += SECTIONS_REL[3].len() as u32 + 1;
         }
-        ElfType::Executable => {}
+        ElfType::Executable(_) => {}
     }
 
     // .symtab
@@ -258,7 +259,10 @@ pub fn create_new_elf(sections: Vec<Vec<u8>>, elf_type: ElfType) -> Elf {
         sh_addr: 0,
         sh_offset: symtab_offset,
         sh_size: symtab_size,
-        sh_link: 5, // Link to appropriate string table
+        sh_link: match elf_type {
+            ElfType::Executable(_) => 4,
+            ElfType::Relocatable => 5,
+        }, // Link to appropriate string table
         sh_info: 0,
         sh_addralign: 0,
         sh_entsize: SH_ENTSIZE_SYMTAB,
@@ -266,7 +270,7 @@ pub fn create_new_elf(sections: Vec<Vec<u8>>, elf_type: ElfType) -> Elf {
 
     match elf_type {
         ElfType::Relocatable => byte_offset_to_now += SECTIONS_REL[4].len() as u32 + 1,
-        ElfType::Executable => byte_offset_to_now += SECTIONS_EXEC[3].len() as u32 + 1,
+        ElfType::Executable(_) => byte_offset_to_now += SECTIONS_EXEC[3].len() as u32 + 1,
     }
 
     // .strtab
@@ -285,7 +289,7 @@ pub fn create_new_elf(sections: Vec<Vec<u8>>, elf_type: ElfType) -> Elf {
 
     match elf_type {
         ElfType::Relocatable => byte_offset_to_now += SECTIONS_REL[5].len() as u32 + 1,
-        ElfType::Executable => byte_offset_to_now += SECTIONS_EXEC[4].len() as u32 + 1,
+        ElfType::Executable(_) => byte_offset_to_now += SECTIONS_EXEC[4].len() as u32 + 1,
     }
 
     // .line
@@ -304,7 +308,7 @@ pub fn create_new_elf(sections: Vec<Vec<u8>>, elf_type: ElfType) -> Elf {
 
     match elf_type {
         ElfType::Relocatable => byte_offset_to_now += SECTIONS_REL[6].len() as u32 + 1,
-        ElfType::Executable => byte_offset_to_now += SECTIONS_EXEC[5].len() as u32 + 1,
+        ElfType::Executable(_) => byte_offset_to_now += SECTIONS_EXEC[5].len() as u32 + 1,
     }
 
     // .shstrtab
@@ -324,10 +328,7 @@ pub fn create_new_elf(sections: Vec<Vec<u8>>, elf_type: ElfType) -> Elf {
     // Craft final sections
     let mut final_sections: Vec<Vec<u8>> = sections.clone();
     
-    // TODO: temp fix
-    if sections.len() == test_value {
-        final_sections.push(shstrtab_section);
-    }
+    final_sections.push(shstrtab_section);  // Is empty if create_shstrtab is false
 
     // Final step is to create the final Elf struct
     return Elf {

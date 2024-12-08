@@ -7,12 +7,12 @@ use name_core::{
     elf_utils::{create_new_elf, parse_elf_symbols, parse_rel_info},
 };
 
+use crate::constants::{REL, STRTAB, SYMTAB, TEXT};
+
 /// This function is responsible for adjusting link indices for .symtab -> .strtab, .rel -> .symtab, and .rel -> .text.
 /// It will also embed information on the scope of origin in the st_other field. It's a surprise tool that will help us later!
 pub fn relocate_links(elf: Elf, offsets: &Vec<Vec<u32>>) -> Elf {
-    // dbg!(&offsets);
-    // panic!();
-    let strtab_offsets: Vec<u32> = offsets.iter().map(|set| set[4].clone()).collect();
+    let strtab_offsets: Vec<u32> = offsets.iter().map(|set| set[STRTAB].clone()).collect();
     let mut current_strtab_adjustment: u32 = 0;
     let mut current_offset_idx: usize = 0;
     let mut previous_st_name: u32 = 0xDEADBEEF; // Just had to initalize to an impossible value, so I went with old reliable
@@ -20,7 +20,7 @@ pub fn relocate_links(elf: Elf, offsets: &Vec<Vec<u32>>) -> Elf {
     // For each entry in the symbol table, if the symbol has a smaller index than the previous, or it's equal (at 0), it needs to add the offset.
     // IMPORTANT (POSSIBLE EDGE CASE MUST CHECK LATER): I think this can crash at runtime with some really weird files.
     // Note the check for offset range. It doesn't seem watertight.
-    let symbol_table = parse_elf_symbols(&elf.sections[3]);
+    let symbol_table = parse_elf_symbols(&elf.sections[SYMTAB]);
     let new_symbol_table: Vec<u8> = symbol_table
         .iter()
         .flat_map(|symbol| {
@@ -40,14 +40,14 @@ pub fn relocate_links(elf: Elf, offsets: &Vec<Vec<u32>>) -> Elf {
         .collect();
 
     // Perform the same process as before, but this time two adjustments at once.
-    let symtab_offsets: Vec<u32> = offsets.iter().map(|set| set[3].clone()).collect();
-    let text_offsets: Vec<u32> = offsets.iter().map(|set| set[1].clone()).collect();
+    let symtab_offsets: Vec<u32> = offsets.iter().map(|set| set[SYMTAB].clone()).collect();
+    let text_offsets: Vec<u32> = offsets.iter().map(|set| set[TEXT].clone()).collect();
     let mut current_symtab_adjustment: u32 = 0;
     let mut current_text_adjustment: u32 = 0;
     current_offset_idx = 0;
     let mut previous_r_offset: u32 = 0x2BADC0DE;
 
-    let rel_section: Vec<RelocationEntry> = parse_rel_info(&elf.sections[2]);
+    let rel_section: Vec<RelocationEntry> = parse_rel_info(&elf.sections[REL]);
     let new_rel_section: Vec<u8> = rel_section
         .iter()
         .flat_map(|entry| {
@@ -77,18 +77,22 @@ pub fn relocate_links(elf: Elf, offsets: &Vec<Vec<u32>>) -> Elf {
         .iter()
         .enumerate()
         .map(|(idx, section)| match idx {
-            2 => new_rel_section.clone(),
-            3 => new_symbol_table.clone(),
+            REL => new_rel_section.clone(),
+            SYMTAB => new_symbol_table.clone(),
             _ => section.clone(),
         })
         .collect();
 
-    return create_new_elf(new_sections, ElfType::Relocatable);
+    return create_new_elf(new_sections, ElfType::Relocatable, false);
 }
 
 #[test]
 fn validate_link_relocation() {
     // I understand there's some pretty hefty mocking going on here, but it's important that this works properly.
+
+    // The situation given is as follows:
+    // ELF 1 has an 8-byte text section with two relocation entries; one for each instruction.
+    // ELF 2 has a relocation entry which references its first instruction.
 
     let mock_rel_table: Vec<RelocationEntry> = vec![
         RelocationEntry {
@@ -157,10 +161,10 @@ fn validate_link_relocation() {
 
     let offsets = vec![
         vec![0, 0, 0, 0, 0, 0,],
-        vec![8, 4, 8, 32, 4, 16],
+        vec![8, 8, 8, 32, 4, 16],
     ];
 
-    let mock_consolidated_elf: Elf = create_new_elf(mock_sections, ElfType::Relocatable);
+    let mock_consolidated_elf: Elf = create_new_elf(mock_sections, ElfType::Relocatable, true);
 
     let tested: Elf = relocate_links(mock_consolidated_elf, &offsets);
 
@@ -221,8 +225,8 @@ fn validate_link_relocation() {
         .flatten()
         .collect();
 
-    assert_eq!(tested.sections[3], expected_symtab_section);
-    assert_eq!(tested.sections[2], expected_rel_section);
+    assert_eq!(tested.sections[SYMTAB], expected_symtab_section);
+    assert_eq!(tested.sections[REL], expected_rel_section);
 }
 
 /// Error type for check_duplicate_symbols. Contains associated duplicated name
@@ -250,7 +254,7 @@ impl std::fmt::Display for DuplicateSymbolError {
 /// then it checks for duplicate local symbols in the same local space (based on calculated offsets).
 pub fn check_duplicate_symbols(elf: &Elf) -> Result<(), DuplicateSymbolError> {
     // Collect all symbols.
-    let symtab: Vec<Elf32Sym> = parse_elf_symbols(&elf.sections[3]);
+    let symtab: Vec<Elf32Sym> = parse_elf_symbols(&elf.sections[SYMTAB]);
 
     // Iterate through all symbols, collecting the linked names. If the name is already in that collection, error out.
     // If the symbol's value is 0, DO NOT COLLECT IT FOR DUPLICATE CHECKING. That's a placeholder.
@@ -258,7 +262,7 @@ pub fn check_duplicate_symbols(elf: &Elf) -> Result<(), DuplicateSymbolError> {
         .iter()
         .filter(|&symbol| symbol.st_value != 0)
         .filter_map(|symbol| match symbol.get_bind() {
-            1 => Some(symbol.get_linked_name(&elf.sections[4])),
+            1 => Some(symbol.get_linked_name(&elf.sections[STRTAB])),
             _ => None,
         })
         .collect();
@@ -286,7 +290,7 @@ pub fn check_duplicate_symbols(elf: &Elf) -> Result<(), DuplicateSymbolError> {
         let scope_names: Vec<String> = scope
             .iter()
             .filter_map(|symbol| match symbol.get_bind() {
-                0 => Some(symbol.get_linked_name(&elf.sections[4])),
+                0 => Some(symbol.get_linked_name(&elf.sections[STRTAB])),
                 _ => None,
             })
             .collect();
@@ -369,7 +373,7 @@ fn validate_duplicate_symbol_checker() {
         vec![0; 16],
     ];
 
-    let mut mock_elf: Elf = create_new_elf(mock_sections, ElfType::Relocatable);
+    let mut mock_elf: Elf = create_new_elf(mock_sections, ElfType::Relocatable, true);
 
     let result: Result<(), DuplicateSymbolError> = check_duplicate_symbols(&mock_elf);
 
@@ -385,7 +389,7 @@ fn validate_duplicate_symbol_checker() {
         b'a', b't', b'\0',
     ];
 
-    mock_elf.sections[4] = bad_local_strtab.clone();
+    mock_elf.sections[STRTAB] = bad_local_strtab.clone();
 
     let result: Result<(), DuplicateSymbolError> = check_duplicate_symbols(&mock_elf);
 
@@ -400,7 +404,7 @@ fn validate_duplicate_symbol_checker() {
         b'o', b'g', b'\0',
     ];
 
-    mock_elf.sections[4] = fine_strtab.clone();
+    mock_elf.sections[STRTAB] = fine_strtab.clone();
 
     let result: Result<(), DuplicateSymbolError> = check_duplicate_symbols(&mock_elf);
 

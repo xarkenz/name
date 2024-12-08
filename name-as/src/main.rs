@@ -37,6 +37,7 @@ fn main() {
                     assembler_environment.section_dot_line,
                 ],
                 ElfType::Relocatable,
+                true,
             );
             match write_elf_to_file(&args.output_filename, &et_rel) {
                 Ok(()) => println!(

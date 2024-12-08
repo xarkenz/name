@@ -84,10 +84,13 @@ pub const ET_REL: u16 = 1;
 pub const ET_EXEC: u16 = 2;
 // const ET_DYN: u16 = 3;
 
+
+/// ElfType is used to determine A) which type of ELF is being handled, and B) the subfields contain information about them.
+/// The u32 attached to Executable represents e_entry.
 #[derive(Clone)]
 pub enum ElfType {
     Relocatable,
-    Executable,
+    Executable(u32),
 }
 
 // all ELFs will first be constructed with e_type set to ET_REL. The linker handles any changes.
