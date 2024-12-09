@@ -9,12 +9,10 @@ use crate::{
     constants::{
         MIPS_ADDRESS_ALIGNMENT, MIPS_DATA_START_ADDR, MIPS_HEAP_START_ADDR, MIPS_STACK_END_ADDR,
         MIPS_TEXT_START_ADDR,
-    },
-    debug::{debug_utils::*, debugger_methods::* /* implementations::* */},
-    syscalls::*,
+    }, debug::{debug_utils::*, debugger_methods::* /* implementations::* */}, exception::constants::EXCEPTION_BEING_HANDLED, syscalls::*
 };
 
-/// Symbol is used for assembly -> ELF and ELF -> ProgramState construction.
+/// Symbol is used for assembly -> ELF, ET_REL -> ET_EXEC, and ELF -> ProgramState construction.
 /// Its definition is provided in the ELF TIS: https://refspecs.linuxfoundation.org/elf/elf.pdf
 #[derive(Debug)]
 pub struct Symbol {
@@ -254,6 +252,22 @@ pub struct ProgramState {
     pub memory: Memory,
 }
 
+impl ProgramState {
+    pub fn new(cpu: Processor, memory: Memory) -> Self {
+        ProgramState {
+            should_continue_execution: true,
+            cpu: cpu,
+            cp0: Coprocessor0::new(),
+            memory: memory,
+        }
+    }
+
+    pub fn is_exception(&self) -> bool {
+        return self.cp0.get_exception_level() == EXCEPTION_BEING_HANDLED;
+    }
+}
+
+/// Enumeration of general-purpose register set for simplicity in instructions
 #[derive(Debug, Clone, Copy)]
 #[repr(usize)]
 pub enum Register {
@@ -291,6 +305,7 @@ pub enum Register {
     Ra,
 }
 
+/// Visibility - for use in Symbol. Enumerated version of needed variants.
 #[derive(Debug, Default)]
 pub enum Visibility {
     #[default]
@@ -299,6 +314,7 @@ pub enum Visibility {
     Weak,
 }
 
+/// Section - enumerated for checks in assembler and referenced in Symbol construction
 #[derive(Debug, Clone)]
 pub enum Section {
     Null,
@@ -306,6 +322,7 @@ pub enum Section {
     Data,
 }
 
+/// The definition for section .line
 #[derive(Debug)]
 pub struct LineInfo {
     pub content: String,
@@ -314,8 +331,22 @@ pub struct LineInfo {
     pub end_address: u32,
 }
 
+/// For serializing lineinfo to ELF
+impl LineInfo {
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut bytes = self.content.as_bytes().to_vec();
+        bytes.push(b'\0');
+
+        bytes.extend_from_slice(&self.line_number.to_be_bytes());
+        bytes.extend_from_slice(&self.start_address.to_be_bytes());
+        bytes.extend_from_slice(&self.end_address.to_be_bytes());
+
+        bytes
+    }
+}
+
 /// Handler for outside world. Operating System interprets syscalls.
-/// Still WIP will grow to include other non processor peripheries (which can interact through MMIO)
+/// Still WIP, will grow to include other non processor peripheries (which can interact through MMIO)
 #[derive(Debug)]
 pub struct OperatingSystem {
     stdin: Stdin,

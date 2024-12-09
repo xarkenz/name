@@ -1,6 +1,9 @@
-use crate::instruction::{
-    implementation,
-    information::{wrap_imp, ArgumentType, InstructionInformation, InstructionType},
+use crate::{
+    elf_def::RelocationEntryType,
+    instruction::{
+        implementation,
+        information::{wrap_imp, ArgumentType, InstructionInformation, InstructionType},
+    },
 };
 
 use std::sync::LazyLock;
@@ -21,6 +24,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
             instruction_type: InstructionType::RType,
             args: &[ArgumentType::Rd, ArgumentType::Rs, ArgumentType::Rt],
             alt_args: None,
+            relocation_type: None,
         },
         InstructionInformation {
             mnemonic: "addi",
@@ -30,6 +34,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
             instruction_type: InstructionType::IType,
             args: &[ArgumentType::Rt, ArgumentType::Rs, ArgumentType::Immediate],
             alt_args: None,
+            relocation_type: None,
         },
         InstructionInformation {
             mnemonic: "addiu",
@@ -39,6 +44,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
             instruction_type: InstructionType::IType,
             args: &[ArgumentType::Rt, ArgumentType::Rs, ArgumentType::Immediate],
             alt_args: None,
+            relocation_type: None,
         },
         InstructionInformation {
             mnemonic: "addu",
@@ -48,6 +54,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
             instruction_type: InstructionType::RType,
             args: &[ArgumentType::Rd, ArgumentType::Rs, ArgumentType::Rt],
             alt_args: None,
+            relocation_type: None,
         },
         InstructionInformation {
             mnemonic: "and",
@@ -57,6 +64,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
             instruction_type: InstructionType::RType,
             args: &[ArgumentType::Rd, ArgumentType::Rs, ArgumentType::Rt],
             alt_args: None,
+            relocation_type: None,
         },
         InstructionInformation {
             mnemonic: "andi",
@@ -66,6 +74,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
             instruction_type: InstructionType::IType,
             args: &[ArgumentType::Rt, ArgumentType::Rs, ArgumentType::Immediate],
             alt_args: None,
+            relocation_type: None,
         },
         InstructionInformation {
             mnemonic: "beq",
@@ -79,6 +88,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
                 ArgumentType::BranchLabel,
             ],
             alt_args: None,
+            relocation_type: Some(RelocationEntryType::Pc16),
         },
         InstructionInformation {
             mnemonic: "bgtz",
@@ -88,6 +98,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
             instruction_type: InstructionType::IType,
             args: &[ArgumentType::Rs, ArgumentType::BranchLabel],
             alt_args: None,
+            relocation_type: Some(RelocationEntryType::Pc16),
         },
         InstructionInformation {
             mnemonic: "blez",
@@ -97,6 +108,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
             instruction_type: InstructionType::IType,
             args: &[ArgumentType::Rs, ArgumentType::BranchLabel],
             alt_args: None,
+            relocation_type: Some(RelocationEntryType::Pc16),
         },
         InstructionInformation {
             mnemonic: "bne",
@@ -110,6 +122,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
                 ArgumentType::BranchLabel,
             ],
             alt_args: None,
+            relocation_type: Some(RelocationEntryType::Pc16),
         },
         InstructionInformation {
             mnemonic: "break",
@@ -119,6 +132,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
             instruction_type: InstructionType::RType,
             args: &[],
             alt_args: None,
+            relocation_type: None,
         },
         InstructionInformation {
             mnemonic: "j",
@@ -128,6 +142,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
             instruction_type: InstructionType::JType,
             args: &[ArgumentType::BranchLabel],
             alt_args: None,
+            relocation_type: Some(RelocationEntryType::R26),
         },
         InstructionInformation {
             mnemonic: "jal",
@@ -137,6 +152,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
             instruction_type: InstructionType::JType,
             args: &[ArgumentType::BranchLabel],
             alt_args: None,
+            relocation_type: Some(RelocationEntryType::R26),
         },
         InstructionInformation {
             mnemonic: "jalr",
@@ -146,6 +162,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
             instruction_type: InstructionType::RType,
             args: &[ArgumentType::Rd, ArgumentType::Rs],
             alt_args: Some(&[&[ArgumentType::Rs]]),
+            relocation_type: None,
         },
         InstructionInformation {
             mnemonic: "jr",
@@ -155,6 +172,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
             instruction_type: InstructionType::RType,
             args: &[ArgumentType::Rs],
             alt_args: None,
+            relocation_type: None,
         },
         InstructionInformation {
             mnemonic: "lb",
@@ -167,6 +185,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
                 &[ArgumentType::Rt, ArgumentType::Rs],
                 &[ArgumentType::Rt, ArgumentType::Identifier, ArgumentType::Rs],
             ]),
+            relocation_type: None,
         },
         InstructionInformation {
             mnemonic: "lui",
@@ -176,6 +195,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
             instruction_type: InstructionType::IType,
             args: &[ArgumentType::Rt, ArgumentType::Immediate],
             alt_args: None,
+            relocation_type: None,
         },
         InstructionInformation {
             mnemonic: "lw",
@@ -188,6 +208,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
                 &[ArgumentType::Rt, ArgumentType::Rs],
                 &[ArgumentType::Rt, ArgumentType::Identifier, ArgumentType::Rs],
             ]),
+            relocation_type: None,
         },
         /*
           Instruction::InstructionInformation {
@@ -217,6 +238,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
             instruction_type: InstructionType::RType,
             args: &[ArgumentType::Rd, ArgumentType::Rs, ArgumentType::Rt],
             alt_args: None,
+            relocation_type: None,
         },
         InstructionInformation {
             mnemonic: "nop",
@@ -226,6 +248,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
             instruction_type: InstructionType::RType,
             args: &[],
             alt_args: None,
+            relocation_type: None,
         },
         InstructionInformation {
             mnemonic: "or",
@@ -235,6 +258,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
             instruction_type: InstructionType::RType,
             args: &[ArgumentType::Rd, ArgumentType::Rs, ArgumentType::Rt],
             alt_args: None,
+            relocation_type: None,
         },
         InstructionInformation {
             mnemonic: "ori",
@@ -244,6 +268,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
             instruction_type: InstructionType::IType,
             args: &[ArgumentType::Rt, ArgumentType::Rs, ArgumentType::Immediate],
             alt_args: None,
+            relocation_type: None,
         },
         InstructionInformation {
             mnemonic: "sb",
@@ -257,6 +282,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
                 &[ArgumentType::Rt, ArgumentType::Identifier, ArgumentType::Rs],
                 &[ArgumentType::Rt, ArgumentType::Identifier],
             ]),
+            relocation_type: None,
         },
         InstructionInformation {
             mnemonic: "sll",
@@ -266,6 +292,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
             instruction_type: InstructionType::RType,
             args: &[ArgumentType::Rd, ArgumentType::Rt, ArgumentType::Immediate],
             alt_args: None,
+            relocation_type: None,
         },
         InstructionInformation {
             mnemonic: "slt",
@@ -275,6 +302,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
             instruction_type: InstructionType::RType,
             args: &[ArgumentType::Rd, ArgumentType::Rs, ArgumentType::Rt],
             alt_args: None,
+            relocation_type: None,
         },
         InstructionInformation {
             mnemonic: "slti",
@@ -284,6 +312,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
             instruction_type: InstructionType::IType,
             args: &[ArgumentType::Rt, ArgumentType::Rs, ArgumentType::Immediate],
             alt_args: None,
+            relocation_type: None,
         },
         InstructionInformation {
             mnemonic: "sltiu",
@@ -293,6 +322,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
             instruction_type: InstructionType::IType,
             args: &[ArgumentType::Rt, ArgumentType::Rs, ArgumentType::Immediate],
             alt_args: None,
+            relocation_type: None,
         },
         InstructionInformation {
             mnemonic: "sltu",
@@ -302,6 +332,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
             instruction_type: InstructionType::RType,
             args: &[ArgumentType::Rd, ArgumentType::Rs, ArgumentType::Rt],
             alt_args: None,
+            relocation_type: None,
         },
         InstructionInformation {
             mnemonic: "srl",
@@ -311,6 +342,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
             instruction_type: InstructionType::RType,
             args: &[ArgumentType::Rd, ArgumentType::Rt, ArgumentType::Immediate],
             alt_args: None,
+            relocation_type: None,
         },
         InstructionInformation {
             mnemonic: "sub",
@@ -320,6 +352,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
             instruction_type: InstructionType::RType,
             args: &[ArgumentType::Rd, ArgumentType::Rs, ArgumentType::Rt],
             alt_args: None,
+            relocation_type: None,
         },
         InstructionInformation {
             mnemonic: "subu",
@@ -329,6 +362,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
             instruction_type: InstructionType::RType,
             args: &[ArgumentType::Rd, ArgumentType::Rs, ArgumentType::Rt],
             alt_args: None,
+            relocation_type: None,
         },
         InstructionInformation {
             mnemonic: "sw",
@@ -342,6 +376,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
                 &[ArgumentType::Rt, ArgumentType::Identifier, ArgumentType::Rs],
                 &[ArgumentType::Rt, ArgumentType::Identifier],
             ]),
+            relocation_type: None,
         },
         InstructionInformation {
             mnemonic: "syscall",
@@ -351,6 +386,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
             instruction_type: InstructionType::RType,
             args: &[],
             alt_args: None,
+            relocation_type: None,
         },
         InstructionInformation {
             mnemonic: "xor",
@@ -360,6 +396,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
             instruction_type: InstructionType::RType,
             args: &[ArgumentType::Rd, ArgumentType::Rs, ArgumentType::Rt],
             alt_args: None,
+            relocation_type: None,
         },
         InstructionInformation {
             mnemonic: "xori",
@@ -369,6 +406,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
             instruction_type: InstructionType::IType,
             args: &[ArgumentType::Rt, ArgumentType::Rs, ArgumentType::Immediate],
             alt_args: None,
+            relocation_type: None,
         },
     ]
 });
