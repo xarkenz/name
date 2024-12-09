@@ -1,7 +1,6 @@
 use crate::constants::{REGISTERS, MIPS_TEXT_START_ADDR};
-use crate::exception::constants::*;
 use crate::structs::{
-    Coprocessor0, LineInfo, Memory, Processor, ProgramState, /*, OperatingSystem*/
+    Coprocessor0, Processor, ProgramState, /*, OperatingSystem*/
 };
 // use crate::instruction::instruction_set;
 
@@ -34,19 +33,6 @@ impl Coprocessor0 {
 }
 
 impl ProgramState {
-    pub fn new(cpu: Processor, memory: Memory) -> Self {
-        ProgramState {
-            should_continue_execution: true,
-            cpu: cpu,
-            cp0: Coprocessor0::new(),
-            memory: memory,
-        }
-    }
-
-    pub fn is_exception(&self) -> bool {
-        return self.cp0.get_exception_level() == EXCEPTION_BEING_HANDLED;
-    }
-
     pub fn insert_breakpoint(&mut self, address: u32, bp_num: usize) -> Result<u32, String> {
         // least vulnerable code ever
 
@@ -127,18 +113,5 @@ impl ProgramState {
             Ok(_) => {}
             Err(e) => eprintln!("{e}"),
         };
-    }
-}
-
-impl LineInfo {
-    pub fn to_bytes(&self) -> Vec<u8> {
-        let mut bytes = self.content.as_bytes().to_vec();
-        bytes.push(b'\0');
-
-        bytes.extend_from_slice(&self.line_number.to_be_bytes());
-        bytes.extend_from_slice(&self.start_address.to_be_bytes());
-        bytes.extend_from_slice(&self.end_address.to_be_bytes());
-
-        bytes
     }
 }

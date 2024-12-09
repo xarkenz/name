@@ -132,6 +132,7 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
             instruction_type: InstructionType::RType,
             args: &[],
             alt_args: None,
+            relocation_type: None,
         },
         InstructionInformation {
             mnemonic: "j",
