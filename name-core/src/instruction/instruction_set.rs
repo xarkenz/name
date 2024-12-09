@@ -125,6 +125,15 @@ pub static INSTRUCTION_SET: LazyLock<Vec<InstructionInformation>> = LazyLock::ne
             relocation_type: Some(RelocationEntryType::Pc16),
         },
         InstructionInformation {
+            mnemonic: "break",
+            op_code: 0x00,
+            funct_code: Some(0x0D),
+            implementation: wrap_imp(implementation::break_instr),
+            instruction_type: InstructionType::RType,
+            args: &[],
+            alt_args: None,
+        },
+        InstructionInformation {
             mnemonic: "j",
             op_code: 0x02,
             funct_code: None,
