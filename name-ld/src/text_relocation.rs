@@ -80,7 +80,7 @@ pub fn relocate_text_entries(
                 let symbol_address: u32 = linked_symbol.st_value;
                 let pc_rel: u32 = entry.r_offset;
                 let relocation_value: u32 =
-                    (((symbol_address as i32) - (pc_rel as i32))  >> 2) as i16 as u16 as u32;
+                    (((symbol_address as i32) - (pc_rel as i32 + 4))  >> 2) as i16 as u16 as u32;
                 let old_value: u32 = u32::from_be_bytes(
                     new_text_section[text_offset..(text_offset + 4)]
                         .try_into()
