@@ -1,5 +1,4 @@
 use name_core::constants::REGISTERS;
-use name_core::structs::Symbol;
 
 use crate::definitions::{
     constants::INSTRUCTION_TABLE,
@@ -36,17 +35,6 @@ pub fn arg_configuration_is_ok(
     }
 
     return true;
-}
-
-// Oft-used map operation nobody would want to repeat. Turns a symbol table entry into its address.
-pub fn translate_identifier_to_address(
-    identifier: &String,
-    symbol_table: &Vec<Symbol>,
-) -> Option<u32> {
-    symbol_table
-        .iter()
-        .find(|symbol| symbol.identifier == identifier.clone())
-        .map(|symbol| symbol.value)
 }
 
 // Parse a register string like "$t0" or "$3" to u32 for packing.
