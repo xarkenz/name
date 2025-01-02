@@ -8,10 +8,10 @@ pub enum Token {
     #[regex(r"\.[a-zA-Z_]+")]
     Directive,
 
-    #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*:")]
+    #[regex(r"[a-zA-Z_][a-zA-Z0-9_.$]*:")]
     Label,
 
-    #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*")]
+    #[regex(r"[a-zA-Z_][a-zA-Z0-9_.$]*")]
     Identifier,
 
     #[regex(r"\$[a-zA-Z0-9]+")]

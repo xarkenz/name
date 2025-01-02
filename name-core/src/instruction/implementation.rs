@@ -363,7 +363,36 @@ pub fn lb(program_state: &mut ProgramState, args: IArgs) -> () {
             return;
         }
     };
-    program_state.cpu.general_purpose_registers[args.rt as usize] = return_byte as u32;
+    program_state.cpu.general_purpose_registers[args.rt as usize] = return_byte as i8 as u32;
+}
+
+// 0x21 - lh
+pub fn lh(program_state: &mut ProgramState, args: IArgs) -> () {
+    let temp = (program_state.cpu.general_purpose_registers[args.rs as usize] as i32
+        + args.imm as i32) as u32;
+
+    if temp % 2 != 0 {
+        program_state.set_exception(ExceptionType::AddressExceptionLoad);
+        return;
+    }
+
+    if !program_state.memory.allows_read_from(temp)
+        || !program_state.memory.allows_read_from(temp + 1)
+    {
+        program_state.set_exception(ExceptionType::AddressExceptionLoad);
+        return;
+    }
+
+    // Checks passed. Load half.
+    let mut result_half: u16 = 0;
+    for offset in 0..2 {
+        match program_state.memory.read_byte(temp + offset) {
+            Ok(b) => result_half |= (b as u16) << (8 - (offset * 8)),
+            Err(_) => program_state.set_exception(ExceptionType::AddressExceptionLoad),
+        }
+    }
+
+    program_state.cpu.general_purpose_registers[args.rt as usize] = result_half as i16 as u32;
 }
 
 // 0x23 - lw
@@ -384,17 +413,64 @@ pub fn lw(program_state: &mut ProgramState, args: IArgs) -> () {
     }
 
     // Checks passed. Load word.
-    let mut i = 0;
     let mut result_word: u32 = 0;
-    while i < 4 {
-        match program_state.memory.read_byte(temp + i) {
-            Ok(b) => result_word |= (b as u32) << (24 - (i * 8)),
+    for offset in 0..4 {
+        match program_state.memory.read_byte(temp + offset) {
+            Ok(b) => result_word |= (b as u32) << (24 - (offset * 8)),
             Err(_) => program_state.set_exception(ExceptionType::AddressExceptionLoad),
         }
-        i += 1;
     }
 
     program_state.cpu.general_purpose_registers[args.rt as usize] = result_word;
+}
+
+// 0x24 - lbu
+pub fn lbu(program_state: &mut ProgramState, args: IArgs) -> () {
+    let temp: u32 = (program_state.cpu.general_purpose_registers[args.rs as usize] as i32
+        + args.imm as i32) as u32;
+
+    if !program_state.memory.allows_read_from(temp) {
+        // TODO: Use a function which sets the proper values in cp0 for us
+        program_state.set_exception(ExceptionType::AddressExceptionLoad);
+        return;
+    }
+    let return_byte: u8 = match program_state.memory.read_byte(temp) {
+        Ok(b) => b,
+        Err(_) => {
+            program_state.set_exception(ExceptionType::AddressExceptionLoad);
+            return;
+        }
+    };
+    program_state.cpu.general_purpose_registers[args.rt as usize] = return_byte as u32;
+}
+
+// 0x25 - lhu
+pub fn lhu(program_state: &mut ProgramState, args: IArgs) -> () {
+    let temp = (program_state.cpu.general_purpose_registers[args.rs as usize] as i32
+        + args.imm as i32) as u32;
+
+    if temp % 2 != 0 {
+        program_state.set_exception(ExceptionType::AddressExceptionLoad);
+        return;
+    }
+
+    if !program_state.memory.allows_read_from(temp)
+        || !program_state.memory.allows_read_from(temp + 1)
+    {
+        program_state.set_exception(ExceptionType::AddressExceptionLoad);
+        return;
+    }
+
+    // Checks passed. Load half.
+    let mut result_half: u16 = 0;
+    for offset in 0..2 {
+        match program_state.memory.read_byte(temp + offset) {
+            Ok(b) => result_half |= (b as u16) << (8 - (offset * 8)),
+            Err(_) => program_state.set_exception(ExceptionType::AddressExceptionLoad),
+        }
+    }
+
+    program_state.cpu.general_purpose_registers[args.rt as usize] = result_half as u32;
 }
 
 // 0x28 - sb
@@ -414,6 +490,42 @@ pub fn sb(program_state: &mut ProgramState, args: IArgs) -> () {
         Ok(_) => (),
         Err(_) => program_state.set_exception(ExceptionType::AddressExceptionStore),
     };
+}
+
+// 0x29 - sh
+pub fn sh(program_state: &mut ProgramState, args: IArgs) -> () {
+    let temp = (program_state.cpu.general_purpose_registers[args.rs as usize] as i32
+        + args.imm as i32) as u32;
+
+    if temp % 2 != 0 {
+        program_state.set_exception(ExceptionType::AddressExceptionStore);
+        return;
+    }
+
+    if !program_state.memory.allows_write_to(temp)
+        || !program_state.memory.allows_write_to(temp + 1)
+    {
+        program_state.set_exception(ExceptionType::AddressExceptionStore);
+        return;
+    }
+
+    // Retrieve value of rt from cpu
+    let value: u32 = program_state.cpu.general_purpose_registers[args.rt as usize];
+
+    // Checks passed. Store half.
+    for offset in 0..2 {
+        // Shift/mask value to get correct byte
+        let new_byte: u8 = ((value >> (offset * 8)) & 0xFF) as u8;
+        // Write it to correct location
+        match program_state.memory.set_byte(temp + (1 - offset), new_byte) {
+            Ok(_) => (),
+            Err(_) => {
+                // If write failed, trigger an exception
+                program_state.set_exception(ExceptionType::AddressExceptionStore);
+                return;
+            }
+        }
+    }
 }
 
 // 0x2b - sw
@@ -437,12 +549,11 @@ pub fn sw(program_state: &mut ProgramState, args: IArgs) -> () {
     let value: u32 = program_state.cpu.general_purpose_registers[args.rt as usize];
 
     // Checks passed. Store word.
-    let mut i = 0;
-    while i < 4 {
+    for offset in 0..4 {
         // Shift/mask value to get correct byte
-        let new_byte: u8 = ((value >> (i * 8)) & 0xFF) as u8;
+        let new_byte: u8 = ((value >> (offset * 8)) & 0xFF) as u8;
         // Write it to correct location
-        match program_state.memory.set_byte(temp + (3 - i), new_byte) {
+        match program_state.memory.set_byte(temp + (3 - offset), new_byte) {
             Ok(_) => (),
             Err(_) => {
                 // If write failed, trigger an exception
@@ -450,6 +561,5 @@ pub fn sw(program_state: &mut ProgramState, args: IArgs) -> () {
                 return;
             }
         }
-        i += 1;
     }
 }

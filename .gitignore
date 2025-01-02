@@ -29,8 +29,11 @@ name-fmt/node_modules/
 
 personal_to_do_list.txt
 test_files/bubblesort/*
-tests/samples/*
-!test/samples/*.asm
+# Track only .asm and .md files in any subdirectory of tests/samples
+tests/samples/**
+!tests/samples/**/
+!tests/samples/**/*.md
+!tests/samples/**/*.asm
 
 */launch.json
 .vscode

@@ -3,8 +3,8 @@ use crate::assembler::assembler::Assembler;
 use crate::definitions::structs::LineComponent;
 
 impl Assembler {
-    pub(crate) fn handle_directive(&mut self, ident: &String, arguments: &Vec<LineComponent>) {
-        match ident.as_str() {
+    pub(crate) fn handle_directive(&mut self, ident: &str, arguments: &Vec<LineComponent>) {
+        match ident {
             ".asciiz" => {
                 self.add_new_asciiz(arguments);
             }
@@ -24,9 +24,8 @@ impl Assembler {
                 self.new_word(arguments);
             }
             _ => {
-                self.errors
-                    .push(format!("[*] On line {}:", self.line_number));
-                self.errors.push(format!(" - Unrecognized directive."));
+                self.errors.push(format!("[*] On line {}:", self.line_number));
+                self.errors.push(format!(" - Directive \"{ident}\" not recognized."));
             }
         }
     }
